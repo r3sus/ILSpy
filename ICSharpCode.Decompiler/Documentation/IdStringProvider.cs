@@ -70,7 +70,7 @@ namespace ICSharpCode.Decompiler.Documentation
 					b.Append('#');
 				}
 			}
-			b.Append(member.Name.Replace('.', '#'));
+			b.Append(member.Name.Replace('.', '#').Replace('<', '{').Replace('>', '}'));
 			IMethod method = member as IMethod;
 			if (method != null && method.TypeParameters.Count > 0) {
 				b.Append("``");
