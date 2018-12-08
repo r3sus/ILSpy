@@ -1060,7 +1060,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				entityDecl.AddAnnotation(function);
 
 				if (function.IsIterator) {
-					if (!body.Descendants.Any(d => d is YieldReturnStatement || d is YieldBreakStatement)) {
+					if (localSettings.DecompileMemberBodies && !body.Descendants.Any(d => d is YieldReturnStatement || d is YieldBreakStatement)) {
 						body.Add(new YieldBreakStatement());
 					}
 					RemoveAttribute(entityDecl, KnownAttribute.IteratorStateMachine);
