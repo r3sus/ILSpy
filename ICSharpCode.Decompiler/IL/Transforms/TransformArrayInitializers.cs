@@ -358,6 +358,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				if (indices.Count != arrayLength.Length)
 					break;
 				bool exact;
+				if (j >= values.Length)
+					break;
 				do {
 					var nextIndices = CalculateNextIndices(indices, out exact);
 					if (nextIndices == null)
@@ -369,7 +371,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 						values[j] = (nextIndices, null);
 					}
 					j++;
-				} while (!exact);
+				} while (j < values.Length && !exact);
 			}
 			if (i < block.Instructions.Count) {
 				if (block.Instructions[i].MatchStObj(out ILInstruction target, out ILInstruction value, out IType type)) {
