@@ -202,4 +202,18 @@ namespace ICSharpCode.Decompiler.CSharp
 			GetCurrentCall = getCurrentCall;
 		}
 	}
+
+	/// <summary>
+	/// Annotates the top-level block statement of a function
+	/// with the implicitly executed return/yield break.
+	/// </summary>
+	public class ImplicitReturnAnnotation
+	{
+		public readonly Leave Leave;
+
+		public ImplicitReturnAnnotation(Leave leave)
+		{
+			this.Leave = leave;
+		}
+	}
 }
