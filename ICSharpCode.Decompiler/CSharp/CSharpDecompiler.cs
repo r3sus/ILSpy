@@ -1066,6 +1066,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					localSettings.UseImplicitMethodGroupConversion = false;
 					localSettings.UsingDeclarations = false;
 					localSettings.AlwaysCastTargetsOfExplicitInterfaceImplementationCalls = true;
+					localSettings.NamedArguments = false;
 				}
 
 				var context = new ILTransformContext(function, typeSystem, localSettings) {
