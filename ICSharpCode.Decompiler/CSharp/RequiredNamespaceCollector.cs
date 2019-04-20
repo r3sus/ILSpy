@@ -134,6 +134,9 @@ namespace ICSharpCode.Decompiler.CSharp
 					namespaces.Add(type.Namespace);
 					break;
 			}
+			foreach (var baseType in type.GetAllBaseTypes()) {
+				namespaces.Add(baseType.Namespace);
+			}
 		}
 
 		public static void CollectNamespaces(IMDTokenProvider entity, MetadataModule module, HashSet<string> namespaces)
