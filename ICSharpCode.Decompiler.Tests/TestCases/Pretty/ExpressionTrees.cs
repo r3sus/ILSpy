@@ -586,7 +586,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			2004,
 			2008,
 			2012
-		}).Any<int>));
+		}).Any));
 		}
 
 		public void MethodGroupConstant()
