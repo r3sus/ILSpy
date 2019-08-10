@@ -251,7 +251,9 @@ namespace ICSharpCode.ILSpy
 			HighlightingColor color = null;
 			switch (type) {
 				case "new":
-					color = typeKeywordsColor;
+				case "notnull":
+					// Not sure if reference type or value type
+					color = referenceTypeKeywordsColor;
 					break;
 				case "bool":
 				case "byte":
@@ -268,6 +270,7 @@ namespace ICSharpCode.ILSpy
 				case "uint":
 				case "ushort":
 				case "ulong":
+				case "unmanaged":
 					color = valueTypeKeywordsColor;
 					break;
 				case "object":
