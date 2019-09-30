@@ -790,7 +790,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		bool ParentIsCurrentGetter(ILInstruction inst)
 		{
 			return inst.Parent is CallInstruction cv && cv.Method.IsAccessor &&
-				cv.Method.AccessorOwner is IProperty p && p.Getter.Equals(cv.Method);
+				cv.Method.AccessorKind == dnlib.DotNet.MethodSemanticsAttributes.Getter;
 		}
 		#endregion
 
