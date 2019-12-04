@@ -460,6 +460,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				CSharpDecompiler decompiler = new CSharpDecompiler(new PEFile(module), settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAttributes());
 				decompiler.AstTransforms.Insert(0, new RemoveCompilerAttribute());
+				decompiler.AstTransforms.Insert(0, new RemoveNamespaceMy());
 				decompiler.AstTransforms.Add(new EscapeInvalidIdentifiers());
 				var syntaxTree = decompiler.DecompileWholeModuleAsSingleFile(sortTypes: true);
 
