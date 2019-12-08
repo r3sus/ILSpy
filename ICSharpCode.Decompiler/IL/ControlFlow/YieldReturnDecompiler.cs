@@ -132,7 +132,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				AnalyzeCurrentProperty();
 				ResolveIEnumerableIEnumeratorFieldMapping();
 				ConstructExceptionTable();
-				newBody = AnalyzeMoveNext();
+				newBody = AnalyzeMoveNext(function);
 			} catch (SymbolicAnalysisFailedException) {
 				return;
 			}
@@ -517,11 +517,13 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		#endregion
 
 		#region Analyze MoveNext() and generate new body
-		BlockContainer AnalyzeMoveNext()
+		BlockContainer AnalyzeMoveNext(ILFunction function)
 		{
 			context.StepStartGroup("AnalyzeMoveNext");
 			MethodDef moveNextMethod = enumeratorType.Methods.FirstOrDefault(m => m.Name == "MoveNext");
 			ILFunction moveNextFunction = CreateILAst(moveNextMethod, context);
+
+			function.MoveNextMethod = moveNextFunction.Method;
 
 			// Copy-propagate temporaries holding a copy of 'this'.
 			// This is necessary because the old (pre-Roslyn) C# compiler likes to store 'this' in temporary variables.
