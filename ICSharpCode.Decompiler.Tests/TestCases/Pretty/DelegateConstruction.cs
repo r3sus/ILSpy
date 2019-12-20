@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -396,17 +396,31 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			return () => integerData;
 		}
 
+#if !MCS
+		// does not compile with mcs...
 		public static Func<int> Issue1773b(object data)
 		{
+#if ROSLYN
 			dynamic dynamicData = data;
 			return () => dynamicData.DynamicCall();
+#else
+			// This is a bug in the old csc: captured dynamic local variables did not have the [DynamicAttribute]
+			// on the display-class field.
+			return () => ((dynamic)data).DynamicCall();
+#endif
 		}
 
 		public static Func<int> Issue1773c(object data)
 		{
+#if ROSLYN
 			dynamic dynamicData = data;
 			return () => dynamicData;
+#else
+			return () => (dynamic)data;
+#endif
 		}
+#endif
+
 #if ROSLYN
 		public static Func<string> Issue1773d((int Integer, string String) data)
 		{
@@ -414,5 +428,25 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			return () => valueTuple.RenamedString;
 		}
 #endif
+	}
+
+	public class Issue1867
+	{
+		private int value;
+
+		public Func<bool> TestLambda(Issue1867 x)
+		{
+			Issue1867 m1;
+			Issue1867 m2;
+			if (x.value > value) {
+				m1 = this;
+				m2 = x;
+			} else {
+				m1 = x;
+				m2 = this;
+			}
+
+			return () => m1.value + 1 == 4 && m2.value > 5;
+		}
 	}
 }
