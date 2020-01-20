@@ -116,7 +116,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 					if (localFunction.DeclarationScope == null) {
 						localFunction.DeclarationScope = (BlockContainer)function.Body;
-					} else if (localFunction.DeclarationScope != function.Body && localFunction.DeclarationScope.Parent is ILFunction declaringFunction) {
+					}
+
+					ILFunction declaringFunction = GetDeclaringFunction(localFunction);
+					if (declaringFunction != function) {
 						function.LocalFunctions.Remove(localFunction);
 						declaringFunction.LocalFunctions.Add(localFunction);
 					}
@@ -124,7 +127,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					if (TryValidateSkipCount(info, out int skipCount) && skipCount != localFunction.ReducedMethod.NumberOfCompilerGeneratedTypeParameters) {
 						Debug.Assert(false);
 						function.Warnings.Add($"Could not decode local function '{info.Method}'");
-						if (localFunction.DeclarationScope != function.Body && localFunction.DeclarationScope.Parent is ILFunction declaringFunction) {
+						if (declaringFunction != function) {
 							declaringFunction.LocalFunctions.Remove(localFunction);
 						}
 						continue;
@@ -142,6 +145,19 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					context.StepEndGroup();
 				}
 			}
+		}
+
+		private ILFunction GetDeclaringFunction(ILFunction localFunction)
+		{
+			if (localFunction.DeclarationScope == null)
+				return null;
+			ILInstruction inst = localFunction.DeclarationScope;
+			while (inst != null) {
+				if (inst is ILFunction declaringFunction)
+					return declaringFunction;
+				inst = inst.Parent;
+			}
+			return null;
 		}
 
 		bool TryValidateSkipCount(LocalFunctionInfo info, out int skipCount)
