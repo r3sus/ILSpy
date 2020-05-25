@@ -385,7 +385,6 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 					return "\\u" + ((int)ch).ToString("x4");
 				default:
 					switch (char.GetUnicodeCategory(ch)) {
-						case UnicodeCategory.ModifierLetter:
 						case UnicodeCategory.NonSpacingMark:
 						case UnicodeCategory.SpacingCombiningMark:
 						case UnicodeCategory.EnclosingMark:
@@ -472,7 +471,6 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 					return true;
 			}
 			switch (char.GetUnicodeCategory(identifier, index)) {
-				case UnicodeCategory.ModifierLetter:
 				case UnicodeCategory.NonSpacingMark:
 				case UnicodeCategory.SpacingCombiningMark:
 				case UnicodeCategory.EnclosingMark:
