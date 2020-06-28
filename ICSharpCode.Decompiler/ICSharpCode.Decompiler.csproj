@@ -15,7 +15,7 @@
     <GenerateAssemblyInformationalVersionAttribute>False</GenerateAssemblyInformationalVersionAttribute>
 
     <EnableDefaultItems>false</EnableDefaultItems>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>8</LangVersion>
 
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>ICSharpCode.Decompiler.snk</AssemblyOriginatorKeyFile>

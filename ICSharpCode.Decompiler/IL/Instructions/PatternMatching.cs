@@ -302,8 +302,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			if (this is Comp comp && comp.Kind == ComparisonKind.Equality
 				&& comp.LiftingKind == ComparisonLiftingKind.None
-				&& comp.Right.MatchLdcI4(0))
-			{
+				&& comp.Right.MatchLdcI4(0)) {
 				arg = comp.Left;
 				return true;
 			}
