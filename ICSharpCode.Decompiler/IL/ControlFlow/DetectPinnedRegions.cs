@@ -16,7 +16,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -422,6 +421,11 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			// stLoc is a store to a pinned local.
 			if (IsNullOrZero(stLoc.Value)) {
 				return false; // ignore unpin instructions
+			}
+			if (stLoc.Variable.Type.IsReferenceType == false)
+			{
+				// `pinned` flag has no effect on value types (#2148)
+				return false;
 			}
 			// stLoc is a store that starts a new pinned region
 
