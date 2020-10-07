@@ -137,6 +137,12 @@ namespace ICSharpCode.Decompiler.Tests
 		}
 
 		[Test]
+		public void UnknownTypes()
+		{
+			Run();
+		}
+
+		[Test]
 		public void Issue1145()
 		{
 			Run();
