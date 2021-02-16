@@ -240,9 +240,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				if (otherLoadOfV == null)
 					return false;
 				finalStore = otherLoadOfV.Parent.Extract();
-				value = ((StLoc)finalStore.StoreInstructions[0]).Value;
 				if (finalStore == null)
 					return false;
+				value = ((StLoc)finalStore.StoreInstructions[0]).Value;
 			}
 			var fd = (FieldDef)field.MetadataToken;
 			if (fd.InitialValue == null)
