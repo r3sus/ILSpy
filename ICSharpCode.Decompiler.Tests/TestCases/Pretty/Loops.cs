@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -272,6 +272,23 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 
 		}
 
+		public class NonEnumerableArrayLike
+		{
+			private readonly int length;
+
+			public Item this[int index] {
+				get {
+					return null;
+				}
+			}
+
+			public int Length {
+				get {
+					return length;
+				}
+			}
+		}
+
 		private IEnumerable<string> alternatives;
 		private object someObject;
 
@@ -448,6 +465,14 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			foreach (string text in array) {
 				Console.WriteLine(text.ToLower() + text.ToUpper());
+			}
+		}
+
+		public void ForOverNonArray(NonEnumerableArrayLike array)
+		{
+			for (int i = 0; i < array.Length; i++) {
+				Item item = array[i];
+				Console.WriteLine(item.ToString() + item.ToString());
 			}
 		}
 
@@ -676,7 +701,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			}
 			Console.WriteLine("End of method");
 		}
-		
+
 		//other configurations work fine, just with different labels
 #if OPT && !MCS
 		public void WhileWithGoto()
@@ -865,7 +890,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				} else if (i % 11 == 0) {
 					continue;
 				}
-				
+
 				Console.WriteLine(i);
 			}
 			Console.WriteLine("end");
