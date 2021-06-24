@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 {
@@ -28,7 +29,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	{
 		protected readonly IUnresolvedEntity unresolved;
 		protected readonly ITypeResolveContext parentContext;
-		
+
 		protected AbstractResolvedEntity(IUnresolvedEntity unresolved, ITypeResolveContext parentContext)
 		{
 			if (unresolved == null)
@@ -40,24 +41,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.Attributes = unresolved.Attributes.CreateResolvedAttributes(parentContext);
 		}
 
-		public Mono.Cecil.MetadataToken MetadataToken => unresolved.MetadataToken;
+		public MDToken MetadataToken => unresolved.MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get { return unresolved.SymbolKind; }
 		}
-		
+
 		public ITypeDefinition DeclaringTypeDefinition {
 			get { return parentContext.CurrentTypeDefinition; }
 		}
-		
+
 		public virtual IType DeclaringType {
 			get { return parentContext.CurrentTypeDefinition; }
 		}
-		
+
 		public IAssembly ParentAssembly {
 			get { return parentContext.CurrentAssembly; }
 		}
-		
+
 		public IReadOnlyList<IAttribute> Attributes { get; protected set; }
 
 		public bool IsStatic { get { return unresolved.IsStatic; } }
@@ -65,16 +66,16 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public bool IsSealed { get { return unresolved.IsSealed; } }
 		public bool IsShadowing { get { return unresolved.IsShadowing; } }
 		public bool IsSynthetic { get { return unresolved.IsSynthetic; } }
-		
+
 		public ICompilation Compilation {
 			get { return parentContext.Compilation; }
 		}
-		
+
 		public string FullName { get { return unresolved.FullName; } }
 		public string Name { get { return unresolved.Name; } }
 		public string ReflectionName { get { return unresolved.ReflectionName; } }
 		public string Namespace { get { return unresolved.Namespace; } }
-		
+
 		public virtual Accessibility Accessibility { get { return unresolved.Accessibility; } }
 		public bool IsPrivate { get { return Accessibility == Accessibility.Private; } }
 		public bool IsPublic { get { return Accessibility == Accessibility.Public; } }
@@ -82,7 +83,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public bool IsInternal { get { return Accessibility == Accessibility.Internal; } }
 		public bool IsProtectedOrInternal { get { return Accessibility == Accessibility.ProtectedOrInternal; } }
 		public bool IsProtectedAndInternal { get { return Accessibility == Accessibility.ProtectedAndInternal; } }
-		
+
 		public override string ToString()
 		{
 			return "[" + this.SymbolKind.ToString() + " " + this.ReflectionName + "]";

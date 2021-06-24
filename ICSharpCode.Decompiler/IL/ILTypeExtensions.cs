@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -16,42 +16,43 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Mono.Cecil;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL
 {
 	static class ILTypeExtensions
 	{
-		public static StackType GetStackType(this MetadataType typeCode)
+		public static StackType GetStackType(this ElementType typeCode)
 		{
 			switch (typeCode) {
-				case MetadataType.Boolean:
-				case MetadataType.Char:
-				case MetadataType.SByte:
-				case MetadataType.Byte:
-				case MetadataType.Int16:
-				case MetadataType.UInt16:
-				case MetadataType.Int32:
-				case MetadataType.UInt32:
+				case ElementType.Boolean:
+				case ElementType.Char:
+				case ElementType.I1:
+				case ElementType.U1:
+				case ElementType.I2:
+				case ElementType.U2:
+				case ElementType.I4:
+				case ElementType.U4:
 					return StackType.I4;
-				case MetadataType.Int64:
-				case MetadataType.UInt64:
+				case ElementType.I8:
+				case ElementType.U8:
 					return StackType.I8;
-				case MetadataType.IntPtr:
-				case MetadataType.UIntPtr:
-				case MetadataType.Pointer:
-				case MetadataType.FunctionPointer:
+				case ElementType.I:
+				case ElementType.U:
+				case ElementType.Ptr:
+				case ElementType.FnPtr:
 					return StackType.I;
-				case MetadataType.Single:
+				case ElementType.R4:
 					return StackType.F4;
-				case MetadataType.Double:
+				case ElementType.R8:
 					return StackType.F8;
-				case MetadataType.ByReference:
+				case ElementType.ByRef:
 					return StackType.Ref;
-				case MetadataType.Void:
+				case ElementType.Void:
 					return StackType.Void;
-				case (MetadataType)PrimitiveType.Unknown:
+				case (ElementType)PrimitiveType.Unknown:
 					return StackType.Unknown;
 				default:
 					return StackType.O;
@@ -60,9 +61,9 @@ namespace ICSharpCode.Decompiler.IL
 
 		public static StackType GetStackType(this PrimitiveType primitiveType)
 		{
-			return ((MetadataType)primitiveType).GetStackType();
+			return ((ElementType)primitiveType).GetStackType();
 		}
-		
+
 		public static Sign GetSign(this PrimitiveType primitiveType)
 		{
 			switch (primitiveType) {
@@ -84,10 +85,10 @@ namespace ICSharpCode.Decompiler.IL
 					return Sign.None;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the size in bytes of the primitive type.
-		/// 
+		///
 		/// Returns 0 for non-primitive types.
 		/// Returns <c>NativeIntSize</c> for native int/references.
 		/// </summary>
@@ -116,7 +117,7 @@ namespace ICSharpCode.Decompiler.IL
 					return 0;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets whether the type is a small integer type.
 		/// Small integer types are:
@@ -127,7 +128,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			return GetSize(type) < 4;
 		}
-		
+
 		public static bool IsIntegerType(this PrimitiveType primitiveType)
 		{
 			return primitiveType.GetStackType().IsIntegerType();
@@ -135,7 +136,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		/// <summary>
 		/// Infers the C# type for an IL instruction.
-		/// 
+		///
 		/// Returns SpecialType.UnknownType for unsupported instructions.
 		/// </summary>
 		public static IType InferType(this ILInstruction inst)

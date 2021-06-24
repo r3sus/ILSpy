@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.TypeSystem.Implementation
@@ -33,21 +34,21 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	{
 		protected readonly IMember baseMember;
 		TypeParameterSubstitution substitution;
-		
+
 		IType declaringType;
 		IType returnType;
-		
+
 		protected SpecializedMember(IMember memberDefinition)
 		{
 			if (memberDefinition == null)
 				throw new ArgumentNullException("memberDefinition");
 			if (memberDefinition is SpecializedMember)
 				throw new ArgumentException("Member definition cannot be specialized. Please use IMember.Specialize() instead of directly constructing SpecializedMember instances.");
-			
+
 			this.baseMember = memberDefinition;
 			this.substitution = TypeParameterSubstitution.Identity;
 		}
-		
+
 		/// <summary>
 		/// Performs a substitution. This method may only be called by constructors in derived classes.
 		/// </summary>
@@ -57,7 +58,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			Debug.Assert(returnType == null);
 			this.substitution = TypeParameterSubstitution.Compose(newSubstitution, this.substitution);
 		}
-		
+
 		internal IMethod WrapAccessor(ref IMethod cachingField, IMethod accessorDefinition)
 		{
 			if (accessorDefinition == null)
@@ -71,14 +72,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return LazyInit.GetOrSet(ref cachingField, sm);
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the substitution belonging to this specialized member.
 		/// </summary>
 		public TypeParameterSubstitution Substitution {
 			get { return substitution; }
 		}
-		
+
 		public IType DeclaringType {
 			get {
 				var result = LazyInit.VolatileRead(ref this.declaringType);
@@ -106,15 +107,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				this.declaringType = value;
 			}
 		}
-		
+
 		public IMember MemberDefinition {
 			get { return baseMember.MemberDefinition; }
 		}
-		
+
 		public IUnresolvedMember UnresolvedMember {
 			get { return baseMember.UnresolvedMember; }
 		}
-		
+
 		public IType ReturnType {
 			get {
 				var result = LazyInit.VolatileRead(ref this.returnType);
@@ -126,47 +127,47 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			protected set {
 				// This setter is used for LiftedUserDefinedOperator, a special case of specialized member
 				// (not a normal type parameter substitution).
-				
+
 				// As this setter is used only during construction before the member is published
 				// to other threads, we don't need a volatile write.
 				this.returnType = value;
 			}
 		}
 
-		public Mono.Cecil.MetadataToken MetadataToken => baseMember.MetadataToken;
+		public MDToken MetadataToken => baseMember.MetadataToken;
 
 		public bool IsVirtual {
 			get { return baseMember.IsVirtual; }
 		}
-		
+
 		public bool IsOverride {
 			get { return baseMember.IsOverride; }
 		}
-		
+
 		public bool IsOverridable {
 			get { return baseMember.IsOverridable; }
 		}
-		
+
 		public SymbolKind SymbolKind {
 			get { return baseMember.SymbolKind; }
 		}
-		
+
 		public ITypeDefinition DeclaringTypeDefinition {
 			get { return baseMember.DeclaringTypeDefinition; }
 		}
-		
+
 		public IReadOnlyList<IAttribute> Attributes {
 			get { return baseMember.Attributes; }
 		}
-		
+
 		IReadOnlyList<IMember> implementedInterfaceMembers;
-		
+
 		public IReadOnlyList<IMember> ImplementedInterfaceMembers {
 			get {
 				return LazyInitializer.EnsureInitialized(ref implementedInterfaceMembers, FindImplementedInterfaceMembers);
 			}
 		}
-		
+
 		IReadOnlyList<IMember> FindImplementedInterfaceMembers()
 		{
 			var definitionImplementations = baseMember.ImplementedInterfaceMembers;
@@ -176,79 +177,79 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 			return result;
 		}
-		
+
 		public bool IsExplicitInterfaceImplementation {
 			get { return baseMember.IsExplicitInterfaceImplementation; }
 		}
-		
+
 		public Accessibility Accessibility {
 			get { return baseMember.Accessibility; }
 		}
-		
+
 		public bool IsStatic {
 			get { return baseMember.IsStatic; }
 		}
-		
+
 		public bool IsAbstract {
 			get { return baseMember.IsAbstract; }
 		}
-		
+
 		public bool IsSealed {
 			get { return baseMember.IsSealed; }
 		}
-		
+
 		public bool IsShadowing {
 			get { return baseMember.IsShadowing; }
 		}
-		
+
 		public bool IsSynthetic {
 			get { return baseMember.IsSynthetic; }
 		}
-		
+
 		public bool IsPrivate {
 			get { return baseMember.IsPrivate; }
 		}
-		
+
 		public bool IsPublic {
 			get { return baseMember.IsPublic; }
 		}
-		
+
 		public bool IsProtected {
 			get { return baseMember.IsProtected; }
 		}
-		
+
 		public bool IsInternal {
 			get { return baseMember.IsInternal; }
 		}
-		
+
 		public bool IsProtectedOrInternal {
 			get { return baseMember.IsProtectedOrInternal; }
 		}
-		
+
 		public bool IsProtectedAndInternal {
 			get { return baseMember.IsProtectedAndInternal; }
 		}
-		
+
 		public string FullName {
 			get { return baseMember.FullName; }
 		}
-		
+
 		public string Name {
 			get { return baseMember.Name; }
 		}
-		
+
 		public string Namespace {
 			get { return baseMember.Namespace; }
 		}
-		
+
 		public string ReflectionName {
 			get { return baseMember.ReflectionName; }
 		}
-		
+
 		public ICompilation Compilation {
 			get { return baseMember.Compilation; }
 		}
-		
+
 		public IAssembly ParentAssembly {
 			get { return baseMember.ParentAssembly; }
 		}
@@ -274,14 +275,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return false;
 			return this.baseMember.Equals(other.baseMember) && this.substitution.Equals(other.substitution);
 		}
-		
+
 		public override int GetHashCode()
 		{
 			unchecked {
 				return 1000000007 * baseMember.GetHashCode() + 1000000009 * substitution.GetHashCode();
 			}
 		}
-		
+
 		public override string ToString()
 		{
 			StringBuilder b = new StringBuilder("[");
@@ -296,16 +297,16 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return b.ToString();
 		}
 	}
-	
+
 	public abstract class SpecializedParameterizedMember : SpecializedMember, IParameterizedMember
 	{
 		IReadOnlyList<IParameter> parameters;
-		
+
 		protected SpecializedParameterizedMember(IParameterizedMember memberDefinition)
 			: base(memberDefinition)
 		{
 		}
-		
+
 		public IReadOnlyList<IParameter> Parameters {
 			get {
 				var result = LazyInit.VolatileRead(ref this.parameters);
@@ -317,13 +318,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			protected set {
 				// This setter is used for LiftedUserDefinedOperator, a special case of specialized member
 				// (not a normal type parameter substitution).
-				
+
 				// As this setter is used only during construction before the member is published
 				// to other threads, we don't need a volatile write.
 				this.parameters = value;
 			}
 		}
-		
+
 		protected IParameter[] CreateParameters(Func<IType, IType> substitution)
 		{
 			var paramDefs = ((IParameterizedMember)this.baseMember).Parameters;
@@ -343,7 +344,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return parameters;
 			}
 		}
-		
+
 		public override string ToString()
 		{
 			StringBuilder b = new StringBuilder("[");

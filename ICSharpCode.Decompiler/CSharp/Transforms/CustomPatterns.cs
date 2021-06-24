@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,7 +21,6 @@ using System.Linq;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using ICSharpCode.Decompiler.Semantics;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler.CSharp.Transforms
 {
@@ -29,13 +28,13 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 	{
 		readonly string ns;
 		readonly string name;
-		
+
 		public TypePattern(Type type)
 		{
 			this.ns = type.Namespace;
 			this.name = type.Name;
 		}
-		
+
 		public override bool DoMatch(INode other, Match match)
 		{
 			ComposedType ct = other as ComposedType;
@@ -52,22 +51,22 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			var trr = o.GetResolveResult() as TypeResolveResult;
 			return trr != null && trr.Type.Namespace == ns && trr.Type.Name == name;
 		}
-		
+
 		public override string ToString()
 		{
 			return name;
 		}
 	}
-	
+
 	sealed class LdTokenPattern : Pattern
 	{
 		AnyNode childNode;
-		
+
 		public LdTokenPattern(string groupName)
 		{
 			this.childNode = new AnyNode(groupName);
 		}
-		
+
 		public override bool DoMatch(INode other, Match match)
 		{
 			InvocationExpression ie = other as InvocationExpression;
@@ -76,20 +75,20 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			return false;
 		}
-		
+
 		public override string ToString()
 		{
 			return "ldtoken(...)";
 		}
 	}
-	
+
 	/// <summary>
 	/// typeof-Pattern that applies on the expanded form of typeof (prior to ReplaceMethodCallsWithOperators)
 	/// </summary>
 	sealed class TypeOfPattern : Pattern
 	{
 		INode childNode;
-		
+
 		public TypeOfPattern(string groupName)
 		{
 			childNode = new MemberReferenceExpression(
@@ -100,12 +99,12 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					new TypeOfExpression(new AnyNode(groupName))
 				), "TypeHandle");
 		}
-		
+
 		public override bool DoMatch(INode other, Match match)
 		{
 			return childNode.DoMatch(other, match);
 		}
-		
+
 		public override string ToString()
 		{
 			return "typeof(...)";

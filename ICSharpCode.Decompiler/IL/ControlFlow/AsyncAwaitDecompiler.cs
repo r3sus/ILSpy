@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,7 +20,6 @@ using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,21 +32,21 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 	/// </summary>
 	class AsyncAwaitDecompiler : IILTransform
 	{
-		public static bool IsCompilerGeneratedStateMachine(Mono.Cecil.TypeDefinition type)
+		public static bool IsCompilerGeneratedStateMachine(dnlib.DotNet.TypeDef type)
 		{
 			if (!(type.DeclaringType != null && type.IsCompilerGenerated()))
 				return false;
 			foreach (var i in type.Interfaces) {
-				var iface = i.InterfaceType;
+				var iface = i.Interface;
 				if (iface.Namespace == "System.Runtime.CompilerServices" && iface.Name == "IAsyncStateMachine")
 					return true;
 			}
 			return false;
 		}
 
-		public static bool IsCompilerGeneratedMainMethod(MethodDefinition method)
+		public static bool IsCompilerGeneratedMainMethod(dnlib.DotNet.MethodDef method)
 		{
-			return method == method.Module.Assembly?.EntryPoint && method.Name.Equals("<Main>", StringComparison.Ordinal);
+			return method == method.Module.EntryPoint && method.Name.String.Equals("<Main>", StringComparison.Ordinal);
 		}
 
 		enum AsyncMethodType
@@ -749,7 +748,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				}
 			}
 		}
-		
+
 		bool CheckAwaitBlock(Block block, out Block resumeBlock, out IField stackField)
 		{
 			// awaitBlock:
@@ -819,7 +818,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				pos++;
 			}
 			if (block.Instructions[pos] is StLoc stlocCachedState) {
-				if (stlocCachedState.Variable.Kind == VariableKind.Local && stlocCachedState.Variable.Index == cachedStateVar?.Index) { 
+				if (stlocCachedState.Variable.Kind == VariableKind.Local && stlocCachedState.Variable.Index == cachedStateVar?.Index) {
 					if (stlocCachedState.Value.MatchLdLoc(m1Var) || stlocCachedState.Value.MatchLdcI4(initialState))
 						pos++;
 				}
@@ -835,7 +834,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			} else {
 				return false;
 			}
-			
+
 			return block.Instructions[pos].MatchBranch(completedBlock);
 		}
 

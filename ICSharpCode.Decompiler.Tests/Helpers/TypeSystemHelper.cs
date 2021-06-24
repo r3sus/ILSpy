@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2015 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,7 +20,6 @@ using System;
 using System.Linq;
 using System.Reflection;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler.Tests.Helpers
 {
@@ -31,25 +30,25 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 	{
 		static readonly Lazy<DecompilerTypeSystem> decompilerTypeSystem = new Lazy<DecompilerTypeSystem>(
 			delegate {
-				using (var module = ModuleDefinition.ReadModule(typeof(TypeSystem).Module.FullyQualifiedName)) {
+				using (var module = dnlib.DotNet.ModuleDefMD.Load(typeof(TypeSystem).Module.FullyQualifiedName)) {
 					return new DecompilerTypeSystem(module);
 				}
 			});
-		
+
 		public static DecompilerTypeSystem Instance {
 			get { return decompilerTypeSystem.Value; }
 		}
-		
+
 		public static IAssembly FromReflection(Assembly assembly)
 		{
 			return decompilerTypeSystem.Value.Compilation.Assemblies.Single(asm => asm.AssemblyName == assembly.GetName().Name);
 		}
-		
+
 		public static IType FromReflection(Type type)
 		{
 			return decompilerTypeSystem.Value.Compilation.FindType(type);
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -57,7 +56,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			return Action(typeof(T1));
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -65,7 +64,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			return Action(typeof(T1), typeof(T2));
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -73,7 +72,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			return Action(typeof(T1), typeof(T2), typeof(T3));
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -81,7 +80,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			return Action(typeof(T1), typeof(T2), typeof(T3), typeof(T4));
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -89,7 +88,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			return Action(paramTypes.Select(FromReflection).ToArray());
 		}
-		
+
 		/// <summary>
 		/// Retrieves a static method that returns void and takes the specified parameter types.
 		/// </summary>
@@ -100,7 +99,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				.Single();
 		}
 	}
-	
+
 	static class Actions
 	{
 		public static void Action() {}

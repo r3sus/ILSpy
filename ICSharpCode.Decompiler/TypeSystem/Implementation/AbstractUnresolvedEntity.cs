@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.TypeSystem.Implementation
@@ -31,18 +32,18 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	{
 		// possible optimizations to reduce the memory usage of AbstractUnresolvedEntity:
 		// - store regions in more compact form (e.g. assume both file names are identical; use ushort for columns)
-		
+
 		IUnresolvedTypeDefinition declaringTypeDefinition;
-		
+
 		string name = string.Empty;
 		IList<IUnresolvedAttribute> attributes;
-		Mono.Cecil.MetadataToken metadataToken;
+		MDToken metadataToken;
 
 		// 1 byte per enum + 2 bytes for flags
 		SymbolKind symbolKind;
 		Accessibility accessibility;
 		internal BitVector16 flags;
-		
+
 		// flags for AbstractUnresolvedEntity:
 		internal const ushort FlagFrozen    = 0x0001;
 		internal const ushort FlagSealed    = 0x0002;
@@ -68,11 +69,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		internal const ushort FlagPartialMethod = 0x2000;
 		internal const ushort FlagHasBody = 0x4000;
 		internal const ushort FlagAsyncMethod = 0x8000;
-		
+
 		public bool IsFrozen {
 			get { return flags[FlagFrozen]; }
 		}
-		
+
 		public void Freeze()
 		{
 			if (!flags[FlagFrozen]) {
@@ -80,12 +81,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagFrozen] = true;
 			}
 		}
-		
+
 		protected virtual void FreezeInternal()
 		{
 			attributes = FreezableHelper.FreezeListAndElements(attributes);
 		}
-		
+
 		/// <summary>
 		/// Uses the specified interning provider to intern
 		/// strings and lists in this entity.
@@ -100,7 +101,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			name = provider.Intern(name);
 			attributes = provider.InternList(attributes);
 		}
-		
+
 		/// <summary>
 		/// Creates a shallow clone of this entity.
 		/// Collections (e.g. a type's member list) will be cloned as well, but the elements
@@ -115,13 +116,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				copy.attributes = new List<IUnresolvedAttribute>(attributes);
 			return copy;
 		}
-		
+
 		protected void ThrowIfFrozen()
 		{
 			FreezableHelper.ThrowIfFrozen(this);
 		}
 
-		public Mono.Cecil.MetadataToken MetadataToken {
+		public MDToken MetadataToken {
 			get { return metadataToken; }
 			set {
 				ThrowIfFrozen();
@@ -136,7 +137,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				symbolKind = value;
 			}
 		}
-		
+
 		public IUnresolvedTypeDefinition DeclaringTypeDefinition {
 			get { return declaringTypeDefinition; }
 			set {
@@ -144,7 +145,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				declaringTypeDefinition = value;
 			}
 		}
-		
+
 		public IList<IUnresolvedAttribute> Attributes {
 			get {
 				if (attributes == null)
@@ -152,7 +153,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return attributes;
 			}
 		}
-		
+
 		public string Name {
 			get { return name; }
 			set {
@@ -162,7 +163,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				name = value;
 			}
 		}
-		
+
 		public virtual string FullName {
 			get {
 				if (declaringTypeDefinition != null)
@@ -173,7 +174,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return name;
 			}
 		}
-		
+
 		public virtual string Namespace {
 			get {
 				if (declaringTypeDefinition != null)
@@ -185,7 +186,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				throw new NotSupportedException();
 			}
 		}
-		
+
 		public virtual string ReflectionName {
 			get {
 				if (declaringTypeDefinition != null)
@@ -194,7 +195,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return name;
 			}
 		}
-		
+
 		public Accessibility Accessibility {
 			get { return accessibility; }
 			set {
@@ -202,7 +203,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				accessibility = value;
 			}
 		}
-		
+
 		public bool IsStatic {
 			get { return flags[FlagStatic]; }
 			set {
@@ -210,7 +211,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagStatic] = value;
 			}
 		}
-		
+
 		public bool IsAbstract {
 			get { return flags[FlagAbstract]; }
 			set {
@@ -218,7 +219,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagAbstract] = value;
 			}
 		}
-		
+
 		public bool IsSealed {
 			get { return flags[FlagSealed]; }
 			set {
@@ -226,7 +227,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagSealed] = value;
 			}
 		}
-		
+
 		public bool IsShadowing {
 			get { return flags[FlagShadowing]; }
 			set {
@@ -234,7 +235,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagShadowing] = value;
 			}
 		}
-		
+
 		public bool IsSynthetic {
 			get { return flags[FlagSynthetic]; }
 			set {
@@ -242,31 +243,31 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				flags[FlagSynthetic] = value;
 			}
 		}
-		
+
 		bool IHasAccessibility.IsPrivate {
 			get { return accessibility == Accessibility.Private; }
 		}
-		
+
 		bool IHasAccessibility.IsPublic {
 			get { return accessibility == Accessibility.Public; }
 		}
-		
+
 		bool IHasAccessibility.IsProtected {
 			get { return accessibility == Accessibility.Protected; }
 		}
-		
+
 		bool IHasAccessibility.IsInternal {
 			get { return accessibility == Accessibility.Internal; }
 		}
-		
+
 		bool IHasAccessibility.IsProtectedOrInternal {
 			get { return accessibility == Accessibility.ProtectedOrInternal; }
 		}
-		
+
 		bool IHasAccessibility.IsProtectedAndInternal {
 			get { return accessibility == Accessibility.ProtectedAndInternal; }
 		}
-		
+
 		public override string ToString()
 		{
 			StringBuilder b = new StringBuilder("[");

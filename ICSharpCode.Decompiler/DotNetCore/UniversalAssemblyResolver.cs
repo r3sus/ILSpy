@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler
 {
@@ -15,6 +14,8 @@ namespace ICSharpCode.Decompiler
 		readonly string baseDirectory;
 		readonly List<string> directories = new List<string>();
 		readonly List<string> gac_paths = GetGacPaths();
+
+		private ModuleContext defaultContext;
 
 		/// <summary>
 		/// Detect whether we're in a Mono environment.
@@ -58,37 +59,37 @@ namespace ICSharpCode.Decompiler
 			AddSearchDirectory(baseDirectory);
 		}
 
-		public static ModuleDefinition LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
+		public static ModuleDef LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
 		{
-			var resolver = new UniversalAssemblyResolver(mainAssemblyFileName, throwOnError);
+			var resolver = new AssemblyResolver();
 
-			var module = ModuleDefinition.ReadModule(mainAssemblyFileName, new ReaderParameters {
-				AssemblyResolver = resolver,
-				InMemory = inMemory
-			});
+			resolver.DefaultModuleContext = new ModuleContext(resolver);
 
-			resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
+			//var modCreateOpts = new ModuleCreationOptions(resolver.DefaultModuleContext);
+			var module = ModuleDefMD.Load(mainAssemblyFileName, resolver.DefaultModuleContext);
+
+			//resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
 
 			return module;
 		}
 
-		public AssemblyDefinition Resolve(AssemblyNameReference name)
+		public AssemblyDef Resolve(IAssembly name, ModuleDef source)
 		{
-			return Resolve(name, new ReaderParameters());
+			return Resolve(name, defaultContext);
 		}
 
-		public AssemblyDefinition Resolve(AssemblyNameReference name, ReaderParameters parameters)
+		public AssemblyDef Resolve(IAssembly name, ModuleContext parameters)
 		{
 			var file = FindAssemblyFile(name);
 			if (file == null) {
 				if (throwOnError)
-					throw new AssemblyResolutionException(name);
+					throw new AssemblyResolveException(name.FullNameToken);
 				return null;
 			}
 			return GetAssembly(file, parameters);
 		}
 
-		public string FindAssemblyFile(AssemblyNameReference name)
+		public string FindAssemblyFile(IAssembly name)
 		{
 			var targetFramework = TargetFramework.Split(new[] { ",Version=v" }, StringSplitOptions.None);
 			string file = null;
@@ -110,7 +111,7 @@ namespace ICSharpCode.Decompiler
 			}
 		}
 
-		string ResolveInternal(AssemblyNameReference name)
+		string ResolveInternal(IAssembly name)
 		{
 			if (name == null)
 				throw new ArgumentNullException(nameof(name));
@@ -119,12 +120,13 @@ namespace ICSharpCode.Decompiler
 			if (assembly != null)
 				return assembly;
 
-			if (name.IsRetargetable) {
-				// if the reference is retargetable, zero it
-				name = new AssemblyNameReference(name.Name, ZeroVersion) {
-					PublicKeyToken = Empty<byte>.Array,
-				};
-			}
+			//TODO: figure out how to port
+			// if (name.IsRetargetable) {
+			// 	// if the reference is retargetable, zero it
+			// 	name = new AssemblyNameReference(name.Name, ZeroVersion) {
+			// 		PublicKeyToken = Empty<byte>.Array,
+			// 	};
+			// }
 
 			var framework_dir = Path.GetDirectoryName(typeof(object).Module.FullyQualifiedName);
 			var framework_dirs = DetectMono()
@@ -152,14 +154,14 @@ namespace ICSharpCode.Decompiler
 				return assembly;
 
 			if (throwOnError)
-				throw new AssemblyResolutionException(name);
+				throw new AssemblyResolveException(name.FullNameToken);
 			return null;
 		}
 
 		#region .NET / mono GAC handling
-		string SearchDirectory(AssemblyNameReference name, IEnumerable<string> directories)
+		string SearchDirectory(IAssembly name, IEnumerable<string> directories)
 		{
-			var extensions = name.IsWindowsRuntime ? new[] { ".winmd", ".dll" } : new[] { ".exe", ".dll" };
+			var extensions = name.IsContentTypeWindowsRuntime ? new[] { ".winmd", ".dll" } : new[] { ".exe", ".dll" };
 			foreach (var directory in directories) {
 				foreach (var extension in extensions) {
 					string file = Path.Combine(directory, name.Name + extension);
@@ -183,7 +185,7 @@ namespace ICSharpCode.Decompiler
 
 		static Version ZeroVersion = new Version(0, 0, 0, 0);
 
-		string GetCorlib(AssemblyNameReference reference)
+		string GetCorlib(IAssembly reference)
 		{
 			var version = reference.Version;
 			var corlib = typeof(object).Assembly.GetName();
@@ -286,17 +288,22 @@ namespace ICSharpCode.Decompiler
 				"gac");
 		}
 
-		AssemblyDefinition GetAssembly(string file, ReaderParameters parameters)
+		AssemblyDef GetAssembly(string file, ModuleContext parameters)
 		{
-			if (parameters.AssemblyResolver == null)
+			if (parameters.AssemblyResolver == null) {
 				parameters.AssemblyResolver = this;
+			}
 
-			return ModuleDefinition.ReadModule(file, parameters).Assembly;
+			if (parameters.Resolver == null) {
+				parameters.Resolver = new Resolver(parameters.AssemblyResolver);
+			}
+
+			return ModuleDefMD.Load(file, parameters).Assembly;
 		}
 
-		string GetAssemblyInGac(AssemblyNameReference reference)
+		string GetAssemblyInGac(IAssembly reference)
 		{
-			if (reference.PublicKeyToken == null || reference.PublicKeyToken.Length == 0)
+			if (!reference.HasPublicKey || reference.PublicKeyOrToken.Data.Length == 0)
 				return null;
 
 			if (DetectMono())
@@ -305,7 +312,7 @@ namespace ICSharpCode.Decompiler
 			return GetAssemblyInNetGac(reference);
 		}
 
-		string GetAssemblyInMonoGac(AssemblyNameReference reference)
+		string GetAssemblyInMonoGac(IAssembly reference)
 		{
 			for (int i = 0; i < gac_paths.Count; i++) {
 				var gac_path = gac_paths[i];
@@ -317,7 +324,7 @@ namespace ICSharpCode.Decompiler
 			return null;
 		}
 
-		string GetAssemblyInNetGac(AssemblyNameReference reference)
+		string GetAssemblyInNetGac(IAssembly reference)
 		{
 			var gacs = new[] { "GAC_MSIL", "GAC_32", "GAC_64", "GAC" };
 			var prefixes = new[] { string.Empty, "v4.0_" };
@@ -334,15 +341,15 @@ namespace ICSharpCode.Decompiler
 			return null;
 		}
 
-		static string GetAssemblyFile(AssemblyNameReference reference, string prefix, string gac)
+		static string GetAssemblyFile(IAssembly reference, string prefix, string gac)
 		{
 			var gac_folder = new StringBuilder()
 				.Append(prefix)
 				.Append(reference.Version)
 				.Append("__");
 
-			for (int i = 0; i < reference.PublicKeyToken.Length; i++)
-				gac_folder.Append(reference.PublicKeyToken[i].ToString("x2"));
+			for (int i = 0; i < reference.PublicKeyOrToken.Data.Length; i++)
+				gac_folder.Append(reference.PublicKeyOrToken.Data[i].ToString("x2"));
 
 			return Path.Combine(
 				Path.Combine(

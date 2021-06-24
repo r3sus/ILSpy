@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,11 +20,14 @@ using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnlib.DotNet;
+using IField = ICSharpCode.Decompiler.TypeSystem.IField;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL.ControlFlow
 {
@@ -44,22 +47,22 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		ILTransformContext context;
 
 		/// <summary>The type that contains the function being decompiled.</summary>
-		TypeDefinition currentType;
+		TypeDef currentType;
 
 		/// <summary>The compiler-generated enumerator class.</summary>
 		/// <remarks>Set in MatchEnumeratorCreationPattern()</remarks>
-		TypeDefinition enumeratorType;
+		TypeDef enumeratorType;
 
 		/// <summary>The constructor of the compiler-generated enumerator class.</summary>
 		/// <remarks>Set in MatchEnumeratorCreationPattern()</remarks>
-		MethodDefinition enumeratorCtor;
+		MethodDef enumeratorCtor;
 
 		/// <remarks>Set in MatchEnumeratorCreationPattern()</remarks>
 		bool isCompiledWithMono;
 
 		/// <summary>The dispose method of the compiler-generated enumerator class.</summary>
 		/// <remarks>Set in ConstructExceptionTable()</remarks>
-		MethodDefinition disposeMethod;
+		MethodDef disposeMethod;
 
 		/// <summary>The field in the compiler-generated class holding the current state of the state machine</summary>
 		/// <remarks>Set in AnalyzeCtor() for MS, MatchEnumeratorCreationPattern() or AnalyzeMoveNext() for Mono</remarks>
@@ -83,7 +86,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// and the decompiled code of the finally method body.
 		/// </summary>
 		readonly Dictionary<IMethod, (int? outerState, ILFunction function)> decompiledFinallyMethods = new Dictionary<IMethod, (int? outerState, ILFunction body)>();
-		
+
 		/// <summary>
 		/// Temporary stores for 'yield break'.
 		/// </summary>
@@ -231,7 +234,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			} else {
 				return false;
 			}
-			
+
 			for (; pos < body.Instructions.Count; pos++) {
 				// stfld(..., ldloc(var_1), ldloc(parameter))
 				// or (in structs): stfld(..., ldloc(var_1), ldobj(ldloc(this)))
@@ -303,7 +306,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				return false;
 			if (!(initialState == -2 || initialState == 0))
 				return false;
-			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDefinition;
+			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDef;
 			enumeratorType = enumeratorCtor?.DeclaringType;
 			return enumeratorType?.DeclaringType == currentType
 				&& IsCompilerGeneratorEnumerator(enumeratorType);
@@ -316,18 +319,18 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				return false;
 			if (newObj.Arguments.Count != 0)
 				return false;
-			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDefinition;
+			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDef;
 			enumeratorType = enumeratorCtor?.DeclaringType;
 			return enumeratorType?.DeclaringType == currentType
 				&& IsCompilerGeneratorEnumerator(enumeratorType);
 		}
 
-		public static bool IsCompilerGeneratorEnumerator(TypeDefinition type)
+		public static bool IsCompilerGeneratorEnumerator(TypeDef type)
 		{
 			if (!(type?.DeclaringType != null && type.IsCompilerGenerated()))
 				return false;
 			foreach (var i in type.Interfaces) {
-				var tr = i.InterfaceType;
+				var tr = i.Interface;
 				if (tr.Namespace == "System.Collections" && tr.Name == "IEnumerator")
 					return true;
 			}
@@ -359,7 +362,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// <summary>
 		/// Creates ILAst for the specified method, optimized up to before the 'YieldReturn' step.
 		/// </summary>
-		internal static ILFunction CreateILAst(MethodDefinition method, ILTransformContext context)
+		internal static ILFunction CreateILAst(MethodDef method, ILTransformContext context)
 		{
 			if (method == null || !method.HasBody)
 				throw new SymbolicAnalysisFailedException();
@@ -376,7 +379,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 					)
 				);
 			}
-			var il = new ILReader(typeSystem).ReadIL(method.Body, context.CancellationToken);
+			var il = new ILReader(typeSystem).ReadIL(method, method.Body, context.CancellationToken);
 			il.RunTransforms(CSharpDecompiler.EarlyILTransforms(true),
 				new ILTransformContext(il, typeSystem, context.Settings) {
 					CancellationToken = context.CancellationToken,
@@ -392,7 +395,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// </summary>
 		void AnalyzeCurrentProperty()
 		{
-			MethodDefinition getCurrentMethod = enumeratorType.Methods.FirstOrDefault(
+			MethodDef getCurrentMethod = enumeratorType.Methods.FirstOrDefault(
 				m => m.Name.StartsWith("System.Collections.Generic.IEnumerator", StringComparison.Ordinal)
 				&& m.Name.EndsWith(".get_Current", StringComparison.Ordinal));
 			Block body = SingleBlock(CreateILAst(getCurrentMethod, context).Body);
@@ -426,7 +429,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		#region Figure out the mapping of IEnumerable fields to IEnumerator fields  (analysis of GetEnumerator())
 		void ResolveIEnumerableIEnumeratorFieldMapping()
 		{
-			MethodDefinition getEnumeratorMethod = enumeratorType.Methods.FirstOrDefault(
+			MethodDef getEnumeratorMethod = enumeratorType.Methods.FirstOrDefault(
 				m => m.Name.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal)
 				&& m.Name.EndsWith(".GetEnumerator", StringComparison.Ordinal));
 			if (getEnumeratorMethod == null)
@@ -467,7 +470,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			rangeAnalysis.AssignStateRanges(function.Body, LongSet.Universe);
 			finallyMethodToStateRange = rangeAnalysis.finallyMethodToStateRange;
 		}
-		
+
 		[Conditional("DEBUG")]
 		void PrintFinallyMethodStateRanges(BlockContainer bc)
 		{
@@ -485,7 +488,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		BlockContainer AnalyzeMoveNext()
 		{
 			context.StepStartGroup("AnalyzeMoveNext");
-			MethodDefinition moveNextMethod = enumeratorType.Methods.FirstOrDefault(m => m.Name == "MoveNext");
+			MethodDef moveNextMethod = enumeratorType.Methods.FirstOrDefault(m => m.Name == "MoveNext");
 			ILFunction moveNextFunction = CreateILAst(moveNextMethod, context);
 
 			// Copy-propagate temporaries holding a copy of 'this'.
@@ -601,7 +604,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 		/// <summary>
 		/// Convert the old body (of MoveNext function) to the new body (of decompiled iterator method).
-		/// 
+		///
 		/// * Replace the sequence
 		///       this.currentField = expr;
 		///       this.state = N;
@@ -628,7 +631,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				newBody.Blocks.Add(new Block { ILRange = oldBody.Blocks[blockIndex].ILRange });
 			}
 			// convert contents of blocks
-			
+
 			for (int i = 0; i < oldBody.Blocks.Count; i++) {
 				var oldBlock = oldBody.Blocks[i];
 				var newBlock = newBody.Blocks[i];
@@ -641,7 +644,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 								// (this allows us to consider each block individually for try-finally reconstruction)
 								newBlock = SplitBlock(newBlock, oldInst);
 								// We keep the state-changing instruction around (as first instruction of the new block)
-								// for reconstructing the try-finallys. 
+								// for reconstructing the try-finallys.
 							} else {
 								newBlock.Instructions.Add(new InvalidExpression("Assigned non-constant to iterator.state field") {
 									ILRange = oldInst.ILRange
@@ -703,7 +706,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				}
 				if (oldBlock.Instructions[pos].MatchReturn(out var retVal) && retVal.MatchLdcI4(1)) {
 					// OK, found return directly after state assignment
-				} else if (oldBlock.Instructions[pos].MatchBranch(out var targetBlock) 
+				} else if (oldBlock.Instructions[pos].MatchBranch(out var targetBlock)
 					&& targetBlock.Instructions[0].MatchReturn(out retVal) && retVal.MatchLdcI4(1)) {
 					// OK, jump to common return block (e.g. on Mono)
 				} else {
@@ -793,7 +796,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 					fieldToVariableMap.Add(fieldDef, v);
 				}
 				if (v.StackType == StackType.Ref) {
-					Debug.Assert(v.Kind == VariableKind.Parameter && v.Index < 0); // this pointer
+					Debug.Assert(v.Kind == VariableKind.Parameter && v.Index == -2); // this pointer
 					inst.ReplaceWith(new LdLoc(v) { ILRange = inst.ILRange });
 				} else {
 					inst.ReplaceWith(new LdLoca(v) { ILRange = inst.ILRange });
@@ -823,7 +826,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		void DecompileFinallyBlocks()
 		{
 			foreach (var method in finallyMethodToStateRange.Keys) {
-				var function = CreateILAst((MethodDefinition)context.TypeSystem.GetCecil(method), context);
+				var function = CreateILAst((MethodDef)context.TypeSystem.GetCecil(method), context);
 				var body = (BlockContainer)function.Body;
 				var newState = GetNewState(body.EntryPoint);
 				if (newState != null) {
@@ -841,12 +844,12 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// Reconstruct try-finally blocks.
 		/// * The stateChanges (iterator._state = N;) tell us when to open a try-finally block
 		/// * The calls to the finally method tell us when to leave the try block.
-		/// 
+		///
 		/// There might be multiple stateChanges for a given try-finally block, e.g.
 		/// both the original entry point, and the target when leaving a nested block.
 		/// In proper C# code, the entry point of the try-finally will dominate all other code
 		/// in the try-block, so we can use dominance to find the proper entry point.
-		/// 
+		///
 		/// Precondition: the blocks in newBody are topologically sorted.
 		/// </summary>
 		void ReconstructTryFinallyBlocks(ILFunction iteratorFunction)

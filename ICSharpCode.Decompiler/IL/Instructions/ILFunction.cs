@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,7 +19,6 @@
 using System;
 using System.Collections.Generic;
 using ICSharpCode.Decompiler.IL.Transforms;
-using Mono.Cecil;
 using System.Linq;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
@@ -30,7 +29,7 @@ namespace ICSharpCode.Decompiler.IL
 	partial class ILFunction
 	{
 		public readonly IMethod Method;
-		public readonly MethodDefinition CecilMethod;
+		public readonly dnlib.DotNet.MethodDef CecilMethod;
 		public readonly ILVariableCollection Variables;
 
 		/// <summary>
@@ -41,7 +40,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Gets whether this function is a decompiled iterator (is using yield).
 		/// This flag gets set by the YieldReturnDecompiler.
-		/// 
+		///
 		/// If set, the 'return' instruction has the semantics of 'yield break;'
 		/// instead of a normal return.
 		/// </summary>
@@ -73,7 +72,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		public readonly IReadOnlyList<IParameter> Parameters;
 
-		public ILFunction(IMethod method, MethodDefinition cecilMethod, ILInstruction body) : base(OpCode.ILFunction)
+		public ILFunction(IMethod method, dnlib.DotNet.MethodDef cecilMethod, ILInstruction body) : base(OpCode.ILFunction)
 		{
 			this.Body = body;
 			this.Method = method;
@@ -159,12 +158,12 @@ namespace ICSharpCode.Decompiler.IL
 			output.Unindent();
 			output.WriteLine("}");
 		}
-		
+
 		LongSet FindUnusedILRanges()
 		{
 			var usedILRanges = new List<LongInterval>();
 			MarkUsedILRanges(body);
-			return new LongSet(new LongInterval(0, CecilMethod.Body.CodeSize)).ExceptWith(new LongSet(usedILRanges));
+			return new LongSet(new LongInterval(0, CecilMethod.Body.GetCodeSize())).ExceptWith(new LongSet(usedILRanges));
 
 			void MarkUsedILRanges(ILInstruction inst)
 			{
@@ -185,13 +184,13 @@ namespace ICSharpCode.Decompiler.IL
 			// We intentionally don't propagate any flags from the lambda body!
 			return InstructionFlags.MayThrow | InstructionFlags.ControlFlow;
 		}
-		
+
 		public override InstructionFlags DirectFlags {
 			get {
 				return InstructionFlags.MayThrow | InstructionFlags.ControlFlow;
 			}
 		}
-		
+
 		/// <summary>
 		/// Apply a list of transforms to this function.
 		/// </summary>

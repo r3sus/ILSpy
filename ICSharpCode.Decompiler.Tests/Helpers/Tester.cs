@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2015 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -26,6 +26,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 using ICSharpCode.Decompiler.CSharp.Transforms;
@@ -34,7 +35,6 @@ using ICSharpCode.Decompiler.TypeSystem;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CSharp;
-using Mono.Cecil;
 using NUnit.Framework;
 
 namespace ICSharpCode.Decompiler.Tests.Helpers
@@ -83,12 +83,12 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				outputFile += ".exe";
 				otherOptions += "/exe ";
 			}
-			
-			
+
+
 			if (options.HasFlag(AssemblerOptions.UseDebug)) {
 				otherOptions += "/debug ";
 			}
-			
+
 			ProcessStartInfo info = new ProcessStartInfo(ilasmPath);
 			info.Arguments = $"/nologo {otherOptions}/output=\"{outputFile}\" \"{sourceFileName}\"";
 			info.RedirectStandardError = true;
@@ -109,11 +109,11 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 
 			return outputFile;
 		}
-		
+
 		public static string Disassemble(string sourceFileName, string outputFile, AssemblerOptions asmOptions)
 		{
 			if (asmOptions.HasFlag(AssemblerOptions.UseOwnDisassembler)) {
-				using (ModuleDefinition module = ModuleDefinition.ReadModule(sourceFileName))
+				using (ModuleDefMD module = ModuleDefMD.Load(sourceFileName))
 				using (var writer = new StringWriter()) {
 					module.Name = Path.GetFileNameWithoutExtension(outputFile);
 					var output = new PlainTextOutput(writer);
@@ -133,7 +133,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			}
 
 			string ildasmPath = SdkUtility.GetSdkPath("ildasm.exe");
-			
+
 			ProcessStartInfo info = new ProcessStartInfo(ildasmPath);
 			info.Arguments = $"/nobar /utf8 /out=\"{outputFile}\" \"{sourceFileName}\"";
 			info.RedirectStandardError = true;
@@ -187,7 +187,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 					MetadataReference.CreateFromFile(typeof(ValueTuple).Assembly.Location)
 			};
 		});
-		
+
 
 		public static List<string> GetPreprocessorSymbols(CSharpCompilerOptions flags)
 		{
@@ -345,7 +345,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			var emitResult = compilation.Emit(peStream);
 			peStream.Position = 0;
 
-			var moduleDefinition = ModuleDefinition.ReadModule(peStream);
+			var moduleDefinition = ModuleDefMD.Load(peStream);
 			var decompiler = new CSharpDecompiler(moduleDefinition, new DecompilerSettings());
 
 			return decompiler;
@@ -390,7 +390,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 
 		public static string DecompileCSharp(string assemblyFileName, DecompilerSettings settings = null)
 		{
-			using (var module = ModuleDefinition.ReadModule(assemblyFileName)) {
+			using (var module = ModuleDefMD.Load(assemblyFileName)) {
 				var typeSystem = new DecompilerTypeSystem(module);
 				CSharpDecompiler decompiler = new CSharpDecompiler(typeSystem, settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAtttributes());
@@ -408,16 +408,16 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				return fileName;
 			}
 		}
-		
+
 		public static void RunAndCompareOutput(string testFileName, string outputFile, string decompiledOutputFile, string decompiledCodeFile = null)
 		{
 			string output1, output2, error1, error2;
 			int result1 = Tester.Run(outputFile, out output1, out error1);
 			int result2 = Tester.Run(decompiledOutputFile, out output2, out error2);
-			
+
 			Assert.AreEqual(0, result1, "Exit code != 0; did the test case crash?" + Environment.NewLine + error1);
 			Assert.AreEqual(0, result2, "Exit code != 0; did the decompiled code crash?" + Environment.NewLine + error2);
-			
+
 			if (output1 != output2 || error1 != error2) {
 				StringBuilder b = new StringBuilder();
 				b.AppendLine($"Test {testFileName} failed: output does not match.");

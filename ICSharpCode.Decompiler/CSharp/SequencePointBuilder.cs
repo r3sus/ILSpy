@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -58,7 +58,7 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		readonly List<(ILFunction, SequencePoint)> sequencePoints = new List<(ILFunction, SequencePoint)>();
 		readonly HashSet<ILInstruction> mappedInstructions = new HashSet<ILInstruction>();
-		
+
 		// Stack holding information for outer statements.
 		readonly Stack<StatePerSequencePoint> outerStates = new Stack<StatePerSequencePoint>();
 
@@ -98,7 +98,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			VisitAsSequencePoint(forStatement.EmbeddedStatement);
 		}
-		
+
 		public override void VisitSwitchStatement(SwitchStatement switchStatement)
 		{
 			StartSequencePoint(switchStatement);
@@ -314,10 +314,10 @@ namespace ICSharpCode.Decompiler.CSharp
 					newList.Add(sequencePoint);
 					pos = sequencePoint.EndOffset;
 				}
-				if (pos < function.CecilMethod.Body.CodeSize) {
+				if (pos < function.CecilMethod.Body.GetCodeSize()) {
 					var hidden = new SequencePoint();
 					hidden.Offset = pos;
-					hidden.EndOffset = function.CecilMethod.Body.CodeSize;
+					hidden.EndOffset = function.CecilMethod.Body.GetCodeSize();
 					hidden.SetHidden();
 					newList.Add(hidden);
 				}

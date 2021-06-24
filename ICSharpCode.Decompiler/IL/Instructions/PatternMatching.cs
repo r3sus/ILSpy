@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -72,7 +72,7 @@ namespace ICSharpCode.Decompiler.IL
 			var inst = this as LdLoc;
 			return inst != null && inst.Variable == variable;
 		}
-		
+
 		public bool MatchLdLoca(ILVariable variable)
 		{
 			var inst = this as LdLoca;
@@ -108,9 +108,9 @@ namespace ICSharpCode.Decompiler.IL
 		public bool MatchLdThis()
 		{
 			var inst = this as LdLoc;
-			return inst != null && inst.Variable.Kind == VariableKind.Parameter && inst.Variable.Index < 0;
+			return inst != null && inst.Variable.Kind == VariableKind.Parameter && inst.Variable.Index == -2;
 		}
-		
+
 		public bool MatchStLoc(out ILVariable variable)
 		{
 			var inst = this as StLoc;
@@ -121,7 +121,7 @@ namespace ICSharpCode.Decompiler.IL
 			variable = null;
 			return false;
 		}
-		
+
 		public bool MatchStLoc(ILVariable variable, out ILInstruction value)
 		{
 			var inst = this as StLoc;
@@ -132,7 +132,7 @@ namespace ICSharpCode.Decompiler.IL
 			value = null;
 			return false;
 		}
-		
+
 		public bool MatchLdLen(StackType type, out ILInstruction array)
 		{
 			var inst = this as LdLen;
@@ -165,7 +165,7 @@ namespace ICSharpCode.Decompiler.IL
 			targetBlock = null;
 			return false;
 		}
-		
+
 		public bool MatchBranch(Block targetBlock)
 		{
 			var inst = this as Branch;
@@ -206,13 +206,13 @@ namespace ICSharpCode.Decompiler.IL
 			targetContainer = null;
 			return false;
 		}
-		
+
 		public bool MatchLeave(BlockContainer targetContainer)
 		{
 			var inst = this as Leave;
 			return inst != null && inst.TargetContainer == targetContainer && inst.Value.MatchNop();
 		}
-		
+
 		public bool MatchIfInstruction(out ILInstruction condition, out ILInstruction trueInst, out ILInstruction falseInst)
 		{
 			var inst = this as IfInstruction;
@@ -321,7 +321,7 @@ namespace ICSharpCode.Decompiler.IL
 			variable = null;
 			return false;
 		}
-		
+
 		/// <summary>
 		/// Matches comp(left == right) or logic.not(comp(left != right)).
 		/// </summary>
@@ -427,7 +427,7 @@ namespace ICSharpCode.Decompiler.IL
 			field = null;
 			return false;
 		}
-		
+
 		public bool MatchLdsFld(out IField field)
 		{
 			if (this is LdObj ldobj && ldobj.Target is LdsFlda ldsflda && ldobj.UnalignedPrefix == 0 && !ldobj.IsVolatile) {
@@ -468,13 +468,13 @@ namespace ICSharpCode.Decompiler.IL
 			value = null;
 			return false;
 		}
-		
+
 		public bool MatchBinaryNumericInstruction(BinaryNumericOperator @operator)
 		{
 			var op = this as BinaryNumericInstruction;
 			return op != null && op.Operator == @operator;
 		}
-		
+
 		public bool MatchBinaryNumericInstruction(BinaryNumericOperator @operator, out ILInstruction left, out ILInstruction right)
 		{
 			var op = this as BinaryNumericInstruction;
@@ -487,7 +487,7 @@ namespace ICSharpCode.Decompiler.IL
 			right = null;
 			return false;
 		}
-		
+
 		public bool MatchBinaryNumericInstruction(out BinaryNumericOperator @operator, out ILInstruction left, out ILInstruction right)
 		{
 			var op = this as BinaryNumericInstruction;
@@ -502,7 +502,7 @@ namespace ICSharpCode.Decompiler.IL
 			right = null;
 			return false;
 		}
-		
+
 		/// <summary>
 		/// If this instruction is a conversion of the specified kind, return its argument.
 		/// Otherwise, return the instruction itself.

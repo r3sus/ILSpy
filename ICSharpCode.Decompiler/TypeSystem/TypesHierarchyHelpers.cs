@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,27 +18,26 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
 	public static class TypesHierarchyHelpers
 	{
-		public static bool IsBaseType(TypeDefinition baseType, TypeDefinition derivedType, bool resolveTypeArguments)
+		public static bool IsBaseType(TypeDef baseType, TypeDef derivedType, bool resolveTypeArguments)
 		{
 			if (resolveTypeArguments)
-				return BaseTypes(derivedType).Any(t => t.Item == baseType);
+				return BaseTypes(derivedType).Any(t => new SigComparer().Equals(t.Resolve(), baseType));
 			else {
-				var comparableBaseType = baseType.Resolve();
-				if (comparableBaseType == null)
+				var comparableBaseType = baseType.ResolveTypeDef();
+				if (comparableBaseType is null)
 					return false;
 				while (derivedType.BaseType != null) {
 					var resolvedBaseType = derivedType.BaseType.Resolve();
-					if (resolvedBaseType == null)
+					if (resolvedBaseType is null)
 						return false;
-					if (comparableBaseType == resolvedBaseType)
+					if (new SigComparer().Equals(comparableBaseType, resolvedBaseType))
 						return true;
 					derivedType = resolvedBaseType;
 				}
@@ -53,7 +52,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <param name="childMethod">The method declared in a derived type.</param>
 		/// <returns>true if <paramref name="childMethod"/> hides or overrides <paramref name="parentMethod"/>,
 		/// otherwise false.</returns>
-		public static bool IsBaseMethod(MethodDefinition parentMethod, MethodDefinition childMethod)
+		public static bool IsBaseMethod(MethodDef parentMethod, MethodDef childMethod)
 		{
 			if (parentMethod == null)
 				throw new ArgumentNullException(nameof(parentMethod));
@@ -63,12 +62,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (parentMethod.Name != childMethod.Name)
 				return false;
 
-			if (parentMethod.HasParameters || childMethod.HasParameters)
-				if (!parentMethod.HasParameters || !childMethod.HasParameters || parentMethod.Parameters.Count != childMethod.Parameters.Count)
+			var parentParams = parentMethod.MethodSig.GetParamCount();
+			var childParams = childMethod.MethodSig.GetParamCount();
+			if (parentParams > 0 || childParams > 0)
+				if (parentParams == 0 || childParams == 0 || parentParams != childParams)
 					return false;
 
-			return FindBaseMethods(childMethod).Any(m => m == parentMethod);// || (parentMethod.HasGenericParameters && m.);
+			return FindBaseMethods(childMethod).Any(m => CheckEquals(m, parentMethod));// || (parentMethod.HasGenericParameters && m.);
 		}
+
+		static bool CheckEquals(IMemberRef mr1, IMemberRef mr2) =>
+			new SigComparer(SigComparerOptions.CompareDeclaringTypes | SigComparerOptions.PrivateScopeIsComparable).Equals(mr1, mr2);
 
 		/// <summary>
 		/// Determines whether a property overrides or hides another property.
@@ -77,7 +81,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <param name="childProperty">The property declared in a derived type.</param>
 		/// <returns>true if the <paramref name="childProperty"/> hides or overrides <paramref name="parentProperty"/>,
 		/// otherwise false.</returns>
-		public static bool IsBaseProperty(PropertyDefinition parentProperty, PropertyDefinition childProperty)
+		public static bool IsBaseProperty(PropertyDef parentProperty, PropertyDef childProperty)
 		{
 			if (parentProperty == null)
 				throw new ArgumentNullException(nameof(parentProperty));
@@ -87,19 +91,21 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (parentProperty.Name != childProperty.Name)
 				return false;
 
-			if (parentProperty.HasParameters || childProperty.HasParameters)
-				if (!parentProperty.HasParameters || !childProperty.HasParameters || parentProperty.Parameters.Count != childProperty.Parameters.Count)
+			var parentParams = parentProperty.PropertySig.GetParamCount();
+			var childParams = childProperty.PropertySig.GetParamCount();
+			if (parentParams > 0 || childParams > 0)
+				if (parentParams == 0 || childParams == 0 || parentParams != childParams)
 					return false;
 
-			return FindBaseProperties(childProperty).Any(m => m == parentProperty);
+			return FindBaseProperties(childProperty).Any(m => CheckEquals(m, parentProperty));
 		}
 
-		public static bool IsBaseEvent(EventDefinition parentEvent, EventDefinition childEvent)
+		public static bool IsBaseEvent(EventDef parentEvent, EventDef childEvent)
 		{
 			if (parentEvent.Name != childEvent.Name)
 				return false;
 
-			return FindBaseEvents(childEvent).Any(m => m == parentEvent);
+			return FindBaseEvents(childEvent).Any(m => CheckEquals(m, parentEvent));
 		}
 
 		/// <summary>
@@ -107,21 +113,25 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		/// <param name="method">The method which overrides or hides methods from base types.</param>
 		/// <returns>Methods overriden or hidden by the specified method.</returns>
-		public static IEnumerable<MethodDefinition> FindBaseMethods(MethodDefinition method)
-		{
-			if (method == null)
-				throw new ArgumentNullException(nameof(method));
+		public static IEnumerable<MethodDef> FindBaseMethods(MethodDef method, bool compareReturnType = true) =>
+			FindBaseMethods(method, method?.DeclaringType, compareReturnType);
 
-			var typeContext = CreateGenericContext(method.DeclaringType);
-			var gMethod = typeContext.ApplyTo(method);
+		public static IEnumerable<MethodDef> FindBaseMethods(MethodDef method, TypeDef declType, bool compareReturnType = true) {
+			if (method is null || declType is null)
+				yield break;
 
-			foreach (var baseType in BaseTypes(method.DeclaringType))
-				foreach (var baseMethod in baseType.Item.Methods)
-					if (MatchMethod(baseType.ApplyTo(baseMethod), gMethod) && IsVisibleFromDerived(baseMethod, method.DeclaringType)) {
+			foreach (var baseType in BaseTypes(declType)) {
+				var baseTypeDef = baseType.Resolve();
+				if (baseTypeDef is null)
+					continue;
+				foreach (var baseMethod in baseTypeDef.Methods) {
+					if (MatchMethod(baseMethod, Resolve(baseMethod.MethodSig, baseType), method, compareReturnType) && IsVisibleFromDerived(baseMethod, declType)) {
 						yield return baseMethod;
 						if (baseMethod.IsNewSlot == baseMethod.IsVirtual)
 							yield break;
 					}
+				}
+			}
 		}
 
 		/// <summary>
@@ -129,48 +139,98 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		/// <param name="property">The property which overrides or hides properties from base types.</param>
 		/// <returns>Properties overriden or hidden by the specified property.</returns>
-		public static IEnumerable<PropertyDefinition> FindBaseProperties(PropertyDefinition property)
-		{
-			if (property == null)
-				throw new ArgumentNullException(nameof(property));
+		public static IEnumerable<PropertyDef> FindBaseProperties(PropertyDef property) =>
+			FindBaseProperties(property, property?.DeclaringType);
 
-			if ((property.GetMethod ?? property.SetMethod).HasOverrides)
+		public static IEnumerable<PropertyDef> FindBaseProperties(PropertyDef property, TypeDef declType) {
+			if (property is null)
 				yield break;
 
-			var typeContext = CreateGenericContext(property.DeclaringType);
-			var gProperty = typeContext.ApplyTo(property);
 			bool isIndexer = property.IsIndexer();
 
-			foreach (var baseType in BaseTypes(property.DeclaringType))
-				foreach (var baseProperty in baseType.Item.Properties)
-					if (MatchProperty(baseType.ApplyTo(baseProperty), gProperty)
-							&& IsVisibleFromDerived(baseProperty, property.DeclaringType)) {
+			foreach (var baseType in BaseTypes(declType)) {
+				var baseTypeDef = baseType.Resolve();
+				if (baseTypeDef is null)
+					continue;
+				foreach (var baseProperty in baseTypeDef.Properties) {
+					if (MatchProperty(baseProperty, Resolve(baseProperty.PropertySig, baseType), property)
+						&& IsVisibleFromDerived(baseProperty, declType)) {
 						if (isIndexer != baseProperty.IsIndexer())
 							continue;
 						yield return baseProperty;
 						var anyPropertyAccessor = baseProperty.GetMethod ?? baseProperty.SetMethod;
-						if (anyPropertyAccessor.IsNewSlot == anyPropertyAccessor.IsVirtual)
+						if (anyPropertyAccessor != null && anyPropertyAccessor.IsNewSlot == anyPropertyAccessor.IsVirtual)
 							yield break;
 					}
+				}
+			}
 		}
 
-		public static IEnumerable<EventDefinition> FindBaseEvents(EventDefinition eventDef)
-		{
-			if (eventDef == null)
-				throw new ArgumentNullException(nameof(eventDef));
+		private static bool MatchProperty(PropertyDef mCandidate, MethodBaseSig mCandidateSig, PropertyDef mProperty) {
+			if (mCandidate is null || mCandidateSig is null || mProperty is null)
+				return false;
+			if (mCandidate.Name != mProperty.Name)
+				return false;
 
-			var typeContext = CreateGenericContext(eventDef.DeclaringType);
-			var gEvent = typeContext.ApplyTo(eventDef);
+			return new SigComparer().Equals(mCandidateSig, mProperty.PropertySig);
+		}
 
-			foreach (var baseType in BaseTypes(eventDef.DeclaringType))
-				foreach (var baseEvent in baseType.Item.Events)
-					if (MatchEvent(baseType.ApplyTo(baseEvent), gEvent) && IsVisibleFromDerived(baseEvent, eventDef.DeclaringType)) {
+		private static bool MatchMethod(MethodDef mCandidate, MethodBaseSig mCandidateSig, MethodDef mMethod, bool compareReturnType = true) =>
+			MatchMethod(mCandidate, mCandidateSig, mMethod, mMethod?.MethodSig, compareReturnType);
+
+		static bool MatchMethod(MethodDef mCandidate, MethodBaseSig mCandidateSig, MethodDef mMethod, MethodBaseSig mMethodSig, bool compareReturnType = true) {
+			if (mCandidate is null || mCandidateSig is null || mMethod is null)
+				return false;
+
+			if (mCandidate.Name != mMethod.Name)
+				return false;
+
+			var options = compareReturnType ? 0 : SigComparerOptions.DontCompareReturnType;
+			return new SigComparer(options).Equals(mCandidateSig, mMethodSig);
+		}
+
+		public static bool MatchInterfaceMethod(MethodDef candidate, MethodDef method, ITypeDefOrRef interfaceContextType) {
+			var genericInstSig = interfaceContextType.TryGetGenericInstSig();
+			if (genericInstSig != null) {
+				return MatchMethod(candidate, candidate?.MethodSig, method, GenericArgumentResolver.Resolve(method?.MethodSig, genericInstSig.GenericArguments, null));
+			}
+			else {
+				return MatchMethod(candidate, candidate?.MethodSig, method);
+			}
+		}
+
+		public static IEnumerable<EventDef> FindBaseEvents(EventDef eventDef) =>
+			FindBaseEvents(eventDef, eventDef?.DeclaringType);
+
+		public static IEnumerable<EventDef> FindBaseEvents(EventDef eventDef, TypeDef declType) {
+			if (eventDef is null)
+				yield break;
+
+			var eventType = eventDef.EventType.ToTypeSig();
+
+			foreach (var baseType in BaseTypes(declType)) {
+				var baseTypeDef = baseType.Resolve();
+				if (baseTypeDef is null)
+					continue;
+				foreach (var baseEvent in baseTypeDef.Events) {
+					if (MatchEvent(baseEvent, Resolve(baseEvent.EventType.ToTypeSig(), baseType), eventDef, eventType) &&
+						IsVisibleFromDerived(baseEvent, declType)) {
 						yield return baseEvent;
-						var anyEventAccessor = baseEvent.AddMethod ?? baseEvent.RemoveMethod;
-						if (anyEventAccessor.IsNewSlot == anyEventAccessor.IsVirtual)
+						var anyEventAccessor = baseEvent.AddMethod ?? baseEvent.RemoveMethod ?? baseEvent.InvokeMethod;
+						if (anyEventAccessor != null && anyEventAccessor.IsNewSlot == anyEventAccessor.IsVirtual)
 							yield break;
 					}
+				}
+			}
+		}
 
+		private static bool MatchEvent(EventDef mCandidate, TypeSig mCandidateType, EventDef mEvent, TypeSig mEventType) {
+			if (mCandidate is null || mCandidateType is null || mEvent is null || mEventType is null)
+				return false;
+			if (mCandidate.Name != mEvent.Name)
+				return false;
+
+			return new SigComparer().Equals(mCandidateType, mEventType);
 		}
 
 		/// <summary>
@@ -179,7 +239,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <param name="baseMember">The member which visibility is checked.</param>
 		/// <param name="derivedType">The derived type.</param>
 		/// <returns>true if the member is visible from derived type, othewise false.</returns>
-		public static bool IsVisibleFromDerived(IMemberDefinition baseMember, TypeDefinition derivedType)
+		public static bool IsVisibleFromDerived(IMemberDef baseMember, TypeDef derivedType)
 		{
 			if (baseMember == null)
 				throw new ArgumentNullException(nameof(baseMember));
@@ -201,9 +261,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					var attributes = asm.CustomAttributes
 						.Where(attr => attr.AttributeType.FullName == "System.Runtime.CompilerServices.InternalsVisibleToAttribute");
 					foreach (var attribute in attributes) {
-						string assemblyName = attribute.ConstructorArguments[0].Value as string;
+						string assemblyName = attribute.ConstructorArguments[0].Value as UTF8String;
 						assemblyName = assemblyName.Split(',')[0]; // strip off any public key info
-						if (assemblyName == derivedTypeAsm.Name.Name)
+						if (assemblyName == derivedTypeAsm.Name)
 							return true;
 					}
 				}
@@ -214,27 +274,27 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return true;
 		}
 
-		private static MethodAttributes GetAccessAttributes(IMemberDefinition member)
+		private static MethodAttributes GetAccessAttributes(IMemberDef member)
 		{
-			var fld = member as FieldDefinition;
+			var fld = member as FieldDef;
 			if (fld != null)
 				return (MethodAttributes)fld.Attributes;
 
-			var method = member as MethodDefinition;
+			var method = member as MethodDef;
 			if (method != null)
 				return method.Attributes;
 
-			var prop = member as PropertyDefinition;
+			var prop = member as PropertyDef;
 			if (prop != null) {
 				return (prop.GetMethod ?? prop.SetMethod).Attributes;
-		}
+			}
 
-			var evnt = member as EventDefinition;
+			var evnt = member as EventDef;
 			if (evnt != null) {
 				return (evnt.AddMethod ?? evnt.RemoveMethod).Attributes;
 			}
 
-			var nestedType = member as TypeDefinition;
+			var nestedType = member as TypeDef;
 			if (nestedType != null) {
 				if (nestedType.IsNestedPrivate)
 					return MethodAttributes.Private;
@@ -246,280 +306,42 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			throw new NotSupportedException();
 		}
 
-		private static bool MatchMethod(GenericContext<MethodDefinition> candidate, GenericContext<MethodDefinition> method)
-		{
-			var mCandidate = candidate.Item;
-			var mMethod = method.Item;
-			if (mCandidate.Name != mMethod.Name)
-				return false;
+		private static IEnumerable<TypeSig> BaseTypes(TypeDef typeDef) {
+			if (typeDef is null)
+				yield break;
+			if (typeDef.BaseType is null)
+				yield break;
 
-			if (mCandidate.HasOverrides)
-				return false;
+			TypeSig baseType = typeDef.ToTypeSig();
+			do {
+				var genericArgs = baseType is GenericInstSig ? ((GenericInstSig)baseType).GenericArguments : null;
+				baseType = GenericArgumentResolver.Resolve(typeDef.BaseType.ToTypeSig(), genericArgs, null);
+				if (baseType is null)
+					yield break;
+				yield return baseType;
 
-			if (mCandidate.IsSpecialName != method.Item.IsSpecialName)
-				return false;
-
-			if (mCandidate.HasGenericParameters || mMethod.HasGenericParameters) {
-				if (!mCandidate.HasGenericParameters || !mMethod.HasGenericParameters || mCandidate.GenericParameters.Count != mMethod.GenericParameters.Count)
-					return false;
-			}
-
-			if (mCandidate.HasParameters || mMethod.HasParameters) {
-				if (!mCandidate.HasParameters || !mMethod.HasParameters || mCandidate.Parameters.Count != mMethod.Parameters.Count)
-					return false;
-
-				for (int index = 0; index < mCandidate.Parameters.Count; index++) {
-					if (!MatchParameters(candidate.ApplyTo(mCandidate.Parameters[index]), method.ApplyTo(mMethod.Parameters[index])))
-						return false;
-				}
-			}
-
-			return true;
+				typeDef = typeDef.BaseType.ResolveTypeDef();
+				if (typeDef is null)
+					break;
+			} while (typeDef.BaseType != null);
 		}
 
-		public static bool MatchInterfaceMethod(MethodDefinition candidate, MethodDefinition method, TypeReference interfaceContextType)
-		{
-			var candidateContext = CreateGenericContext(candidate.DeclaringType);
-			var gCandidate = candidateContext.ApplyTo(candidate);
-
-			if (interfaceContextType is GenericInstanceType) {
-				var methodContext = new GenericContext<TypeDefinition>(interfaceContextType.Resolve(), ((GenericInstanceType)interfaceContextType).GenericArguments);
-				var gMethod = methodContext.ApplyTo(method);
-				return MatchMethod(gCandidate, gMethod);
-			} else {
-				var methodContext = CreateGenericContext(interfaceContextType.Resolve());
-				var gMethod = candidateContext.ApplyTo(method);
-				return MatchMethod(gCandidate, gMethod);
-			}
+		public static IEnumerable<TypeSig> GetTypeAndBaseTypes(TypeDef type) {
+			if (type is null)
+				yield break;
+			yield return type.ToTypeSig();
+			foreach (var baseType in BaseTypes(type))
+				yield return baseType;
 		}
 
-		private static bool MatchProperty(GenericContext<PropertyDefinition> candidate, GenericContext<PropertyDefinition> property)
-		{
-			var mCandidate = candidate.Item;
-			var mProperty = property.Item;
-			if (mCandidate.Name != mProperty.Name)
-				return false;
-
-			if ((mCandidate.GetMethod ?? mCandidate.SetMethod).HasOverrides)
-				return false;
-
-			if (mCandidate.HasParameters || mProperty.HasParameters) {
-				if (!mCandidate.HasParameters || !mProperty.HasParameters || mCandidate.Parameters.Count != mProperty.Parameters.Count)
-					return false;
-
-				for (int index = 0; index < mCandidate.Parameters.Count; index++) {
-					if (!MatchParameters(candidate.ApplyTo(mCandidate.Parameters[index]), property.ApplyTo(mProperty.Parameters[index])))
-						return false;
-				}
-			}
-
-			return true;
+		private static TypeSig Resolve(TypeSig type, TypeSig typeContext) {
+			var genericArgs = typeContext is GenericInstSig ? ((GenericInstSig)typeContext).GenericArguments : null;
+			return GenericArgumentResolver.Resolve(type, genericArgs, null);
 		}
 
-		private static bool MatchEvent(GenericContext<EventDefinition> candidate, GenericContext<EventDefinition> ev)
-		{
-			var mCandidate = candidate.Item;
-			var mEvent = ev.Item;
-			if (mCandidate.Name != mEvent.Name)
-				return false;
-
-			if ((mCandidate.AddMethod ?? mCandidate.RemoveMethod).HasOverrides)
-				return false;
-
-			if (!IsSameType(candidate.ResolveWithContext(mCandidate.EventType), ev.ResolveWithContext(mEvent.EventType)))
-				return false;
-
-			return true;
-		}
-
-		private static bool MatchParameters(GenericContext<ParameterDefinition> baseParameterType, GenericContext<ParameterDefinition> parameterType)
-		{
-			if (baseParameterType.Item.IsIn != parameterType.Item.IsIn ||
-					baseParameterType.Item.IsOut != parameterType.Item.IsOut)
-				return false;
-			var baseParam = baseParameterType.ResolveWithContext(baseParameterType.Item.ParameterType);
-			var param = parameterType.ResolveWithContext(parameterType.Item.ParameterType);
-			return IsSameType(baseParam, param);
-		}
-
-		private static bool IsSameType(TypeReference tr1, TypeReference tr2)
-		{
-			if (tr1 == tr2)
-				return true;
-			if (tr1 == null || tr2 == null)
-				return false;
-
-			if (tr1.GetType() != tr2.GetType())
-				return false;
-
-			if (tr1.Name == tr2.Name && tr1.FullName == tr2.FullName)
-				return true;
-
-			return false;
-		}
-
-		private static IEnumerable<GenericContext<TypeDefinition>> BaseTypes(TypeDefinition type)
-		{
-			return BaseTypes(CreateGenericContext(type));
-		}
-
-		private static IEnumerable<GenericContext<TypeDefinition>> BaseTypes(GenericContext<TypeDefinition> type)
-		{
-			while (type.Item.BaseType != null) {
-				var baseType = type.Item.BaseType;
-				var genericBaseType = baseType as GenericInstanceType;
-				if (genericBaseType != null) {
-					type = new GenericContext<TypeDefinition>(genericBaseType.ResolveOrThrow(),
-						genericBaseType.GenericArguments.Select(t => type.ResolveWithContext(t)));
-				} else
-					type = new GenericContext<TypeDefinition>(baseType.ResolveOrThrow());
-				yield return type;
-			}
-		}
-
-		private static GenericContext<TypeDefinition> CreateGenericContext(TypeDefinition type)
-		{
-			return type.HasGenericParameters
-				? new GenericContext<TypeDefinition>(type, type.GenericParameters)
-				: new GenericContext<TypeDefinition>(type);
-		}
-
-		struct GenericContext<T> where T : class
-		{
-			private static readonly ReadOnlyCollection<TypeReference> Empty = new ReadOnlyCollection<TypeReference>(new List<TypeReference>());
-			private static readonly GenericParameter UnresolvedGenericTypeParameter =
-				new DummyGenericParameterProvider(false).DummyParameter;
-			private static readonly GenericParameter UnresolvedGenericMethodParameter =
-				new DummyGenericParameterProvider(true).DummyParameter;
-
-			public readonly T Item;
-			public readonly ReadOnlyCollection<TypeReference> TypeArguments;
-
-			public GenericContext(T item)
-			{
-				if (item == null)
-					throw new ArgumentNullException(nameof(item));
-
-				Item = item;
-				TypeArguments = Empty;
-			}
-
-			public GenericContext(T item, IEnumerable<TypeReference> typeArguments)
-			{
-				if (item == null)
-					throw new ArgumentNullException(nameof(item));
-
-				Item = item;
-				var list = new List<TypeReference>();
-				foreach (var arg in typeArguments) {
-					var resolved = arg != null ? arg.Resolve() : arg;
-					list.Add(resolved != null ? resolved : arg);
-				}
-				TypeArguments = new ReadOnlyCollection<TypeReference>(list);
-			}
-
-			private GenericContext(T item, ReadOnlyCollection<TypeReference> typeArguments)
-			{
-				Item = item;
-				TypeArguments = typeArguments;
-			}
-
-			public TypeReference ResolveWithContext(TypeReference type)
-			{
-				var genericParameter = type as GenericParameter;
-				if (genericParameter != null)
-					if (genericParameter.Owner.GenericParameterType == GenericParameterType.Type)
-					return this.TypeArguments[genericParameter.Position];
-					else
-						return genericParameter.Owner.GenericParameterType == GenericParameterType.Type
-							? UnresolvedGenericTypeParameter : UnresolvedGenericMethodParameter;
-				var typeSpecification = type as TypeSpecification;
-				if (typeSpecification != null) {
-					var resolvedElementType = ResolveWithContext(typeSpecification.ElementType);
-					return ReplaceElementType(typeSpecification, resolvedElementType);
-				}
-				return type.ResolveOrThrow();
-			}
-
-			private TypeReference ReplaceElementType(TypeSpecification ts, TypeReference newElementType)
-			{
-				var arrayType = ts as Mono.Cecil.ArrayType;
-				if (arrayType != null) {
-					if (newElementType == arrayType.ElementType)
-						return arrayType;
-					var newArrayType = new Mono.Cecil.ArrayType(newElementType, arrayType.Rank);
-					for (int dimension = 0; dimension < arrayType.Rank; dimension++)
-						newArrayType.Dimensions[dimension] = arrayType.Dimensions[dimension];
-					return newArrayType;
-				}
-				var byReferenceType = ts as Mono.Cecil.ByReferenceType;
-				if (byReferenceType != null) {
-					return new Mono.Cecil.ByReferenceType(newElementType);
-			}
-				// TODO: should we throw an exception instead calling Resolve method?
-				return ts.ResolveOrThrow();
-			}
-
-			public GenericContext<T2> ApplyTo<T2>(T2 item) where T2 : class
-			{
-				return new GenericContext<T2>(item, this.TypeArguments);
-			}
-
-			private class DummyGenericParameterProvider : IGenericParameterProvider
-			{
-				readonly Mono.Cecil.GenericParameterType type;
-				readonly Mono.Collections.Generic.Collection<GenericParameter> parameters;
-
-				public DummyGenericParameterProvider(bool methodTypeParameter)
-				{
-					type = methodTypeParameter ? Mono.Cecil.GenericParameterType.Method :
-						Mono.Cecil.GenericParameterType.Type;
-					parameters = new Mono.Collections.Generic.Collection<GenericParameter>(1);
-					parameters.Add(new GenericParameter(this));
-		}
-
-				public GenericParameter DummyParameter
-				{
-					get { return parameters[0]; }
-	}
-
-				bool IGenericParameterProvider.HasGenericParameters
-				{
-					get { throw new NotImplementedException(); }
-				}
-
-				bool IGenericParameterProvider.IsDefinition
-				{
-					get { throw new NotImplementedException(); }
-				}
-
-				ModuleDefinition IGenericParameterProvider.Module
-				{
-					get { throw new NotImplementedException(); }
-				}
-
-				Mono.Collections.Generic.Collection<GenericParameter> IGenericParameterProvider.GenericParameters
-				{
-					get { return parameters; }
-				}
-
-				GenericParameterType IGenericParameterProvider.GenericParameterType
-				{
-					get { return type; }
-				}
-
-				MetadataToken IMetadataTokenProvider.MetadataToken
-				{
-					get
-					{
-						throw new NotImplementedException();
-					}
-					set
-					{
-						throw new NotImplementedException();
-					}
-				}
-			}
+		private static MethodBaseSig Resolve(MethodBaseSig method, TypeSig typeContext) {
+			var genericArgs = typeContext is GenericInstSig ? ((GenericInstSig)typeContext).GenericArguments : null;
+			return GenericArgumentResolver.Resolve(method, genericArgs, null);
 		}
 	}
 }

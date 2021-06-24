@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2016 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -22,10 +22,10 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.Tests.Helpers;
 using Microsoft.Win32;
-using Mono.Cecil;
 using NUnit.Framework;
 
 namespace ICSharpCode.Decompiler.Tests
@@ -35,7 +35,7 @@ namespace ICSharpCode.Decompiler.Tests
 	{
 		public static readonly string TestDir = Path.GetFullPath(Path.Combine(Tester.TestCasePath, "../../ILSpy-tests"));
 		static readonly string nunit = Path.Combine(TestDir, "nunit", "nunit3-console.exe");
-		
+
 		[Test]
 		public void Cecil_net45()
 		{
@@ -108,14 +108,14 @@ namespace ICSharpCode.Decompiler.Tests
 		{
 			RunInternal(dir, fileToRoundtrip, outputDir => RunTest(outputDir, fileToTest));
 		}
-		
+
 		void RunWithOutput(string dir, string fileToRoundtrip)
 		{
 			string inputDir = Path.Combine(TestDir, dir);
 			RunInternal(dir, fileToRoundtrip,
 				outputDir => Tester.RunAndCompareOutput(fileToRoundtrip, Path.Combine(inputDir, fileToRoundtrip), Path.Combine(outputDir, fileToRoundtrip)));
 		}
-		
+
 		void RunInternal(string dir, string fileToRoundtrip, Action<string> testAction)
 		{
 			if (!Directory.Exists(TestDir)) {
@@ -142,25 +142,22 @@ namespace ICSharpCode.Decompiler.Tests
 				if (relFile.Equals(fileToRoundtrip, StringComparison.OrdinalIgnoreCase)) {
 					Console.WriteLine($"Decompiling {fileToRoundtrip}...");
 					Stopwatch w = Stopwatch.StartNew();
-					DefaultAssemblyResolver resolver = new DefaultAssemblyResolver();
-					resolver.AddSearchDirectory(inputDir);
-					resolver.RemoveSearchDirectory(".");
-					var module = ModuleDefinition.ReadModule(file, new ReaderParameters {
-						AssemblyResolver = resolver,
-						InMemory  = true
-					});
+					AssemblyResolver resolver = new AssemblyResolver();
+					resolver.PreSearchPaths.Add(inputDir);
+					resolver.DefaultModuleContext = new ModuleContext(resolver);
+					var module = ModuleDefMD.Load(file, resolver.DefaultModuleContext );
 					var decompiler = new TestProjectDecompiler(inputDir);
 					// use a fixed GUID so that we can diff the output between different ILSpy runs without spurious changes
 					decompiler.ProjectGuid = Guid.Parse("{127C83E4-4587-4CF9-ADCA-799875F3DFE6}");
 					decompiler.DecompileProject(module, decompiledDir);
 					Console.WriteLine($"Decompiled {fileToRoundtrip} in {w.Elapsed.TotalSeconds:f2}");
-					projectFile = Path.Combine(decompiledDir, module.Assembly.Name.Name + ".csproj");
+					projectFile = Path.Combine(decompiledDir, module.Assembly.Name.String + ".csproj");
 				} else {
 					File.Copy(file, Path.Combine(outputDir, relFile));
 				}
 			}
 			Assert.IsNotNull(projectFile, $"Could not find {fileToRoundtrip}");
-			
+
 			Compile(projectFile, outputDir);
 			testAction(outputDir);
 		}
@@ -184,7 +181,7 @@ namespace ICSharpCode.Decompiler.Tests
 				File.Delete(file);
 			}
 		}
-		
+
 		static string FindVS2017()
 		{
 			using (var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32)) {
@@ -233,7 +230,7 @@ namespace ICSharpCode.Decompiler.Tests
 					throw new CompilationFailedException($"Compilation of {Path.GetFileName(projectFile)} failed");
 			}
 		}
-		
+
 		static void RunTest(string outputDir, string fileToTest)
 		{
 			var info = new ProcessStartInfo(nunit);
@@ -263,11 +260,11 @@ namespace ICSharpCode.Decompiler.Tests
 				localAssemblies = new DirectoryInfo(baseDir).EnumerateFiles("*.dll").Select(f => f.FullName).ToArray();
 			}
 
-			protected override bool IsGacAssembly(AssemblyNameReference r, AssemblyDefinition asm)
+			protected override bool IsGacAssembly(AssemblyRef r, AssemblyDef asm)
 			{
 				if (asm == null)
 					return false;
-				return !localAssemblies.Contains(asm.MainModule.FileName);
+				return !localAssemblies.Contains(asm.ManifestModule.Location);
 			}
 		}
 
@@ -277,7 +274,7 @@ namespace ICSharpCode.Decompiler.Tests
 			{
 			}
 		}
-		
+
 		class TestRunFailedException : Exception
 		{
 			public TestRunFailedException(string message) : base(message)

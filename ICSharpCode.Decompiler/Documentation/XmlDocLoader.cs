@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,11 +17,13 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using dnlib.DotNet;
+using dnlib.DotNet.MD;
 using ICSharpCode.Decompiler.Documentation;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler.Documentation
 {
@@ -31,32 +33,32 @@ namespace ICSharpCode.Decompiler.Documentation
 	public static class XmlDocLoader
 	{
 		static readonly Lazy<XmlDocumentationProvider> mscorlibDocumentation = new Lazy<XmlDocumentationProvider>(LoadMscorlibDocumentation);
-		static readonly ConditionalWeakTable<ModuleDefinition, XmlDocumentationProvider> cache = new ConditionalWeakTable<ModuleDefinition, XmlDocumentationProvider>();
-		
+		static readonly ConditionalWeakTable<ModuleDef, XmlDocumentationProvider> cache = new ConditionalWeakTable<ModuleDef, XmlDocumentationProvider>();
+
 		static XmlDocumentationProvider LoadMscorlibDocumentation()
 		{
-			string xmlDocFile = FindXmlDocumentation("mscorlib.dll", TargetRuntime.Net_4_0)
-				?? FindXmlDocumentation("mscorlib.dll", TargetRuntime.Net_2_0);
+			string xmlDocFile = FindXmlDocumentation("mscorlib.dll", MDHeaderRuntimeVersion.MS_CLR_40)
+				?? FindXmlDocumentation("mscorlib.dll", MDHeaderRuntimeVersion.MS_CLR_20);
 			if (xmlDocFile != null)
 				return new XmlDocumentationProvider(xmlDocFile);
 			else
 				return null;
 		}
-		
+
 		public static XmlDocumentationProvider MscorlibDocumentation {
 			get { return mscorlibDocumentation.Value; }
 		}
-		
-		public static XmlDocumentationProvider LoadDocumentation(ModuleDefinition module)
+
+		public static XmlDocumentationProvider LoadDocumentation(ModuleDef module)
 		{
 			if (module == null)
 				throw new ArgumentNullException(nameof(module));
 			lock (cache) {
 				XmlDocumentationProvider xmlDoc;
 				if (!cache.TryGetValue(module, out xmlDoc)) {
-					string xmlDocFile = LookupLocalizedXmlDoc(module.FileName);
+					string xmlDocFile = LookupLocalizedXmlDoc(module.Location);
 					if (xmlDocFile == null) {
-						xmlDocFile = FindXmlDocumentation(Path.GetFileName(module.FileName), module.Runtime);
+						xmlDocFile = FindXmlDocumentation(Path.GetFileName(module.Location), module.RuntimeVersion);
 					}
 					if (xmlDocFile != null) {
 						xmlDoc = new XmlDocumentationProvider(xmlDocFile);
@@ -69,44 +71,67 @@ namespace ICSharpCode.Decompiler.Documentation
 				return xmlDoc;
 			}
 		}
-		
+
 		static readonly string referenceAssembliesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Reference Assemblies\Microsoft\\Framework");
 		static readonly string frameworkPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"Microsoft.NET\Framework");
-		
-		static string FindXmlDocumentation(string assemblyFileName, TargetRuntime runtime)
+
+		static string FindXmlDocumentation(string assemblyFileName, string runtime)
 		{
+			if (string.IsNullOrEmpty(assemblyFileName))
+				return null;
+			if (runtime is null)
+				runtime = MDHeaderRuntimeVersion.MS_CLR_40;
+			if (runtime.StartsWith(MDHeaderRuntimeVersion.MS_CLR_10_PREFIX_X86RETAIL) ||
+				runtime == MDHeaderRuntimeVersion.MS_CLR_10_RETAIL ||
+				runtime == MDHeaderRuntimeVersion.MS_CLR_10_COMPLUS)
+				runtime = MDHeaderRuntimeVersion.MS_CLR_10;
+			runtime = FixRuntimeString(runtime);
+
 			string fileName;
-			switch (runtime) {
-				case TargetRuntime.Net_1_0:
-					fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v1.0.3705", assemblyFileName));
-					break;
-				case TargetRuntime.Net_1_1:
-					fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v1.1.4322", assemblyFileName));
-					break;
-				case TargetRuntime.Net_2_0:
-					fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v2.0.50727", assemblyFileName))
-						?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, "v3.5"))
-						?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, "v3.0"))
-						?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, @".NETFramework\v3.5\Profile\Client"));
-					break;
-				case TargetRuntime.Net_4_0:
-				default:
-					fileName = LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, @".NETFramework\v4.0", assemblyFileName))
-						?? LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v4.0.30319", assemblyFileName));
-					break;
+			if (runtime.StartsWith(MDHeaderRuntimeVersion.MS_CLR_10_PREFIX)) {
+				fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v1.0.3705", assemblyFileName));
+			} else if (runtime.StartsWith(MDHeaderRuntimeVersion.MS_CLR_11_PREFIX)) {
+				fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v1.1.4322", assemblyFileName));
+			} else if (runtime.StartsWith(MDHeaderRuntimeVersion.MS_CLR_20_PREFIX)) {
+				fileName = LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v2.0.50727", assemblyFileName))
+						   ?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, "v3.5"))
+						   ?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, "v3.0"))
+						   ?? LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, @".NETFramework\v3.5\Profile\Client"));
+			} else {
+				fileName = LookupLocalizedXmlDoc(Path.Combine(referenceAssembliesPath, @".NETFramework\v4.0", assemblyFileName))
+						   ?? LookupLocalizedXmlDoc(Path.Combine(frameworkPath, "v4.0.30319", assemblyFileName));
 			}
+
 			return fileName;
 		}
-		
+
+		static readonly List<char> InvalidChars = new List<char>(Path.GetInvalidPathChars()) {
+			Path.PathSeparator,
+			Path.VolumeSeparatorChar,
+			Path.DirectorySeparatorChar,
+			Path.AltDirectorySeparatorChar,
+		};
+		static string FixRuntimeString(string runtime) {
+			int min = int.MaxValue;
+			foreach (var c in InvalidChars) {
+				int index = runtime.IndexOf(c);
+				if (index >= 0 && index < min)
+					min = index;
+			}
+			if (min == int.MaxValue)
+				return runtime;
+			return runtime.Substring(0, min);
+		}
+
 		static string LookupLocalizedXmlDoc(string fileName)
 		{
 			if (string.IsNullOrEmpty(fileName))
 				return null;
-			
+
 			string xmlFileName = Path.ChangeExtension(fileName, ".xml");
 			string currentCulture = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
 			string localizedXmlDocFile = GetLocalizedName(xmlFileName, currentCulture);
-			
+
 			Debug.WriteLine("Try find XMLDoc @" + localizedXmlDocFile);
 			if (File.Exists(localizedXmlDocFile)) {
 				return localizedXmlDocFile;
@@ -124,7 +149,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			}
 			return null;
 		}
-		
+
 		static string GetLocalizedName(string fileName, string language)
 		{
 			string localizedXmlDocFile = Path.GetDirectoryName(fileName);

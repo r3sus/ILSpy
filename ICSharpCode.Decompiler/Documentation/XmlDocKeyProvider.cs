@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,11 +21,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
-using ArrayType = Mono.Cecil.ArrayType;
-using ByReferenceType = Mono.Cecil.ByReferenceType;
-using PointerType = Mono.Cecil.PointerType;
 
 namespace ICSharpCode.Decompiler.Documentation
 {
@@ -35,46 +32,50 @@ namespace ICSharpCode.Decompiler.Documentation
 	public sealed class XmlDocKeyProvider
 	{
 		#region GetKey
-		public static string GetKey(MemberReference member)
+		public static string GetKey(IMemberRef member)
 		{
 			StringBuilder b = new StringBuilder();
-			if (member is TypeReference) {
+			if (member is ITypeDefOrRef) {
 				b.Append("T:");
-				AppendTypeName(b, (TypeReference)member);
+				AppendTypeName(b, ((ITypeDefOrRef)member).ToTypeSig());
 			} else {
-				if (member is FieldReference)
+				if (member.IsField)
 					b.Append("F:");
-				else if (member is PropertyDefinition)
+				else if (member.IsPropertyDef)
 					b.Append("P:");
-				else if (member is EventDefinition)
+				else if (member.IsEventDef)
 					b.Append("E:");
-				else if (member is MethodReference)
+				else if (member.IsMethod)
 					b.Append("M:");
-				AppendTypeName(b, member.DeclaringType);
+				AppendTypeName(b, member.DeclaringType.ToTypeSig());
 				b.Append('.');
 				b.Append(member.Name.Replace('.', '#'));
-				IList<ParameterDefinition> parameters;
-				TypeReference explicitReturnType = null;
-				if (member is PropertyDefinition) {
-					parameters = ((PropertyDefinition)member).Parameters;
-				} else if (member is MethodReference) {
-					MethodReference mr = (MethodReference)member;
-					if (mr.HasGenericParameters) {
+				IList<Parameter> parameters;
+				TypeSig explicitReturnType = null;
+				if (member.IsPropertyDef) {
+					parameters = GetParameters((PropertyDef)member).ToList();
+				} else if (member.IsMethod) {
+					dnlib.DotNet.IMethod mr = (dnlib.DotNet.IMethod)member;
+					if (mr.NumberOfGenericParameters > 0) {
 						b.Append("``");
-						b.Append(mr.GenericParameters.Count);
+						b.Append(mr.NumberOfGenericParameters);
 					}
-					parameters = mr.Parameters;
+					parameters = mr.GetParameters();
 					if (mr.Name == "op_Implicit" || mr.Name == "op_Explicit") {
-						explicitReturnType = mr.ReturnType;
+						explicitReturnType = mr.MethodSig.RetType;
 					}
 				} else {
 					parameters = null;
 				}
-				if (parameters != null && parameters.Count > 0) {
+				if (parameters != null && parameters.Any(a => a.IsNormalMethodParameter)) {
 					b.Append('(');
 					for (int i = 0; i < parameters.Count; i++) {
-						if (i > 0) b.Append(',');
-						AppendTypeName(b, parameters[i].ParameterType);
+						var param = parameters[i];
+						if (!param.IsNormalMethodParameter)
+							continue;
+						if (param.MethodSigIndex > 0)
+							b.Append(',');
+						AppendTypeName(b, param.Type);
 					}
 					b.Append(')');
 				}
@@ -85,64 +86,92 @@ namespace ICSharpCode.Decompiler.Documentation
 			}
 			return b.ToString();
 		}
-		
-		static void AppendTypeName(StringBuilder b, TypeReference type)
-		{
+
+		static IEnumerable<Parameter> GetParameters(PropertyDef property) {
+			if (property is null)
+				yield break;
+			if (property.GetMethod != null) {
+				foreach (var param in property.GetMethod.Parameters)
+					yield return param;
+				yield break;
+			}
+			if (property.SetMethod != null) {
+				int last = property.SetMethod.Parameters.Count - 1;
+				foreach (var param in property.SetMethod.Parameters) {
+					if (param.Index != last)
+						yield return param;
+				}
+				yield break;
+			}
+
+			int i = 0;
+			foreach (var param in property.PropertySig.GetParams()) {
+				yield return new Parameter(i, i, param);
+				i++;
+			}
+		}
+
+		static void AppendTypeName(StringBuilder b, TypeSig type) {
+			type = type.RemovePinnedAndModifiers();
 			if (type == null) {
 				// could happen when a TypeSpecification has no ElementType; e.g. function pointers in C++/CLI assemblies
 				return;
 			}
-			if (type is GenericInstanceType) {
-				GenericInstanceType giType = (GenericInstanceType)type;
-				AppendTypeNameWithArguments(b, giType.ElementType, giType.GenericArguments);
-			} else if (type is TypeSpecification) {
-				AppendTypeName(b, ((TypeSpecification)type).ElementType);
-				ArrayType arrayType = type as ArrayType;
-				if (arrayType != null) {
-					b.Append('[');
-					for (int i = 0; i < arrayType.Dimensions.Count; i++) {
-						if (i > 0)
-							b.Append(',');
-						ArrayDimension ad = arrayType.Dimensions[i];
-						if (ad.IsSized) {
-							b.Append(ad.LowerBound);
-							b.Append(':');
-							b.Append(ad.UpperBound);
-						}
+			if (type is GenericInstSig) {
+				GenericInstSig giType = (GenericInstSig)type;
+				AppendTypeNameWithArguments(b, giType.GenericType?.TypeDefOrRef, giType.GenericArguments);
+			} if (type is ArraySigBase arrayType) {
+				AppendTypeName(b, arrayType.Next);
+				b.Append('[');
+				var lowerBounds = arrayType.GetLowerBounds();
+				var sizes = arrayType.GetSizes();
+				for (int i = 0; i < arrayType.Rank; i++) {
+					if (i > 0)
+						b.Append(',');
+					if (i < lowerBounds.Count && i < sizes.Count) {
+						b.Append(lowerBounds[i]);
+						b.Append(':');
+						b.Append(sizes[i] + lowerBounds[i] - 1);
 					}
-					b.Append(']');
 				}
-				ByReferenceType refType = type as ByReferenceType;
-				if (refType != null) {
-					b.Append('@');
-				}
-				PointerType ptrType = type as PointerType;
-				if (ptrType != null) {
-					b.Append('*');
-				}
-			} else {
-				GenericParameter gp = type as GenericParameter;
-				if (gp != null) {
+				b.Append(']');
+				return;
+			}
+			if (type is ByRefSig refType) {
+				AppendTypeName(b, refType.Next);
+				b.Append('@');
+				return;
+			}
+			if (type is PtrSig ptrType) {
+				AppendTypeName(b, ptrType.Next);
+				b.Append('*');
+				return;
+			}
+			if (type is GenericSig gp) {
+				b.Append('`');
+				if (gp.IsMethodVar) {
 					b.Append('`');
-					if (gp.Owner.GenericParameterType == GenericParameterType.Method) {
-						b.Append('`');
-					}
-					b.Append(gp.Position);
-				} else if (type.DeclaringType != null) {
-					AppendTypeName(b, type.DeclaringType);
+				}
+				b.Append(gp.Number);
+			}
+			else {
+				var typeRef = type.ToTypeDefOrRef();
+				if (typeRef.DeclaringType != null) {
+					AppendTypeName(b, typeRef.DeclaringType.ToTypeSig());
 					b.Append('.');
-					b.Append(type.Name);
-				} else {
-					b.Append(type.FullName);
+					b.Append(typeRef.Name);
+				}
+				else {
+					FullNameFactory.FullNameSB(type, false, null, null, null, b);
 				}
 			}
 		}
-		
-		static int AppendTypeNameWithArguments(StringBuilder b, TypeReference type, IList<TypeReference> genericArguments)
+
+		static int AppendTypeNameWithArguments(StringBuilder b, ITypeDefOrRef type, IList<TypeSig> genericArguments)
 		{
 			int outerTypeParameterCount = 0;
 			if (type.DeclaringType != null) {
-				TypeReference declType = type.DeclaringType;
+				ITypeDefOrRef declType = type.DeclaringType;
 				outerTypeParameterCount = AppendTypeNameWithArguments(b, declType, genericArguments);
 				b.Append('.');
 			} else if (!string.IsNullOrEmpty(type.Namespace)) {
@@ -151,7 +180,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			}
 			int localTypeParameterCount = 0;
 			b.Append(ReflectionHelper.SplitTypeParameterCountFromReflectionName(type.Name, out localTypeParameterCount));
-			
+
 			if (localTypeParameterCount > 0) {
 				int totalTypeParameterCount = outerTypeParameterCount + localTypeParameterCount;
 				b.Append('{');
@@ -164,9 +193,9 @@ namespace ICSharpCode.Decompiler.Documentation
 			return outerTypeParameterCount + localTypeParameterCount;
 		}
 		#endregion
-		
+
 		#region FindMemberByKey
-		public static MemberReference FindMemberByKey(ModuleDefinition module, string key)
+		public static IMemberRef FindMemberByKey(ModuleDef  module, string key)
 		{
 			if (module == null)
 				throw new ArgumentNullException(nameof(module));
@@ -187,8 +216,8 @@ namespace ICSharpCode.Decompiler.Documentation
 					return null;
 			}
 		}
-		
-		static MemberReference FindMember(ModuleDefinition module, string key, Func<TypeDefinition, IEnumerable<MemberReference>> memberSelector)
+
+		static IMemberRef FindMember(ModuleDef module, string key, Func<TypeDef, IEnumerable<IMemberRef>> memberSelector)
 		{
 			Debug.WriteLine("Looking for member " + key);
 			int parenPos = key.IndexOf('(');
@@ -199,7 +228,7 @@ namespace ICSharpCode.Decompiler.Documentation
 				dotPos = key.LastIndexOf('.');
 			}
 			if (dotPos < 0) return null;
-			TypeDefinition type = FindType(module, key.Substring(2, dotPos - 2));
+			TypeDef type = FindType(module, key.Substring(2, dotPos - 2));
 			if (type == null)
 				return null;
 			string shortName;
@@ -209,8 +238,8 @@ namespace ICSharpCode.Decompiler.Documentation
 				shortName = key.Substring(dotPos + 1);
 			}
 			Debug.WriteLine("Searching in type {0} for {1}", type.FullName, shortName);
-			MemberReference shortNameMatch = null;
-			foreach (MemberReference member in memberSelector(type)) {
+			IMemberRef shortNameMatch = null;
+			foreach (IMemberRef member in memberSelector(type)) {
 				string memberKey = GetKey(member);
 				Debug.WriteLine(memberKey);
 				if (memberKey == key)
@@ -221,8 +250,8 @@ namespace ICSharpCode.Decompiler.Documentation
 			// if there's no match by ID string (key), return the match by name.
 			return shortNameMatch;
 		}
-		
-		static TypeDefinition FindType(ModuleDefinition module, string name)
+
+		static TypeDef FindType(ModuleDef module, string name)
 		{
 			int pos = name.LastIndexOf('.');
 			string ns;
@@ -233,7 +262,7 @@ namespace ICSharpCode.Decompiler.Documentation
 				ns = string.Empty;
 			}
 			if (string.IsNullOrEmpty(name)) return null;
-			TypeDefinition type = module.GetType(ns, name);
+			TypeDef type = module.Find(name, true);
 			if (type == null && ns.Length > 0) {
 				// try if this is a nested type
 				type = FindType(module, ns);

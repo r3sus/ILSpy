@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,8 +19,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Mono.Cecil;
-using Mono.Collections.Generic;
+using dnlib.DotNet;
+using dnlib.DotNet.Writer;
+using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.Disassembler
 {
@@ -33,7 +34,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 		CancellationToken cancellationToken;
 		bool isInType;   // whether we are currently disassembling a whole type (-> defaultCollapsed for foldings)
 		MethodBodyDisassembler methodBodyDisassembler;
-		MemberReference currentMember;
+		IMemberDef currentMember;
 
 		public bool DetectControlStructure {
 			get => methodBodyDisassembler.DetectControlStructure;
@@ -66,7 +67,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ MethodAttributes.Final, "final" },
 			{ MethodAttributes.HideBySig, "hidebysig" },
 			{ MethodAttributes.SpecialName, "specialname" },
-			{ MethodAttributes.PInvokeImpl, null },	// handled separately
+			{ MethodAttributes.PinvokeImpl, null },	// handled separately
 			{ MethodAttributes.UnmanagedExport, "export" },
 			{ MethodAttributes.RTSpecialName, "rtspecialname" },
 			{ MethodAttributes.RequireSecObject, "reqsecobj" },
@@ -87,13 +88,13 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ MethodAttributes.Public, "public" },
 		};
 
-		EnumNameCollection<MethodCallingConvention> callingConvention = new EnumNameCollection<MethodCallingConvention>() {
-			{ MethodCallingConvention.C, "unmanaged cdecl" },
-			{ MethodCallingConvention.StdCall, "unmanaged stdcall" },
-			{ MethodCallingConvention.ThisCall, "unmanaged thiscall" },
-			{ MethodCallingConvention.FastCall, "unmanaged fastcall" },
-			{ MethodCallingConvention.VarArg, "vararg" },
-			{ MethodCallingConvention.Generic, null },
+		EnumNameCollection<CallingConvention> callingConvention = new EnumNameCollection<CallingConvention>() {
+			{ CallingConvention.C, "unmanaged cdecl" },
+			{ CallingConvention.StdCall, "unmanaged stdcall" },
+			{ CallingConvention.ThisCall, "unmanaged thiscall" },
+			{ CallingConvention.FastCall, "unmanaged fastcall" },
+			{ CallingConvention.VarArg, "vararg" },
+			{ CallingConvention.Generic, null },
 		};
 
 		EnumNameCollection<MethodImplAttributes> methodCodeType = new EnumNameCollection<MethodImplAttributes>() {
@@ -112,13 +113,13 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ MethodImplAttributes.ForwardRef, "forwardref" },
 		};
 
-		public void DisassembleMethod(MethodDefinition method)
+		public void DisassembleMethod(MethodDef method)
 		{
 			DisassembleMethodHeader(method);
 			DisassembleMethodBlock(method);
 		}
 
-		public void DisassembleMethodHeader(MethodDefinition method)
+		public void DisassembleMethodHeader(MethodDef method)
 		{
 			// set current member
 			currentMember = method;
@@ -128,7 +129,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			DisassembleMethodHeaderInternal(method);
 		}
 
-		void DisassembleMethodHeaderInternal(MethodDefinition method)
+		void DisassembleMethodHeaderInternal(MethodDef method)
 		{
 			//    .method public hidebysig  specialname
 			//               instance default class [mscorlib]System.IO.TextWriter get_BaseWriter ()  cil managed
@@ -139,14 +140,14 @@ namespace ICSharpCode.Decompiler.Disassembler
 			WriteFlags(method.Attributes & ~MethodAttributes.MemberAccessMask, methodAttributeFlags);
 			if (method.IsCompilerControlled) output.Write("privatescope ");
 
-			if ((method.Attributes & MethodAttributes.PInvokeImpl) == MethodAttributes.PInvokeImpl) {
+			if ((method.Attributes & MethodAttributes.PinvokeImpl) == MethodAttributes.PinvokeImpl) {
 				output.Write("pinvokeimpl");
-				if (method.HasPInvokeInfo && method.PInvokeInfo != null) {
-					PInvokeInfo info = method.PInvokeInfo;
+				if (method.HasImplMap && method.ImplMap != null) {
+					ImplMap info = method.ImplMap;
 					output.Write("(\"" + DisassemblerHelpers.EscapeString(info.Module.Name) + "\"");
 
-					if (!string.IsNullOrEmpty(info.EntryPoint) && info.EntryPoint != method.Name)
-						output.Write(" as \"" + DisassemblerHelpers.EscapeString(info.EntryPoint) + "\"");
+					if (!string.IsNullOrEmpty(info.Name) && info.Name != method.Name)
+						output.Write(" as \"" + DisassemblerHelpers.EscapeString(info.Name) + "\"");
 
 					if (info.IsNoMangle)
 						output.Write(" nomangle");
@@ -165,7 +166,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 						output.Write(" cdecl");
 					else if (info.IsCallConvFastcall)
 						output.Write(" fastcall");
-					else if (info.IsCallConvStdCall)
+					else if (info.IsCallConvStdcall)
 						output.Write(" stdcall");
 					else if (info.IsCallConvThiscall)
 						output.Write(" thiscall");
@@ -186,17 +187,17 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 
 			//call convention
-			WriteEnum(method.CallingConvention & (MethodCallingConvention)0x1f, callingConvention);
+			WriteEnum(method.CallingConvention & (CallingConvention)0x1f, callingConvention);
 
 			//return type
 			method.ReturnType.WriteTo(output);
 			output.Write(' ');
-			if (method.MethodReturnType.HasMarshalInfo) {
-				WriteMarshalInfo(method.MethodReturnType.MarshalInfo);
+			if (method.Parameters.ReturnParameter.HasParamDef && method.Parameters.ReturnParameter.ParamDef.HasMarshalType) {
+				WriteMarshalInfo(method.Parameters.ReturnParameter.ParamDef.MarshalType);
 			}
 
 			if (method.IsCompilerControlled) {
-				output.Write(DisassemblerHelpers.Escape(method.Name + "$PST" + method.MetadataToken.ToInt32().ToString("X8")));
+				output.Write(DisassemblerHelpers.Escape(method.Name + "$PST" + method.MDToken.ToInt32().ToString("X8")));
 			} else {
 				output.Write(DisassemblerHelpers.Escape(method.Name));
 			}
@@ -205,7 +206,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 
 			//( params )
 			output.Write(" (");
-			if (method.HasParameters) {
+			if (method.Parameters.GetNumberOfNormalParameters() > 0) {
 				output.WriteLine();
 				output.Indent();
 				WriteParameters(method.Parameters);
@@ -223,36 +224,36 @@ namespace ICSharpCode.Decompiler.Disassembler
 			output.Unindent();
 		}
 
-		void DisassembleMethodBlock(MethodDefinition method)
+		void DisassembleMethodBlock(MethodDef method)
 		{
 			OpenBlock(defaultCollapsed: isInType);
 			WriteAttributes(method.CustomAttributes);
 			if (method.HasOverrides) {
 				foreach (var methodOverride in method.Overrides) {
 					output.Write(".override method ");
-					methodOverride.WriteTo(output);
+					methodOverride.MethodDeclaration.WriteMethodTo(output);
 					output.WriteLine();
 				}
 			}
-			WriteParameterAttributes(0, method.MethodReturnType, method.MethodReturnType);
+			WriteParameterAttributes(0, method.Parameters.ReturnParameter);
 			foreach (var p in method.Parameters) {
-				WriteParameterAttributes(p.Index + 1, p, p);
+				WriteParameterAttributes(p.Index + 1, p);
 			}
 			WriteSecurityDeclarations(method);
 
 			if (method.HasBody) {
-				methodBodyDisassembler.Disassemble(method.Body);
+				methodBodyDisassembler.Disassemble(method, method.Body);
 			}
 
 			CloseBlock("end of method " + DisassemblerHelpers.Escape(method.DeclaringType.Name) + "::" + DisassemblerHelpers.Escape(method.Name));
 		}
 
 		#region Write Security Declarations
-		void WriteSecurityDeclarations(ISecurityDeclarationProvider secDeclProvider)
+		void WriteSecurityDeclarations(IHasDeclSecurity secDeclProvider)
 		{
-			if (!secDeclProvider.HasSecurityDeclarations)
+			if (!secDeclProvider.HasDeclSecurities)
 				return;
-			foreach (var secdecl in secDeclProvider.SecurityDeclarations) {
+			foreach (var secdecl in secDeclProvider.DeclSecurities) {
 				output.Write(".permissionset ");
 				switch (secdecl.Action) {
 					case SecurityAction.Request:
@@ -315,17 +316,17 @@ namespace ICSharpCode.Decompiler.Disassembler
 						sa.AttributeType.WriteTo(output, ILNameSyntax.TypeName);
 					}
 					output.Write(" = {");
-					if (sa.HasFields || sa.HasProperties) {
+					if (sa.HasNamedArguments) {
 						output.WriteLine();
 						output.Indent();
 
-						foreach (CustomAttributeNamedArgument na in sa.Fields) {
+						foreach (CANamedArgument na in sa.Fields) {
 							output.Write("field ");
 							WriteSecurityDeclarationArgument(na);
 							output.WriteLine();
 						}
 
-						foreach (CustomAttributeNamedArgument na in sa.Properties) {
+						foreach (CANamedArgument na in sa.Properties) {
 							output.Write("property ");
 							WriteSecurityDeclarationArgument(na);
 							output.WriteLine();
@@ -344,10 +345,10 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 		}
 
-		void WriteSecurityDeclarationArgument(CustomAttributeNamedArgument na)
+		void WriteSecurityDeclarationArgument(CANamedArgument na)
 		{
-			TypeReference type = na.Argument.Type;
-			if (type.MetadataType == MetadataType.Class || type.MetadataType == MetadataType.ValueType) {
+			TypeSig type = na.Argument.Type;
+			if (type != null && (type.ElementType == ElementType.Class || type.ElementType == ElementType.ValueType)) {
 				output.Write("enum ");
 				if (type.Scope != type.Module) {
 					output.Write("class ");
@@ -361,21 +362,21 @@ namespace ICSharpCode.Decompiler.Disassembler
 			output.Write(' ');
 			output.Write(DisassemblerHelpers.Escape(na.Name));
 			output.Write(" = ");
-			if (na.Argument.Value is string) {
+			if (na.Argument.Value is UTF8String) {
 				// secdecls use special syntax for strings
-				output.Write("string('{0}')", DisassemblerHelpers.EscapeString((string)na.Argument.Value).Replace("'", "\'"));
+				output.Write("string('{0}')", DisassemblerHelpers.EscapeString((UTF8String)na.Argument.Value).Replace("'", "\'"));
 			} else {
 				WriteConstant(na.Argument.Value);
 			}
 		}
 
-		string GetAssemblyQualifiedName(TypeReference type)
+		string GetAssemblyQualifiedName(IType type)
 		{
-			AssemblyNameReference anr = type.Scope as AssemblyNameReference;
+			IAssembly anr = type.Scope as IAssembly;
 			if (anr == null) {
-				ModuleDefinition md = type.Scope as ModuleDefinition;
+				ModuleDef md = type.Scope as ModuleDef;
 				if (md != null) {
-					anr = md.Assembly.Name;
+					anr = md.Assembly;
 				}
 			}
 			if (anr != null) {
@@ -387,17 +388,17 @@ namespace ICSharpCode.Decompiler.Disassembler
 		#endregion
 
 		#region WriteMarshalInfo
-		void WriteMarshalInfo(MarshalInfo marshalInfo)
+		void WriteMarshalInfo(MarshalType marshalInfo)
 		{
 			output.Write("marshal(");
 			WriteNativeType(marshalInfo.NativeType, marshalInfo);
 			output.Write(") ");
 		}
 
-		void WriteNativeType(NativeType nativeType, MarshalInfo marshalInfo = null)
+		void WriteNativeType(NativeType nativeType, MarshalType marshalInfo = null)
 		{
 			switch (nativeType) {
-				case NativeType.None:
+				case NativeType.NotInitialized:
 					break;
 				case NativeType.Boolean:
 					output.Write("bool");
@@ -442,9 +443,10 @@ namespace ICSharpCode.Decompiler.Disassembler
 					output.Write("unsigned int");
 					break;
 				case NativeType.Func:
-					goto default;  // ??
+					output.Write("method");
+					break;
 				case NativeType.Array:
-					ArrayMarshalInfo ami = (ArrayMarshalInfo)marshalInfo;
+					ArrayMarshalType ami = marshalInfo as ArrayMarshalType;
 					if (ami == null)
 						goto default;
 					if (ami.ElementType != NativeType.Max)
@@ -453,9 +455,9 @@ namespace ICSharpCode.Decompiler.Disassembler
 					if (ami.Size >= 0) {
 						output.Write(ami.Size.ToString());
 					}
-					if (ami.SizeParameterMultiplier != 0 && ami.SizeParameterIndex >= 0) {
+					if (ami.Flags != 0 && ami.ParamNumber >= 0) {
 						output.Write(" + ");
-						output.Write(ami.SizeParameterIndex.ToString());
+						output.Write(ami.ParamNumber.ToString());
 					}
 					output.Write(']');
 					break;
@@ -472,7 +474,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 					output.Write("lptstr");
 					break;
 				case NativeType.FixedSysString:
-					output.Write("fixed sysstring[{0}]", ((FixedSysStringMarshalInfo)marshalInfo).Size);
+					output.Write("fixed sysstring[{0}]", ((FixedSysStringMarshalType)marshalInfo).Size);
 					break;
 				case NativeType.IUnknown:
 					output.Write("iunknown");
@@ -488,9 +490,9 @@ namespace ICSharpCode.Decompiler.Disassembler
 					break;
 				case NativeType.SafeArray:
 					output.Write("safearray ");
-					SafeArrayMarshalInfo sami = marshalInfo as SafeArrayMarshalInfo;
-					if (sami != null) {
-						switch (sami.ElementType) {
+					SafeArrayMarshalType sami = marshalInfo as SafeArrayMarshalType;
+					if (sami != null && sami.IsVariantTypeValid) {
+						switch (sami.VariantType & VariantType.TypeMask) {
 							case VariantType.None:
 								break;
 							case VariantType.I2:
@@ -551,17 +553,17 @@ namespace ICSharpCode.Decompiler.Disassembler
 								output.Write("unsigned int");
 								break;
 							default:
-								output.Write(sami.ElementType.ToString());
+								output.Write((sami.VariantType & VariantType.TypeMask).ToString());
 								break;
 						}
 					}
 					break;
 				case NativeType.FixedArray:
 					output.Write("fixed array");
-					FixedArrayMarshalInfo fami = marshalInfo as FixedArrayMarshalInfo;
+					FixedArrayMarshalType fami = marshalInfo as FixedArrayMarshalType;
 					if (fami != null) {
 						output.Write("[{0}]", fami.Size);
-						if (fami.ElementType != NativeType.None) {
+						if (fami.ElementType != NativeType.NotInitialized) {
 							output.Write(' ');
 							WriteNativeType(fami.ElementType);
 						}
@@ -586,14 +588,14 @@ namespace ICSharpCode.Decompiler.Disassembler
 					output.Write("lpstruct");
 					break;
 				case NativeType.CustomMarshaler:
-					CustomMarshalInfo cmi = marshalInfo as CustomMarshalInfo;
+					CustomMarshalType cmi = marshalInfo as CustomMarshalType;
 					if (cmi == null)
 						goto default;
 					output.Write("custom(\"{0}\", \"{1}\"",
-								 DisassemblerHelpers.EscapeString(cmi.ManagedType.FullName),
+								 DisassemblerHelpers.EscapeString(cmi.CustomMarshaler.FullName),
 								 DisassemblerHelpers.EscapeString(cmi.Cookie));
-					if (cmi.Guid != Guid.Empty || !string.IsNullOrEmpty(cmi.UnmanagedType)) {
-						output.Write(", \"{0}\", \"{1}\"", cmi.Guid.ToString(), DisassemblerHelpers.EscapeString(cmi.UnmanagedType));
+					if (!UTF8String.IsNullOrEmpty(cmi.Guid) || !UTF8String.IsNullOrEmpty(cmi.NativeTypeName)) {
+						output.Write(", \"{0}\", \"{1}\"", cmi.Guid.ToString(), DisassemblerHelpers.EscapeString(cmi.NativeTypeName));
 					}
 					output.Write(')');
 					break;
@@ -607,20 +609,22 @@ namespace ICSharpCode.Decompiler.Disassembler
 		}
 		#endregion
 
-		void WriteParameters(Collection<ParameterDefinition> parameters)
+		void WriteParameters(IList<Parameter> parameters)
 		{
 			for (int i = 0; i < parameters.Count; i++) {
 				var p = parameters[i];
-				if (p.IsIn)
-					output.Write("[in] ");
-				if (p.IsOut)
-					output.Write("[out] ");
-				if (p.IsOptional)
-					output.Write("[opt] ");
-				p.ParameterType.WriteTo(output);
+				if (p.HasParamDef) {
+					if (p.ParamDef.IsIn)
+						output.Write("[in] ");
+					if (p.ParamDef.IsOut)
+						output.Write("[out] ");
+					if (p.ParamDef.IsOptional)
+						output.Write("[opt] ");
+				}
+				p.Type.WriteTo(output);
 				output.Write(' ');
-				if (p.HasMarshalInfo) {
-					WriteMarshalInfo(p.MarshalInfo);
+				if (p.HasParamDef && p.ParamDef.HasMarshalType) {
+					WriteMarshalInfo(p.ParamDef.MarshalType);
 				}
 				output.WriteDefinition(DisassemblerHelpers.Escape(p.Name), p);
 				if (i < parameters.Count - 1)
@@ -629,17 +633,23 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 		}
 
-		void WriteParameterAttributes(int index, IConstantProvider cp, ICustomAttributeProvider cap)
+		bool HasParameterAttributes(Parameter p)
 		{
-			if (!cp.HasConstant && !cap.HasCustomAttributes)
+			return p.ParamDef != null && (p.ParamDef.HasConstant || p.ParamDef.CustomAttributes.Count > 0);
+		}
+
+		void WriteParameterAttributes(int index, Parameter p)
+		{
+			if (!HasParameterAttributes(p))
 				return;
 			output.Write(".param [{0}]", index);
-			if (cp.HasConstant) {
+			if (p.HasParamDef && p.ParamDef.HasConstant) {
 				output.Write(" = ");
-				WriteConstant(cp.Constant);
+				WriteConstant(p.ParamDef.Constant.Value);
 			}
 			output.WriteLine();
-			WriteAttributes(cap.CustomAttributes);
+			if (p.HasParamDef)
+				WriteAttributes(p.ParamDef.CustomAttributes);
 		}
 
 		void WriteConstant(object constant)
@@ -647,7 +657,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			if (constant == null) {
 				output.Write("nullref");
 			} else {
-				string typeName = DisassemblerHelpers.PrimitiveTypeName(constant.GetType().FullName);
+				string typeName = DisassemblerHelpers.PrimitiveTypeName(constant.GetType().FullName, null, out _);
 				if (typeName != null && typeName != "string") {
 					output.Write(typeName);
 					output.Write('(');
@@ -687,17 +697,17 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ FieldAttributes.NotSerialized, "notserialized" },
 		};
 
-		public void DisassembleField(FieldDefinition field)
+		public void DisassembleField(FieldDef field)
 		{
 			output.WriteDefinition(".field ", field);
-			if (field.HasLayoutInfo) {
-				output.Write("[" + field.Offset + "] ");
+			if (field.HasLayoutInfo && field.FieldOffset.HasValue) {
+				output.Write("[" + field.FieldOffset + "] ");
 			}
 			WriteEnum(field.Attributes & FieldAttributes.FieldAccessMask, fieldVisibility);
 			const FieldAttributes hasXAttributes = FieldAttributes.HasDefault | FieldAttributes.HasFieldMarshal | FieldAttributes.HasFieldRVA;
 			WriteFlags(field.Attributes & ~(FieldAttributes.FieldAccessMask | hasXAttributes), fieldAttributes);
-			if (field.HasMarshalInfo) {
-				WriteMarshalInfo(field.MarshalInfo);
+			if (field.HasMarshalType) {
+				WriteMarshalInfo(field.MarshalType);
 			}
 			field.FieldType.WriteTo(output);
 			output.Write(' ');
@@ -725,24 +735,25 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ PropertyAttributes.HasDefault, "hasdefault" },
 		};
 
-		public void DisassembleProperty(PropertyDefinition property)
+		public void DisassembleProperty(PropertyDef property)
 		{
 			// set current member
 			currentMember = property;
 
 			output.WriteDefinition(".property ", property);
 			WriteFlags(property.Attributes, propertyAttributes);
-			if (property.HasThis)
+			if (property.PropertySig != null && property.PropertySig.HasThis)
 				output.Write("instance ");
-			property.PropertyType.WriteTo(output);
+			property.PropertySig.GetRetType().WriteTo(output);
 			output.Write(' ');
 			output.Write(DisassemblerHelpers.Escape(property.Name));
 
 			output.Write("(");
-			if (property.HasParameters) {
+			var parameters = new List<Parameter>(property.GetParameters());
+			if (parameters.GetNumberOfNormalParameters() > 0) {
 				output.WriteLine();
 				output.Indent();
-				WriteParameters(property.Parameters);
+				WriteParameters(parameters);
 				output.Unindent();
 			}
 			output.Write(")");
@@ -758,14 +769,14 @@ namespace ICSharpCode.Decompiler.Disassembler
 			CloseBlock();
 		}
 
-		void WriteNestedMethod(string keyword, MethodDefinition method)
+		void WriteNestedMethod(string keyword, MethodDef method)
 		{
 			if (method == null)
 				return;
 
 			output.Write(keyword);
 			output.Write(' ');
-			method.WriteTo(output);
+			method.WriteMethodTo(output);
 			output.WriteLine();
 		}
 		#endregion
@@ -776,7 +787,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ EventAttributes.RTSpecialName, "rtspecialname" },
 		};
 
-		public void DisassembleEvent(EventDefinition ev)
+		public void DisassembleEvent(EventDef ev)
 		{
 			// set current member
 			currentMember = ev;
@@ -833,7 +844,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			{ TypeAttributes.HasSecurity, null },
 		};
 
-		public void DisassembleType(TypeDefinition type)
+		public void DisassembleType(TypeDef type)
 		{
 			// start writing IL
 			output.WriteDefinition(".class ", type);
@@ -846,7 +857,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			const TypeAttributes masks = TypeAttributes.ClassSemanticMask | TypeAttributes.VisibilityMask | TypeAttributes.LayoutMask | TypeAttributes.StringFormatMask;
 			WriteFlags(type.Attributes & ~masks, typeAttributes);
 
-			output.Write(DisassemblerHelpers.Escape(type.DeclaringType != null ? type.Name : type.FullName));
+			output.Write(DisassemblerHelpers.Escape(type.DeclaringType != null ? type.Name.String : type.FullName));
 			WriteTypeParameters(output, type);
 			output.MarkFoldStart(defaultCollapsed: !ExpandMemberDefinitions && isInType);
 			output.WriteLine();
@@ -869,7 +880,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 						output.Write("           ");
 					var iface = type.Interfaces[index];
 					WriteAttributes(iface.CustomAttributes);
-					iface.InterfaceType.WriteTo(output, ILNameSyntax.TypeName);
+					iface.Interface.WriteTo(output, ILNameSyntax.TypeName);
 				}
 				output.WriteLine();
 				output.Unindent();
@@ -881,7 +892,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			isInType = true;
 			WriteAttributes(type.CustomAttributes);
 			WriteSecurityDeclarations(type);
-			if (type.HasLayoutInfo) {
+			if (type.HasClassLayout) {
 				output.WriteLine(".pack {0}", type.PackingSize);
 				output.WriteLine(".size {0}", type.ClassSize);
 				output.WriteLine();
@@ -928,18 +939,18 @@ namespace ICSharpCode.Decompiler.Disassembler
 				}
 				output.WriteLine();
 			}
-			CloseBlock("end of class " + (type.DeclaringType != null ? type.Name : type.FullName));
+			CloseBlock("end of class " + (type.DeclaringType != null ? type.Name.String : type.FullName));
 			isInType = oldIsInType;
 		}
 
-		void WriteTypeParameters(ITextOutput output, IGenericParameterProvider p)
+		void WriteTypeParameters(ITextOutput output, ITypeOrMethodDef p)
 		{
 			if (p.HasGenericParameters) {
 				output.Write('<');
 				for (int i = 0; i < p.GenericParameters.Count; i++) {
 					if (i > 0)
 						output.Write(", ");
-					GenericParameter gp = p.GenericParameters[i];
+					GenericParam gp = p.GenericParameters[i];
 					if (gp.HasReferenceTypeConstraint) {
 						output.Write("class ");
 					} else if (gp.HasNotNullableValueTypeConstraint) {
@@ -948,12 +959,12 @@ namespace ICSharpCode.Decompiler.Disassembler
 					if (gp.HasDefaultConstructorConstraint) {
 						output.Write(".ctor ");
 					}
-					if (gp.HasConstraints) {
+					if (gp.HasGenericParamConstraints) {
 						output.Write('(');
-						for (int j = 0; j < gp.Constraints.Count; j++) {
+						for (int j = 0; j < gp.GenericParamConstraints.Count; j++) {
 							if (j > 0)
 								output.Write(", ");
-							gp.Constraints[j].WriteTo(output, ILNameSyntax.TypeName);
+							gp.GenericParamConstraints[j].Constraint.WriteTo(output, ILNameSyntax.TypeName);
 						}
 						output.Write(") ");
 					}
@@ -970,16 +981,18 @@ namespace ICSharpCode.Decompiler.Disassembler
 		#endregion
 
 		#region Helper methods
-		void WriteAttributes(Collection<CustomAttribute> attributes)
+		void WriteAttributes(IList<CustomAttribute> attributes)
 		{
 			foreach (CustomAttribute a in attributes) {
 				output.Write(".custom ");
-				a.Constructor.WriteTo(output);
-				byte[] blob = a.GetBlob();
-				if (blob != null) {
-					output.Write(" = ");
-					WriteBlob(blob);
-				}
+				a.Constructor.WriteMethodTo(output);
+
+				byte[] rawData = a.IsRawBlob
+					? a.RawData
+					: CustomAttributeWriter.Write(new CustomAttributeSerializationHelper(), a);
+
+				output.Write(" = ");
+				WriteBlob(rawData);
 				output.WriteLine();
 			}
 		}
@@ -1076,7 +1089,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 		}
 		#endregion
 
-		public void DisassembleNamespace(string nameSpace, IEnumerable<TypeDefinition> types)
+		public void DisassembleNamespace(string nameSpace, IEnumerable<TypeDef> types)
 		{
 			if (!string.IsNullOrEmpty(nameSpace)) {
 				output.Write(".namespace " + DisassemblerHelpers.Escape(nameSpace));
@@ -1084,7 +1097,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 			bool oldIsInType = isInType;
 			isInType = true;
-			foreach (TypeDefinition td in types) {
+			foreach (TypeDef td in types) {
 				cancellationToken.ThrowIfCancellationRequested();
 				DisassembleType(td);
 				output.WriteLine();
@@ -1095,47 +1108,47 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 		}
 
-		public void WriteAssemblyHeader(AssemblyDefinition asm)
+		public void WriteAssemblyHeader(AssemblyDef asm)
 		{
 			output.Write(".assembly ");
-			if (asm.Name.IsWindowsRuntime)
+			if (asm.IsContentTypeWindowsRuntime)
 				output.Write("windowsruntime ");
-			output.Write(DisassemblerHelpers.Escape(asm.Name.Name));
+			output.Write(DisassemblerHelpers.Escape(asm.Name));
 			OpenBlock(false);
 			WriteAttributes(asm.CustomAttributes);
 			WriteSecurityDeclarations(asm);
-			if (asm.Name.PublicKey != null && asm.Name.PublicKey.Length > 0) {
+			if (asm.PublicKey != null && !asm.PublicKey.IsNullOrEmpty) {
 				output.Write(".publickey = ");
-				WriteBlob(asm.Name.PublicKey);
+				WriteBlob(asm.PublicKey.Data);
 				output.WriteLine();
 			}
-			if (asm.Name.HashAlgorithm != AssemblyHashAlgorithm.None) {
-				output.Write(".hash algorithm 0x{0:x8}", (int)asm.Name.HashAlgorithm);
-				if (asm.Name.HashAlgorithm == AssemblyHashAlgorithm.SHA1)
+			if (asm.HashAlgorithm != AssemblyHashAlgorithm.None) {
+				output.Write(".hash algorithm 0x{0:x8}", (int)asm.HashAlgorithm);
+				if (asm.HashAlgorithm == AssemblyHashAlgorithm.SHA1)
 					output.Write(" // SHA1");
 				output.WriteLine();
 			}
-			Version v = asm.Name.Version;
+			Version v = asm.Version;
 			if (v != null) {
 				output.WriteLine(".ver {0}:{1}:{2}:{3}", v.Major, v.Minor, v.Build, v.Revision);
 			}
 			CloseBlock();
 		}
 
-		public void WriteAssemblyReferences(ModuleDefinition module)
+		public void WriteAssemblyReferences(ModuleDef module)
 		{
-			foreach (var mref in module.ModuleReferences) {
+			foreach (var mref in module.GetModuleRefs()) {
 				output.WriteLine(".module extern {0}", DisassemblerHelpers.Escape(mref.Name));
 			}
-			foreach (var aref in module.AssemblyReferences) {
+			foreach (var aref in module.GetAssemblyRefs()) {
 				output.Write(".assembly extern ");
-				if (aref.IsWindowsRuntime)
+				if (aref.IsContentTypeWindowsRuntime)
 					output.Write("windowsruntime ");
 				output.Write(DisassemblerHelpers.Escape(aref.Name));
 				OpenBlock(false);
-				if (aref.PublicKeyToken != null) {
+				if (!PublicKeyBase.IsNullOrEmpty2(aref.PublicKeyOrToken)) {
 					output.Write(".publickeytoken = ");
-					WriteBlob(aref.PublicKeyToken);
+					WriteBlob(aref.PublicKeyOrToken.Token.Data);
 					output.WriteLine();
 				}
 				if (aref.Version != null) {
@@ -1145,36 +1158,36 @@ namespace ICSharpCode.Decompiler.Disassembler
 			}
 		}
 
-		public void WriteModuleHeader(ModuleDefinition module, bool skipMVID = false)
+		public void WriteModuleHeader(ModuleDef module, bool skipMVID = false)
 		{
 			if (module.HasExportedTypes) {
 				foreach (ExportedType exportedType in module.ExportedTypes) {
 					output.Write(".class extern ");
 					if (exportedType.IsForwarder)
 						output.Write("forwarder ");
-					output.Write(exportedType.DeclaringType != null ? exportedType.Name : exportedType.FullName);
+					output.Write(exportedType.DeclaringType != null ? exportedType.Name.String : exportedType.FullName);
 					OpenBlock(false);
 					if (exportedType.DeclaringType != null)
 						output.WriteLine(".class extern {0}", DisassemblerHelpers.Escape(exportedType.DeclaringType.FullName));
 					else
-						output.WriteLine(".assembly extern {0}", DisassemblerHelpers.Escape(exportedType.Scope.Name));
+						output.WriteLine(".assembly extern {0}", DisassemblerHelpers.Escape(exportedType.Scope.GetScopeName()));
 					CloseBlock();
 				}
 			}
 
 			output.WriteLine(".module {0}", module.Name);
 			if (!skipMVID) {
-				output.WriteLine("// MVID: {0}", module.Mvid.ToString("B").ToUpperInvariant());
+				output.WriteLine("// MVID: {0}", module.Mvid?.ToString("B").ToUpperInvariant());
 			}
 			// TODO: imagebase, file alignment, stackreserve, subsystem
-			output.WriteLine(".corflags 0x{0:x} // {1}", module.Attributes, module.Attributes.ToString());
+			output.WriteLine(".corflags 0x{0:x} // {1}", module.Cor20HeaderFlags, module.Cor20HeaderFlags.ToString());
 
 			WriteAttributes(module.CustomAttributes);
 		}
 
-		public void WriteModuleContents(ModuleDefinition module)
+		public void WriteModuleContents(ModuleDef module)
 		{
-			foreach (TypeDefinition td in module.Types) {
+			foreach (TypeDef td in module.Types) {
 				DisassembleType(td);
 				output.WriteLine();
 			}

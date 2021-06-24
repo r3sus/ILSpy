@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -16,12 +16,12 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet.Emit;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 
@@ -29,18 +29,18 @@ namespace ICSharpCode.Decompiler.IL
 {
 	class BlockBuilder
 	{
-		readonly Mono.Cecil.Cil.MethodBody body;
+		readonly CilBody body;
 		readonly IDecompilerTypeSystem typeSystem;
-		readonly Dictionary<Mono.Cecil.Cil.ExceptionHandler, ILVariable> variableByExceptionHandler;
+		readonly Dictionary<ExceptionHandler, ILVariable> variableByExceptionHandler;
 
 		/// <summary>
 		/// Gets/Sets whether to create extended basic blocks instead of basic blocks.
 		/// The default is <c>false</c>.
 		/// </summary>
 		public bool CreateExtendedBlocks;
-		
-		internal BlockBuilder(Mono.Cecil.Cil.MethodBody body, IDecompilerTypeSystem typeSystem,
-		                      Dictionary<Mono.Cecil.Cil.ExceptionHandler, ILVariable> variableByExceptionHandler)
+
+		internal BlockBuilder(CilBody body, IDecompilerTypeSystem typeSystem,
+		                      Dictionary<ExceptionHandler, ILVariable> variableByExceptionHandler)
 		{
 			Debug.Assert(body != null);
 			Debug.Assert(typeSystem != null);
@@ -49,30 +49,30 @@ namespace ICSharpCode.Decompiler.IL
 			this.typeSystem = typeSystem;
 			this.variableByExceptionHandler = variableByExceptionHandler;
 		}
-		
+
 		List<TryInstruction> tryInstructionList = new List<TryInstruction>();
 		Dictionary<int, BlockContainer> handlerContainers = new Dictionary<int, BlockContainer>();
-		
+
 		void CreateContainerStructure()
 		{
 			List<TryCatch> tryCatchList = new List<TryCatch>();
 			foreach (var eh in body.ExceptionHandlers) {
-				var tryRange = new Interval(eh.TryStart.Offset, eh.TryEnd != null ? eh.TryEnd.Offset : body.CodeSize);
+				var tryRange = new Interval((int)eh.TryStart.Offset, eh.TryEnd != null ? (int)eh.TryEnd.Offset : body.GetCodeSize());
 				var handlerBlock = new BlockContainer();
-				handlerBlock.ILRange = new Interval(eh.HandlerStart.Offset, eh.HandlerEnd != null ? eh.HandlerEnd.Offset : body.CodeSize);
+				handlerBlock.ILRange = new Interval((int)eh.HandlerStart.Offset, eh.HandlerEnd != null ? (int)eh.HandlerEnd.Offset : body.GetCodeSize());
 				handlerBlock.Blocks.Add(new Block());
 				handlerContainers.Add(handlerBlock.ILRange.Start, handlerBlock);
-				
-				if (eh.HandlerType == Mono.Cecil.Cil.ExceptionHandlerType.Fault || eh.HandlerType == Mono.Cecil.Cil.ExceptionHandlerType.Finally) {
+
+				if (eh.HandlerType == ExceptionHandlerType.Fault || eh.HandlerType == ExceptionHandlerType.Finally) {
 					var tryBlock = new BlockContainer();
 					tryBlock.ILRange = tryRange;
-					if (eh.HandlerType == Mono.Cecil.Cil.ExceptionHandlerType.Finally)
+					if (eh.HandlerType == ExceptionHandlerType.Finally)
 						tryInstructionList.Add(new TryFinally(tryBlock, handlerBlock));
 					else
 						tryInstructionList.Add(new TryFault(tryBlock, handlerBlock));
 					continue;
 				}
-				// 
+				//
 				var tryCatch = tryCatchList.FirstOrDefault(tc => tc.TryBlock.ILRange == tryRange);
 				if (tryCatch == null) {
 					var tryBlock = new BlockContainer();
@@ -83,9 +83,9 @@ namespace ICSharpCode.Decompiler.IL
 				}
 
 				ILInstruction filter;
-				if (eh.HandlerType == Mono.Cecil.Cil.ExceptionHandlerType.Filter) {
+				if (eh.HandlerType == ExceptionHandlerType.Filter) {
 					var filterBlock = new BlockContainer(expectedResultType: StackType.I4);
-					filterBlock.ILRange = new Interval(eh.FilterStart.Offset, eh.HandlerStart.Offset);
+					filterBlock.ILRange = new Interval((int)eh.FilterStart.Offset, (int)eh.HandlerStart.Offset);
 					filterBlock.Blocks.Add(new Block());
 					handlerContainers.Add(filterBlock.ILRange.Start, filterBlock);
 					filter = filterBlock;
@@ -100,18 +100,18 @@ namespace ICSharpCode.Decompiler.IL
 				nextTry = tryInstructionList[0];
 			}
 		}
-		
+
 		int currentTryIndex;
 		TryInstruction nextTry;
-		
+
 		BlockContainer currentContainer;
 		Block currentBlock;
 		Stack<BlockContainer> containerStack = new Stack<BlockContainer>();
-		
+
 		public void CreateBlocks(BlockContainer mainContainer, List<ILInstruction> instructions, BitArray incomingBranches, CancellationToken cancellationToken)
 		{
 			CreateContainerStructure();
-			mainContainer.ILRange = new Interval(0, body.CodeSize);
+			mainContainer.ILRange = new Interval(0, body.GetCodeSize());
 			currentContainer = mainContainer;
 			if (instructions.Count == 0) {
 				currentContainer.Blocks.Add(new Block {
@@ -152,7 +152,7 @@ namespace ICSharpCode.Decompiler.IL
 					currentBlock = new Block();
 					currentContainer.Blocks.Add(currentBlock);
 					currentBlock.ILRange = new Interval(start, start);
-					
+
 					nextTry = tryInstructionList.ElementAtOrDefault(++currentTryIndex);
 				}
 				currentBlock.Instructions.Add(inst);
@@ -161,7 +161,7 @@ namespace ICSharpCode.Decompiler.IL
 				else if (!CreateExtendedBlocks && inst.HasFlag(InstructionFlags.MayBranch))
 					FinalizeCurrentBlock(inst.ILRange.End, fallthrough: true);
 			}
-			FinalizeCurrentBlock(body.CodeSize, fallthrough: false);
+			FinalizeCurrentBlock(body.GetCodeSize(), fallthrough: false);
 			containerStack.Clear();
 			ConnectBranches(mainContainer, cancellationToken);
 		}

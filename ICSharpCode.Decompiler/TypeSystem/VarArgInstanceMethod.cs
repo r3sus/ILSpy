@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2016 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 
 namespace ICSharpCode.Decompiler.TypeSystem
@@ -50,17 +51,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public int RegularParameterCount {
 			get { return baseMethod.Parameters.Count - 1; }
 		}
-		
+
 		public IReadOnlyList<IParameter> Parameters {
 			get { return parameters; }
 		}
-		
+
 		public override bool Equals(object obj)
 		{
 			VarArgInstanceMethod other = obj as VarArgInstanceMethod;
 			return other != null && baseMethod.Equals(other.baseMethod);
 		}
-		
+
 		public override int GetHashCode()
 		{
 			return baseMethod.GetHashCode();
@@ -101,7 +102,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			b.Append(']');
 			return b.ToString();
 		}
-		
+
 		#region IMethod implementation
 		public IMethod Specialize(TypeParameterSubstitution substitution)
 		{
@@ -126,7 +127,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			get { return baseMethod.TypeArguments; }
 		}
 
-		public Mono.Cecil.MetadataToken MetadataToken => baseMethod.MetadataToken;
+		public MDToken MetadataToken => baseMethod.MetadataToken;
 
 		public bool IsExtensionMethod {
 			get { return baseMethod.IsExtensionMethod; }
@@ -171,7 +172,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region IMember implementation
-		
+
 		IMember IMember.Specialize(TypeParameterSubstitution substitution)
 		{
 			return Specialize(substitution);
@@ -216,7 +217,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region ISymbol implementation
-		
+
 		public SymbolKind SymbolKind {
 			get { return baseMethod.SymbolKind; }
 		}
@@ -228,7 +229,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region IEntity implementation
-		
+
 		public ITypeDefinition DeclaringTypeDefinition {
 			get { return baseMethod.DeclaringTypeDefinition; }
 		}

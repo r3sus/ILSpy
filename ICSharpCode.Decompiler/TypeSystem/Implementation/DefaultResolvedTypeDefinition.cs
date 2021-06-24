@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.TypeSystem.Implementation
@@ -33,7 +34,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		Accessibility accessibility = Accessibility.Internal;
 		bool isAbstract, isSealed, isShadowing;
 		bool isSynthetic = true; // true if all parts are synthetic
-		
+
 		public DefaultResolvedTypeDefinition(ITypeResolveContext parentContext, params IUnresolvedTypeDefinition[] parts)
 		{
 			if (parentContext == null || parentContext.CurrentAssembly == null)
@@ -42,13 +43,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				throw new ArgumentException("No parts were specified", "parts");
 			this.parentContext = parentContext;
 			this.parts = parts;
-			
+
 			foreach (IUnresolvedTypeDefinition part in parts) {
 				isAbstract  |= part.IsAbstract;
 				isSealed    |= part.IsSealed;
 				isShadowing |= part.IsShadowing;
 				isSynthetic &= part.IsSynthetic; // true if all parts are synthetic
-				
+
 				// internal is the default, so use another part's accessibility until we find a non-internal accessibility
 				if (accessibility == Accessibility.Internal)
 					accessibility = part.Accessibility;
@@ -56,7 +57,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 
 		IReadOnlyList<ITypeParameter> typeParameters;
-		
+
 		public IReadOnlyList<ITypeParameter> TypeParameters {
 			get {
 				var result = LazyInit.VolatileRead(ref this.typeParameters);
@@ -85,7 +86,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 
 		IReadOnlyList<IAttribute> attributes;
-		
+
 		public IReadOnlyList<IAttribute> Attributes {
 			get {
 				var result = LazyInit.VolatileRead(ref this.attributes);
@@ -107,24 +108,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return LazyInit.GetOrSet(ref this.attributes, result);
 			}
 		}
-		
+
 		public IReadOnlyList<IUnresolvedTypeDefinition> Parts {
 			get { return parts; }
 		}
 
-		public Mono.Cecil.MetadataToken MetadataToken => parts[0].MetadataToken;
+		public MDToken MetadataToken => parts[0].MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get { return parts[0].SymbolKind; }
 		}
-		
+
 		public virtual TypeKind Kind {
 			get { return parts[0].Kind; }
 		}
 
 		#region NestedTypes
 		IReadOnlyList<ITypeDefinition> nestedTypes;
-		
+
 		public IReadOnlyList<ITypeDefinition> NestedTypes {
 			get {
 				IReadOnlyList<ITypeDefinition> result = LazyInit.VolatileRead(ref this.nestedTypes);
@@ -142,7 +143,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 		#endregion
-		
+
 		#region Members
 		sealed class MemberList : IReadOnlyList<IMember>
 		{
@@ -150,7 +151,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			internal readonly IUnresolvedMember[] unresolvedMembers;
 			internal readonly IMember[] resolvedMembers;
 			internal readonly int NonPartialMemberCount;
-			
+
 			public MemberList(List<ITypeResolveContext> contextPerMember, List<IUnresolvedMember> unresolvedNonPartialMembers, List<PartialMethodInfo> partialMethodInfos)
 			{
 				this.NonPartialMemberCount = unresolvedNonPartialMembers.Count;
@@ -168,7 +169,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					}
 				}
 			}
-			
+
 			public IMember this[int index] {
 				get {
 					IMember output = LazyInit.VolatileRead(ref resolvedMembers[index]);
@@ -178,11 +179,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return LazyInit.GetOrSet(ref resolvedMembers[index], unresolvedMembers[index].CreateResolved(contextPerMember[index]));
 				}
 			}
-			
+
 			public int Count {
 				get { return resolvedMembers.Length; }
 			}
-			
+
 			public int IndexOf(IMember item)
 			{
 				for (int i = 0; i < this.Count; i++) {
@@ -191,20 +192,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 				return -1;
 			}
-			
+
 			public IEnumerator<IMember> GetEnumerator()
 			{
 				for (int i = 0; i < this.Count; i++) {
 					yield return this[i];
 				}
 			}
-			
+
 			System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 			{
 				return GetEnumerator();
 			}
 		}
-		
+
 		sealed class PartialMethodInfo
 		{
 			public readonly string Name;
@@ -221,7 +222,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				this.Parts.Add(method);
 				this.Contexts.Add (context);
 			}
-			
+
 			public void AddPart(IUnresolvedMethod method, ITypeResolveContext context)
 			{
 				if (method.HasBody) {
@@ -233,7 +234,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.Contexts.Add (context);
 				}
 			}
-			
+
 			public bool IsSameSignature(PartialMethodInfo other, StringComparer nameComparer)
 			{
 				return nameComparer.Equals(this.Name, other.Name)
@@ -241,9 +242,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					&& ParameterListComparer.Instance.Equals(this.Parameters, other.Parameters);
 			}
 		}
-		
+
 		MemberList memberList;
-		
+
 		MemberList GetMemberList()
 		{
 			var result = LazyInit.VolatileRead(ref this.memberList);
@@ -282,7 +283,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						contextPerMember.Add(contextForPart);
 					}
 				}
-				
+
 				addDefaultConstructorIfRequired |= part.AddDefaultConstructorIfRequired;
 			}
 			if (addDefaultConstructorIfRequired) {
@@ -297,11 +298,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			result = new MemberList(contextPerMember, unresolvedMembers, partialMethodInfos);
 			return LazyInit.GetOrSet(ref this.memberList, result);
 		}
-		
+
 		public IReadOnlyList<IMember> Members {
 			get { return GetMemberList(); }
 		}
-		
+
 		public IEnumerable<IField> Fields {
 			get {
 				var members = GetMemberList();
@@ -311,7 +312,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public IEnumerable<IMethod> Methods {
 			get {
 				var members = GetMemberList();
@@ -324,7 +325,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public IEnumerable<IProperty> Properties {
 			get {
 				var members = GetMemberList();
@@ -338,7 +339,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public IEnumerable<IEvent> Events {
 			get {
 				var members = GetMemberList();
@@ -349,9 +350,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 		#endregion
-		
+
 		volatile KnownTypeCode knownTypeCode = (KnownTypeCode)(-1);
-		
+
 		public KnownTypeCode KnownTypeCode {
 			get {
 				KnownTypeCode result = this.knownTypeCode;
@@ -369,9 +370,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return result;
 			}
 		}
-		
+
 		volatile IType enumUnderlyingType;
-		
+
 		public IType EnumUnderlyingType {
 			get {
 				IType result = this.enumUnderlyingType;
@@ -386,7 +387,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return result;
 			}
 		}
-		
+
 		IType CalculateEnumUnderlyingType()
 		{
 			foreach (var part in parts) {
@@ -399,9 +400,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 			return this.Compilation.FindType(KnownTypeCode.Int32);
 		}
-		
+
 		volatile byte hasExtensionMethods; // 0 = unknown, 1 = true, 2 = false
-		
+
 		public bool HasExtensionMethods {
 			get {
 				byte val = this.hasExtensionMethods;
@@ -415,7 +416,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return val == 1;
 			}
 		}
-		
+
 		bool CalculateHasExtensionMethods()
 		{
 			bool noExtensionMethods = true;
@@ -432,11 +433,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			// If unsure, look at the resolved methods.
 			return Methods.Any(m => m.IsExtensionMethod);
 		}
-		
+
 		public bool IsPartial {
 			get { return parts.Length > 1 || parts[0].IsPartial; }
 		}
-		
+
 		public bool? IsReferenceType {
 			get {
 				switch (this.Kind) {
@@ -454,7 +455,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public int TypeParameterCount {
 			get { return parts[0].TypeParameters.Count; }
 		}
@@ -463,7 +464,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		#region DirectBaseTypes
 		IList<IType> directBaseTypes;
-		
+
 		public IEnumerable<IType> DirectBaseTypes {
 			get {
 				IList<IType> result = LazyInit.VolatileRead(ref this.directBaseTypes);
@@ -478,14 +479,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						// This can happen for "class Test : $Test.Base$ { public class Base {} }"
 						// and also for the valid code
 						// "class Test : Base<Test.Inner> { public class Inner {} }"
-						
+
 						// Don't cache the error!
 						return EmptyList<IType>.Instance;
 					}
 				}
 			}
 		}
-		
+
 		IList<IType> CalculateDirectBaseTypes()
 		{
 			List<IType> result = new List<IType>();
@@ -527,94 +528,94 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return result;
 		}
 		#endregion
-		
+
 		public string FullName {
 			get { return parts[0].FullName; }
 		}
-		
+
 		public string Name {
 			get { return parts[0].Name; }
 		}
-		
+
 		public string ReflectionName {
 			get { return parts[0].ReflectionName; }
 		}
-		
+
 		public string Namespace {
 			get { return parts[0].Namespace; }
 		}
-		
+
 		public FullTypeName FullTypeName {
 			get { return parts[0].FullTypeName; }
 		}
-		
+
 		public ITypeDefinition DeclaringTypeDefinition {
 			get { return parentContext.CurrentTypeDefinition; }
 		}
-		
+
 		public IType DeclaringType {
 			get { return parentContext.CurrentTypeDefinition; }
 		}
-		
+
 		public IAssembly ParentAssembly {
 			get { return parentContext.CurrentAssembly; }
 		}
-		
+
 		public ICompilation Compilation {
 			get { return parentContext.Compilation; }
 		}
-		
+
 		#region Modifiers
 		public bool IsStatic    { get { return isAbstract && isSealed; } }
 		public bool IsAbstract  { get { return isAbstract; } }
 		public bool IsSealed    { get { return isSealed; } }
 		public bool IsShadowing { get { return isShadowing; } }
 		public bool IsSynthetic { get { return isSynthetic; } }
-		
+
 		public Accessibility Accessibility {
 			get { return accessibility; }
 		}
-		
+
 		bool IHasAccessibility.IsPrivate {
 			get { return accessibility == Accessibility.Private; }
 		}
-		
+
 		bool IHasAccessibility.IsPublic {
 			get { return accessibility == Accessibility.Public; }
 		}
-		
+
 		bool IHasAccessibility.IsProtected {
 			get { return accessibility == Accessibility.Protected; }
 		}
-		
+
 		bool IHasAccessibility.IsInternal {
 			get { return accessibility == Accessibility.Internal; }
 		}
-		
+
 		bool IHasAccessibility.IsProtectedOrInternal {
 			get { return accessibility == Accessibility.ProtectedOrInternal; }
 		}
-		
+
 		bool IHasAccessibility.IsProtectedAndInternal {
 			get { return accessibility == Accessibility.ProtectedAndInternal; }
 		}
 		#endregion
-		
+
 		ITypeDefinition IType.GetDefinition()
 		{
 			return this;
 		}
-		
+
 		IType IType.AcceptVisitor(TypeVisitor visitor)
 		{
 			return visitor.VisitTypeDefinition(this);
 		}
-		
+
 		IType IType.VisitChildren(TypeVisitor visitor)
 		{
 			return this;
 		}
-		
+
 		public IEnumerable<IType> GetNestedTypes(Predicate<ITypeDefinition> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			const GetMemberOptions opt = GetMemberOptions.IgnoreInheritedMembers | GetMemberOptions.ReturnMemberDefinitions;
@@ -627,7 +628,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetNestedTypes(this, filter, options);
 			}
 		}
-		
+
 		IEnumerable<IType> GetNestedTypesImpl(Predicate<ITypeDefinition> filter)
 		{
 			foreach (var nestedType in this.NestedTypes) {
@@ -635,12 +636,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					yield return nestedType;
 			}
 		}
-		
+
 		public IEnumerable<IType> GetNestedTypes(IReadOnlyList<IType> typeArguments, Predicate<ITypeDefinition> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return GetMembersHelper.GetNestedTypes(this, typeArguments, filter, options);
 		}
-		
+
 		#region GetMembers()
 		IEnumerable<IMember> GetFilteredMembers(Predicate<IUnresolvedMember> filter)
 		{
@@ -663,7 +664,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					yield return method;
 			}
 		}
-		
+
 		IEnumerable<IMethod> GetFilteredMethods(Predicate<IUnresolvedMethod> filter)
 		{
 			var members = GetMemberList();
@@ -686,7 +687,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					yield return method;
 			}
 		}
-		
+
 		IEnumerable<TResolved> GetFilteredNonMethods<TUnresolved, TResolved>(Predicate<TUnresolved> filter) where TUnresolved : class, IUnresolvedMember where TResolved : class, IMember
 		{
 			var members = GetMemberList();
@@ -697,7 +698,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public virtual IEnumerable<IMethod> GetMethods(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -706,12 +707,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetMethods(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return GetMembersHelper.GetMethods(this, typeArguments, filter, options);
 		}
-		
+
 		public virtual IEnumerable<IMethod> GetConstructors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers)
 		{
 			if (ComHelper.IsComImport(this)) {
@@ -730,7 +731,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetConstructors(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IProperty> GetProperties(Predicate<IUnresolvedProperty> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -739,7 +740,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetProperties(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IField> GetFields(Predicate<IUnresolvedField> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -748,7 +749,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetFields(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IEvent> GetEvents(Predicate<IUnresolvedEvent> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -757,7 +758,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetEvents(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IMember> GetMembers(Predicate<IUnresolvedMember> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -766,7 +767,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetMembers(this, filter, options);
 			}
 		}
-		
+
 		public virtual IEnumerable<IMethod> GetAccessors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.IgnoreInheritedMembers) == GetMemberOptions.IgnoreInheritedMembers) {
@@ -775,7 +776,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return GetMembersHelper.GetAccessors(this, filter, options);
 			}
 		}
-		
+
 		IEnumerable<IMethod> GetFilteredAccessors(Predicate<IUnresolvedMethod> filter)
 		{
 			var members = GetMemberList();
@@ -799,13 +800,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 		#endregion
-		
+
 		#region GetInterfaceImplementation
 		public IMember GetInterfaceImplementation(IMember interfaceMember)
 		{
 			return GetInterfaceImplementation(new[] { interfaceMember })[0];
 		}
-		
+
 		public IReadOnlyList<IMember> GetInterfaceImplementation(IReadOnlyList<IMember> interfaceMembers)
 		{
 			// TODO: review the subtle rules for interface reimplementation,
@@ -814,9 +815,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			// I think we'll need to consider the 'virtual' method first for
 			// reimplemenatation purposes, but then actually return the 'override'
 			// (as that's the method that ends up getting called)
-			
+
 			interfaceMembers = interfaceMembers.ToList(); // avoid evaluating more than once
-			
+
 			var result = new IMember[interfaceMembers.Count];
 			var signatureToIndexDict = new MultiDictionary<IMember, int>(SignatureComparer.Ordinal);
 			for (int i = 0; i < interfaceMembers.Count; i++) {
@@ -839,12 +840,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return result;
 		}
 		#endregion
-		
+
 		public TypeParameterSubstitution GetSubstitution()
 		{
 			return TypeParameterSubstitution.Identity;
 		}
-		
+
 		public TypeParameterSubstitution GetSubstitution(IReadOnlyList<IType> methodTypeArguments)
 		{
 			return TypeParameterSubstitution.Identity;
@@ -854,7 +855,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		{
 			return this == other;
 		}
-		
+
 		public override string ToString()
 		{
 			return this.ReflectionName;

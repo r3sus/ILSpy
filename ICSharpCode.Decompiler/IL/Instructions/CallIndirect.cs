@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -33,7 +33,7 @@ namespace ICSharpCode.Decompiler.IL
 		public readonly InstructionCollection<ILInstruction> Arguments;
 		ILInstruction functionPointer;
 
-		public Mono.Cecil.MethodCallingConvention CallingConvention { get; }
+		public dnlib.DotNet.CallingConvention CallingConvention { get; }
 		public IType ReturnType { get; }
 		public ImmutableArray<IType> ParameterTypes { get; }
 
@@ -61,7 +61,7 @@ namespace ICSharpCode.Decompiler.IL
 				functionPointer.ChildIndex = Arguments.Count;
 		}
 
-		public CallIndirect(Mono.Cecil.MethodCallingConvention callingConvention, IType returnType, ImmutableArray<IType> parameterTypes,
+		public CallIndirect(dnlib.DotNet.CallingConvention callingConvention, IType returnType, ImmutableArray<IType> parameterTypes,
 			IEnumerable<ILInstruction> arguments, ILInstruction functionPointer) : base(OpCode.CallIndirect)
 		{
 			this.CallingConvention = callingConvention;

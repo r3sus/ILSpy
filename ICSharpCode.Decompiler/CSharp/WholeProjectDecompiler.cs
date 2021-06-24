@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2016 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -28,9 +28,11 @@ using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 using System.Threading;
 using System.Text;
+using dnlib.DotNet;
+using dnlib.DotNet.MD;
+using dnlib.PE;
 
 namespace ICSharpCode.Decompiler.CSharp
 {
@@ -74,15 +76,15 @@ namespace ICSharpCode.Decompiler.CSharp
 		/// </remarks>
 		protected string targetDirectory;
 
-		public void DecompileProject(ModuleDefinition moduleDefinition, string targetDirectory, CancellationToken cancellationToken = default(CancellationToken))
+		public void DecompileProject(ModuleDef moduleDefinition, string targetDirectory, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			string projectFileName = Path.Combine(targetDirectory, CleanUpFileName(moduleDefinition.Assembly.Name.Name) + ".csproj");
+			string projectFileName = Path.Combine(targetDirectory, CleanUpFileName(moduleDefinition.Assembly.Name) + ".csproj");
 			using (var writer = new StreamWriter(projectFileName)) {
 				DecompileProject(moduleDefinition, targetDirectory, writer, cancellationToken);
 			}
 		}
 
-		public void DecompileProject(ModuleDefinition moduleDefinition, string targetDirectory, TextWriter projectFileWriter, CancellationToken cancellationToken = default(CancellationToken))
+		public void DecompileProject(ModuleDef moduleDefinition, string targetDirectory, TextWriter projectFileWriter, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			if (string.IsNullOrEmpty(targetDirectory)) {
 				throw new InvalidOperationException("Must set TargetDirectory");
@@ -101,7 +103,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		}
 
 		#region WriteProjectFile
-		void WriteProjectFile(TextWriter writer, IEnumerable<Tuple<string, string>> files, ModuleDefinition module)
+		void WriteProjectFile(TextWriter writer, IEnumerable<Tuple<string, string>> files, ModuleDef module)
 		{
 			const string ns = "http://schemas.microsoft.com/developer/msbuild/2003";
 			string platformName = GetPlatformName(module);
@@ -138,12 +140,12 @@ namespace ICSharpCode.Decompiler.CSharp
 						break;
 				}
 
-				w.WriteElementString("AssemblyName", module.Assembly.Name.Name);
+				w.WriteElementString("AssemblyName", module.Assembly.Name);
 				bool useTargetFrameworkAttribute = false;
 				LanguageTargets languageTargets = LanguageTargets.None;
 				var targetFrameworkAttribute = module.Assembly.CustomAttributes.FirstOrDefault(a => a.AttributeType.FullName == "System.Runtime.Versioning.TargetFrameworkAttribute");
 				if (targetFrameworkAttribute != null && targetFrameworkAttribute.ConstructorArguments.Any()) {
-					string frameworkName = (string)targetFrameworkAttribute.ConstructorArguments[0].Value;
+					string frameworkName = (UTF8String)targetFrameworkAttribute.ConstructorArguments[0].Value;
 					string[] frameworkParts = frameworkName.Split(',');
 					string frameworkIdentifier = frameworkParts.FirstOrDefault(a => !a.StartsWith("Version=", StringComparison.OrdinalIgnoreCase) && !a.StartsWith("Profile=", StringComparison.OrdinalIgnoreCase));
 					if (frameworkIdentifier != null) {
@@ -164,20 +166,15 @@ namespace ICSharpCode.Decompiler.CSharp
 						w.WriteElementString("TargetFrameworkProfile", frameworkProfile.Substring("Profile=".Length));
 				}
 				if (!useTargetFrameworkAttribute) {
-					switch (module.Runtime) {
-						case TargetRuntime.Net_1_0:
-							w.WriteElementString("TargetFrameworkVersion", "v1.0");
-							break;
-						case TargetRuntime.Net_1_1:
-							w.WriteElementString("TargetFrameworkVersion", "v1.1");
-							break;
-						case TargetRuntime.Net_2_0:
-							w.WriteElementString("TargetFrameworkVersion", "v2.0");
-							// TODO: Detect when .NET 3.0/3.5 is required
-							break;
-						default:
-							w.WriteElementString("TargetFrameworkVersion", "v4.0");
-							break;
+					if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_10_PREFIX)) {
+						w.WriteElementString("TargetFrameworkVersion", "v1.0");
+					} else if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_11_PREFIX)) {
+						w.WriteElementString("TargetFrameworkVersion", "v1.1");
+					} else if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_20_PREFIX)) {
+						w.WriteElementString("TargetFrameworkVersion", "v2.0");
+						// TODO: Detect when .NET 3.0/3.5 is required
+					} else {
+						w.WriteElementString("TargetFrameworkVersion", "v4.0");
 					}
 				}
 				w.WriteElementString("WarningLevel", "4");
@@ -208,14 +205,14 @@ namespace ICSharpCode.Decompiler.CSharp
 
 
 				w.WriteStartElement("ItemGroup"); // References
-				foreach (AssemblyNameReference r in module.AssemblyReferences) {
+				foreach (AssemblyRef r in module.GetAssemblyRefs()) {
 					if (r.Name != "mscorlib") {
 						w.WriteStartElement("Reference");
 						w.WriteAttributeString("Include", r.Name);
-						var asm = module.AssemblyResolver.Resolve(r);
+						var asm = module.Context.AssemblyResolver.Resolve(r, module);
 						if (!IsGacAssembly(r, asm)) {
 							if (asm != null) {
-								w.WriteElementString("HintPath", asm.MainModule.FileName);
+								w.WriteElementString("HintPath", asm.ManifestModule.Location);
 							}
 						}
 						w.WriteEndElement();
@@ -249,14 +246,14 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 		}
 
-		protected virtual bool IsGacAssembly(AssemblyNameReference r, AssemblyDefinition asm)
+		protected virtual bool IsGacAssembly(AssemblyRef r, AssemblyDef asm)
 		{
 			return false;
 		}
 		#endregion
 
 		#region WriteCodeFilesInProject
-		protected virtual bool IncludeTypeWhenDecompilingProject(TypeDefinition type)
+		protected virtual bool IncludeTypeWhenDecompilingProject(TypeDef type)
 		{
 			if (type.Name == "<Module>" || CSharpDecompiler.MemberIsHidden(type, settings))
 				return false;
@@ -290,10 +287,10 @@ namespace ICSharpCode.Decompiler.CSharp
 			return new Tuple<string, string>[] { Tuple.Create("Compile", assemblyInfo) };
 		}
 
-		IEnumerable<Tuple<string, string>> WriteCodeFilesInProject(ModuleDefinition module, CancellationToken cancellationToken)
+		IEnumerable<Tuple<string, string>> WriteCodeFilesInProject(ModuleDef module, CancellationToken cancellationToken)
 		{
 			var files = module.Types.Where(IncludeTypeWhenDecompilingProject).GroupBy(
-				delegate (TypeDefinition type) {
+				delegate (TypeDef type) {
 					string file = CleanUpFileName(type.Name) + ".cs";
 					if (string.IsNullOrEmpty(type.Namespace)) {
 						return file;
@@ -311,7 +308,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					MaxDegreeOfParallelism = this.MaxDegreeOfParallelism,
 					CancellationToken = cancellationToken
 				},
-				delegate (IGrouping<string, TypeDefinition> file) {
+				delegate (IGrouping<string, TypeDef> file) {
 					using (StreamWriter w = new StreamWriter(Path.Combine(targetDirectory, file.Key))) {
 						CSharpDecompiler decompiler = CreateDecompiler(ts);
 						decompiler.CancellationToken = cancellationToken;
@@ -324,10 +321,10 @@ namespace ICSharpCode.Decompiler.CSharp
 		#endregion
 
 		#region WriteResourceFilesInProject
-		protected virtual IEnumerable<Tuple<string, string>> WriteResourceFilesInProject(ModuleDefinition module)
+		protected virtual IEnumerable<Tuple<string, string>> WriteResourceFilesInProject(ModuleDef module)
 		{
 			foreach (EmbeddedResource r in module.Resources.OfType<EmbeddedResource>()) {
-				Stream stream = r.GetResourceStream();
+				Stream stream = r.CreateReader().AsStream();
 				stream.Position = 0;
 
 				if (r.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase)) {
@@ -429,22 +426,22 @@ namespace ICSharpCode.Decompiler.CSharp
 			return b.ToString();
 		}
 
-		public static string GetPlatformName(ModuleDefinition module)
+		public static string GetPlatformName(ModuleDef module)
 		{
-			switch (module.Architecture) {
-				case TargetArchitecture.I386:
-					if ((module.Attributes & ModuleAttributes.Preferred32Bit) == ModuleAttributes.Preferred32Bit)
+			switch (module.Machine) {
+				case Machine.I386:
+					if (module.Is32BitPreferred)
 						return "AnyCPU";
-					else if ((module.Attributes & ModuleAttributes.Required32Bit) == ModuleAttributes.Required32Bit)
+					else if (module.Is32BitRequired)
 						return "x86";
 					else
 						return "AnyCPU";
-				case TargetArchitecture.AMD64:
+				case Machine.AMD64:
 					return "x64";
-				case TargetArchitecture.IA64:
+				case Machine.IA64:
 					return "Itanium";
 				default:
-					return module.Architecture.ToString();
+					return module.Machine.ToString();
 			}
 		}
 	}

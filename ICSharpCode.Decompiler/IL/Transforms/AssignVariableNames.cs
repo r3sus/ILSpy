@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -58,7 +58,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		public void Run(ILFunction function, ILTransformContext context)
 		{
 			this.context = context;
-			currentFieldNames = function.CecilMethod.DeclaringType.Fields.Select(f => f.Name).ToArray();
+			currentFieldNames = function.CecilMethod.DeclaringType.Fields.Select(f => f.Name.String).ToArray();
 			reservedVariableNames = new Dictionary<string, int>();
 			loopCounters = CollectLoopCounters(function);
 			foreach (var f in function.Descendants.OfType<ILFunction>()) {
@@ -232,7 +232,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		HashSet<ILVariable> CollectLoopCounters(ILFunction function)
 		{
 			var loopCounters = new HashSet<ILVariable>();
-			
+
 			foreach (BlockContainer possibleLoop in function.Descendants.OfType<BlockContainer>()) {
 				if (possibleLoop.Kind != ContainerKind.For) continue;
 				foreach (var inst in possibleLoop.Blocks.Last().Instructions) {
@@ -485,7 +485,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				}
 			}
 			string proposedName = "item";
-			
+
 			if (!string.IsNullOrEmpty(baseName)) {
 				if (!IsPlural(baseName, ref proposedName)) {
 					if (baseName.Length > 4 && baseName.EndsWith("List", StringComparison.Ordinal)) {

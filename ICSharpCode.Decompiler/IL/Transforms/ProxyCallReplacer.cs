@@ -1,8 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Linq;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler.IL.Transforms
 {
@@ -14,14 +11,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		{
 			this.context = context;
 			foreach (var inst in function.Descendants.OfType<CallInstruction>()) {
-				MethodDefinition methodDef = context.TypeSystem.GetCecil(inst.Method) as MethodDefinition;
+				dnlib.DotNet.MethodDef methodDef = context.TypeSystem.GetCecil(inst.Method) as dnlib.DotNet.MethodDef;
 				if (methodDef != null && methodDef.Body != null) {
 					if (IsDefinedInCurrentOrOuterClass(inst.Method, context.Function.Method.DeclaringTypeDefinition) && inst.Method.IsCompilerGeneratedOrIsInCompilerGeneratedClass()) {
 						// partially copied from CSharpDecompiler
 						var specializingTypeSystem = this.context.TypeSystem.GetSpecializingTypeSystem(inst.Method.Substitution);
 						var ilReader = new ILReader(specializingTypeSystem);
 						System.Threading.CancellationToken cancellationToken = new System.Threading.CancellationToken();
-						var proxyFunction = ilReader.ReadIL(methodDef.Body, cancellationToken);
+						var proxyFunction = ilReader.ReadIL(methodDef, methodDef.Body, cancellationToken);
 						var transformContext = new ILTransformContext(proxyFunction, specializingTypeSystem, this.context.Settings) {
 							CancellationToken = cancellationToken,
 							DecompileRun = context.DecompileRun

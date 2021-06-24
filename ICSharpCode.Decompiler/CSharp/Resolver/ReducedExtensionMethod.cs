@@ -60,7 +60,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return false;
 			return baseMethod.Equals(other.baseMethod);
 		}
-		
+
 		public override int GetHashCode()
 		{
 			unchecked {
@@ -132,7 +132,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		{
 			return new ReducedExtensionMethod((IMethod)baseMethod.Specialize(substitution));
 		}
-		
+
 		IMember IMember.Specialize(TypeParameterSubstitution substitution)
 		{
 			return Specialize(substitution);
@@ -241,14 +241,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		#region IEntity implementation
 
-		public Mono.Cecil.MetadataToken MetadataToken => baseMethod.MetadataToken;
+		public dnlib.DotNet.MDToken MetadataToken => baseMethod.MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get {
 				return baseMethod.SymbolKind;
 			}
 		}
-		
+
 		public ITypeDefinition DeclaringTypeDefinition {
 			get {
 				return baseMethod.DeclaringTypeDefinition;
@@ -390,4 +390,3 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		#endregion
 	}
 }
-

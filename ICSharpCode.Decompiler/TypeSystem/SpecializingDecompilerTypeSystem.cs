@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,6 +17,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
@@ -28,7 +29,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	{
 		readonly IDecompilerTypeSystem context;
 		readonly TypeParameterSubstitution substitution;
-		
+
 		public SpecializingDecompilerTypeSystem(IDecompilerTypeSystem context, TypeParameterSubstitution substitution)
 		{
 			if (context == null)
@@ -42,7 +43,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		internal IDecompilerTypeSystem Context {
 			get { return context; }
 		}
-		
+
 		public ICompilation Compilation {
 			get { return context.Compilation; }
 		}
@@ -51,12 +52,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			get { return substitution; }
 		}
 
-		public IType Resolve(Mono.Cecil.TypeReference typeReference, bool isFromSignature)
+		public IType Resolve(ITypeDefOrRef typeReference, bool isFromSignature)
 		{
 			return context.Resolve(typeReference, isFromSignature).AcceptVisitor(substitution);
 		}
 
-		public IField Resolve(Mono.Cecil.FieldReference fieldReference)
+		public IField Resolve(dnlib.DotNet.IField fieldReference)
 		{
 			IField field = context.Resolve(fieldReference);
 			if (field != null)
@@ -64,7 +65,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return field;
 		}
 
-		public IMethod Resolve(Mono.Cecil.MethodReference methodReference)
+		public IMethod Resolve(dnlib.DotNet.IMethod methodReference)
 		{
 			IMethod method = context.Resolve(methodReference);
 			if (method != null)
@@ -80,12 +81,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return context.GetSpecializingTypeSystem(newSubstitution);
 		}
 
-		public Mono.Cecil.TypeDefinition GetCecil(ITypeDefinition typeDefinition)
+		public TypeDef GetCecil(ITypeDefinition typeDefinition)
 		{
 			return context.GetCecil(typeDefinition);
 		}
 
-		public Mono.Cecil.MemberReference GetCecil(IMember member)
+		public IMemberRef GetCecil(IMember member)
 		{
 			return context.GetCecil(member);
 		}

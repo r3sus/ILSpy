@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -22,9 +22,7 @@ using System.Diagnostics;
 using System.Linq;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
-using ICSharpCode.Decompiler.CSharp.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 using ICSharpCode.Decompiler.Semantics;
 
 namespace ICSharpCode.Decompiler.CSharp.Transforms
@@ -36,7 +34,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 	{
 		readonly DeclareVariables declareVariables = new DeclareVariables();
 		TransformContext context;
-		
+
 		public void Run(AstNode rootNode, TransformContext context)
 		{
 			if (this.context != null)
@@ -69,7 +67,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			return node;
 		}
-		
+
 		public override AstNode VisitExpressionStatement(ExpressionStatement expressionStatement)
 		{
 			AstNode result = TransformForeachOnMultiDimArray(expressionStatement);
@@ -96,7 +94,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				return simplifiedIfElse;
 			return base.VisitIfElseStatement(ifElseStatement);
 		}
-		
+
 		public override AstNode VisitPropertyDeclaration(PropertyDeclaration propertyDeclaration)
 		{
 			if (context.Settings.AutomaticProperties) {
@@ -106,7 +104,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			return base.VisitPropertyDeclaration(propertyDeclaration);
 		}
-		
+
 		public override AstNode VisitCustomEventDeclaration(CustomEventDeclaration eventDeclaration)
 		{
 			// first apply transforms to the accessor bodies
@@ -118,18 +116,18 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			return eventDeclaration;
 		}
-		
+
 		public override AstNode VisitMethodDeclaration(MethodDeclaration methodDeclaration)
 		{
 			return TransformDestructor(methodDeclaration) ?? base.VisitMethodDeclaration(methodDeclaration);
 		}
-		
+
 		public override AstNode VisitTryCatchStatement(TryCatchStatement tryCatchStatement)
 		{
 			return TransformTryCatchFinally(tryCatchStatement) ?? base.VisitTryCatchStatement(tryCatchStatement);
 		}
 		#endregion
-		
+
 		/// <summary>
 		/// $variable = $initializer;
 		/// </summary>
@@ -488,7 +486,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 		PropertyDeclaration TransformAutomaticProperties(PropertyDeclaration property)
 		{
-			PropertyDefinition cecilProperty = context.TypeSystem.GetCecil(property.GetSymbol() as IProperty) as PropertyDefinition;
+			dnlib.DotNet.PropertyDef cecilProperty = context.TypeSystem.GetCecil(property.GetSymbol() as IProperty) as dnlib.DotNet.PropertyDef;
 			if (cecilProperty == null || cecilProperty.GetMethod == null)
 				return null;
 			if (!cecilProperty.GetMethod.IsCompilerGenerated() && (cecilProperty.SetMethod?.IsCompilerGenerated() == false))
@@ -505,7 +503,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			if (fieldInfo == null)
 				return null;
-			FieldDefinition field = context.TypeSystem.GetCecil(fieldInfo) as FieldDefinition;
+			dnlib.DotNet.FieldDef field = context.TypeSystem.GetCecil(fieldInfo) as dnlib.DotNet.FieldDef;
 			if (field.IsCompilerGenerated() && field.DeclaringType == cecilProperty.DeclaringType) {
 				RemoveCompilerGeneratedAttribute(property.Getter.Attributes);
 				RemoveCompilerGeneratedAttribute(property.Setter.Attributes);
@@ -527,7 +525,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			// Since the property instance is not changed, we can continue in the visitor as usual, so return null
 			return null;
 		}
-		
+
 		void RemoveCompilerGeneratedAttribute(AstNodeCollection<AttributeSection> attributeSections)
 		{
 			RemoveCompilerGeneratedAttribute(attributeSections, "System.Runtime.CompilerServices.CompilerGeneratedAttribute");
@@ -787,7 +785,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			ed.Modifiers = ev.Modifiers;
 			ed.Variables.Add(new VariableInitializer(ev.Name));
 			ed.CopyAnnotationsFrom(ev);
-			
+
 			IEvent eventDef = ev.GetSymbol() as IEvent;
 			if (eventDef != null) {
 				IField field = eventDef.DeclaringType.GetFields(f => f.Name == ev.Name, GetMemberOptions.IgnoreInheritedMembers).SingleOrDefault();
@@ -805,12 +803,12 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					}
 				}
 			}
-			
+
 			ev.ReplaceWith(ed);
 			return ed;
 		}
 		#endregion
-		
+
 		#region Destructor
 		static readonly MethodDeclaration destructorPattern = new MethodDeclaration {
 			Attributes = { new Repeat(new AnyNode()) },
@@ -826,7 +824,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				}
 			}
 		};
-		
+
 		DestructorDeclaration TransformDestructor(MethodDeclaration methodDef)
 		{
 			Match m = destructorPattern.Match(methodDef);
@@ -843,7 +841,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			return null;
 		}
 		#endregion
-		
+
 		#region Try-Catch-Finally
 		static readonly TryCatchStatement tryCatchFinallyPattern = new TryCatchStatement {
 			TryBlock = new BlockStatement {
@@ -854,7 +852,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			},
 			FinallyBlock = new AnyNode()
 		};
-		
+
 		/// <summary>
 		/// Simplify nested 'try { try {} catch {} } finally {}'.
 		/// This transformation must run after the using/lock tranformations.
@@ -897,7 +895,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				IfElseStatement elseIf = m.Get<IfElseStatement>("nestedIfStatement").Single();
 				node.FalseStatement = elseIf.Detach();
 			}
-			
+
 			return null;
 		}
 

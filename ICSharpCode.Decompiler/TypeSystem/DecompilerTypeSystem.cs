@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using dnlib.DotNet;
+using dnlib.DotNet.MD;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
@@ -15,7 +16,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	/// </remarks>
 	public class DecompilerTypeSystem : IDecompilerTypeSystem
 	{
-		readonly ModuleDefinition moduleDefinition;
+		readonly ModuleDef moduleDefinition;
 		readonly ICompilation compilation;
 		readonly ITypeResolveContext context;
 
@@ -29,18 +30,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Dictionary for NRefactory->Cecil lookup.
 		/// May only be accessed within lock(entityDict)
 		/// </summary>
-		Dictionary<IUnresolvedEntity, MemberReference> entityDict = new Dictionary<IUnresolvedEntity, MemberReference>();
+		Dictionary<IUnresolvedEntity, dnlib.DotNet.IMemberRef> entityDict = new Dictionary<IUnresolvedEntity, dnlib.DotNet.IMemberRef>();
 
-		Dictionary<FieldReference, IField> fieldLookupCache = new Dictionary<FieldReference, IField>();
-		Dictionary<PropertyReference, IProperty> propertyLookupCache = new Dictionary<PropertyReference, IProperty>();
-		Dictionary<MethodReference, IMethod> methodLookupCache = new Dictionary<MethodReference, IMethod>();
-		Dictionary<EventReference, IEvent> eventLookupCache = new Dictionary<EventReference, IEvent>();
+		Dictionary<dnlib.DotNet.IField, IField> fieldLookupCache = new Dictionary<dnlib.DotNet.IField, IField>();
+		Dictionary<PropertyDef, IProperty> propertyLookupCache = new Dictionary<PropertyDef, IProperty>();
+		Dictionary<dnlib.DotNet.IMethod, IMethod> methodLookupCache = new Dictionary<dnlib.DotNet.IMethod, IMethod>();
+		Dictionary<EventDef, IEvent> eventLookupCache = new Dictionary<EventDef, IEvent>();
 
-		public DecompilerTypeSystem(ModuleDefinition moduleDefinition) : this(moduleDefinition, new DecompilerSettings())
+		public DecompilerTypeSystem(ModuleDef moduleDefinition) : this(moduleDefinition, new DecompilerSettings())
 		{
 		}
 
-		public DecompilerTypeSystem(ModuleDefinition moduleDefinition, DecompilerSettings settings)
+		public DecompilerTypeSystem(ModuleDef moduleDefinition, DecompilerSettings settings)
 		{
 			if (moduleDefinition == null)
 				throw new ArgumentNullException(nameof(moduleDefinition));
@@ -64,17 +65,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			// Load referenced assemblies and type-forwarder references.
 			// This is necessary to make .NET Core/PCL binaries work better.
 			var referencedAssemblies = new List<IUnresolvedAssembly>();
-			var assemblyReferenceQueue = new Queue<AssemblyNameReference>(moduleDefinition.AssemblyReferences);
-			var processedAssemblyReferences = new HashSet<AssemblyNameReference>(KeyComparer.Create((AssemblyNameReference reference) => reference.FullName));
+			var assemblyReferenceQueue = new Queue<dnlib.DotNet.IAssembly>(moduleDefinition.GetAssemblyRefs());
+			var processedAssemblyReferences = new HashSet<dnlib.DotNet.IAssembly>(KeyComparer.Create((dnlib.DotNet.IAssembly reference) => reference.FullName));
 			while (assemblyReferenceQueue.Count > 0) {
 				var asmRef = assemblyReferenceQueue.Dequeue();
 				if (!processedAssemblyReferences.Add(asmRef))
 					continue;
-				var asm = moduleDefinition.AssemblyResolver.Resolve(asmRef);
+				var asm = moduleDefinition.Context.AssemblyResolver.Resolve(asmRef, moduleDefinition);
 				if (asm != null) {
 					referencedAssemblies.Add(cecilLoader.LoadAssembly(asm));
-					foreach (var forwarder in asm.MainModule.ExportedTypes) {
-						if (!forwarder.IsForwarder || !(forwarder.Scope is AssemblyNameReference forwarderRef)) continue;
+					foreach (var forwarder in asm.ManifestModule.ExportedTypes) {
+						if (!forwarder.IsForwarder || !(forwarder.Scope is dnlib.DotNet.IAssembly forwarderRef)) continue;
 						assemblyReferenceQueue.Enqueue(forwarderRef);
 					}
 				}
@@ -92,16 +93,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public ICompilation Compilation {
 			get { return compilation; }
 		}
-		
+
 		public IAssembly MainAssembly {
 			get { return compilation.MainAssembly; }
 		}
 
-		public ModuleDefinition ModuleDefinition {
+		public ModuleDef ModuleDefinition {
 			get { return moduleDefinition; }
 		}
 
-		void StoreMemberReference(IUnresolvedEntity entity, MemberReference mr)
+		void StoreMemberReference(IUnresolvedEntity entity, IMemberRef mr)
 		{
 			// This is a callback from the type system, which is multi-threaded and may be accessed externally
 			lock (entityDict)
@@ -114,12 +115,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <remarks>
 		/// Returns null if the member is not defined in the module being decompiled.
 		/// </remarks>
-		public MemberReference GetCecil(IUnresolvedEntity member)
+		public dnlib.DotNet.IMemberRef GetCecil(IUnresolvedEntity member)
 		{
 			if (member == null)
 				return null;
 			lock (entityDict) {
-				MemberReference mr;
+				dnlib.DotNet.IMemberRef mr;
 				if (entityDict.TryGetValue(member, out mr))
 					return mr;
 				return null;
@@ -132,7 +133,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <remarks>
 		/// Returns null if the member is not defined in the module being decompiled.
 		/// </remarks>
-		public MemberReference GetCecil(IMember member)
+		public dnlib.DotNet.IMemberRef GetCecil(IMember member)
 		{
 			if (member == null)
 				return null;
@@ -145,42 +146,43 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <remarks>
 		/// Returns null if the type is not defined in the module being decompiled.
 		/// </remarks>
-		public TypeDefinition GetCecil(ITypeDefinition typeDefinition)
+		public TypeDef GetCecil(ITypeDefinition typeDefinition)
 		{
 			if (typeDefinition == null)
 				return null;
-			return GetCecil(typeDefinition.Parts[0]) as TypeDefinition;
+			return GetCecil(typeDefinition.Parts[0]) as TypeDef;
 		}
 
 		#region Resolve Type
-		public IType Resolve(TypeReference typeReference, bool isFromSignature = false)
+		public IType Resolve(ITypeDefOrRef typeReference, bool isFromSignature = false)
 		{
 			if (typeReference == null)
 				return SpecialType.UnknownType;
 			// We need to skip SentinelType and PinnedType.
 			// But PinnedType can be nested within modopt, so we'll also skip those.
-			while (typeReference is OptionalModifierType || typeReference is RequiredModifierType) {
-				typeReference = ((TypeSpecification)typeReference).ElementType;
+			var typeSig = typeReference.ToTypeSig();
+			while (typeSig is CModOptSig || typeSig is CModReqdSig) {
+				typeSig = typeSig.Next;
 				isFromSignature = true;
 			}
-			if (typeReference is SentinelType || typeReference is PinnedType) {
-				typeReference = ((TypeSpecification)typeReference).ElementType;
+			if (typeSig is SentinelSig || typeSig is PinnedSig) {
+				typeSig = typeSig.Next;
 				isFromSignature = true;
 			}
 			ITypeReference typeRef;
 			lock (typeReferenceCecilLoader)
-				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeReference, isFromSignature: isFromSignature);
+				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeSig, isFromSignature: isFromSignature);
 			return typeRef.Resolve(context);
 		}
 
-		IType ResolveInSignature(TypeReference typeReference)
+		IType ResolveInSignature(TypeSig typeReference)
 		{
-			return Resolve(typeReference, isFromSignature: true);
+			return Resolve(typeReference.ToTypeDefOrRef(), isFromSignature: true);
 		}
 		#endregion
 
 		#region Resolve Field
-		public IField Resolve(FieldReference fieldReference)
+		public IField Resolve(dnlib.DotNet.IField fieldReference)
 		{
 			if (fieldReference == null)
 				throw new ArgumentNullException(nameof(fieldReference));
@@ -188,8 +190,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				IField field;
 				if (!fieldLookupCache.TryGetValue(fieldReference, out field)) {
 					field = FindNonGenericField(fieldReference);
-					if (fieldReference.DeclaringType.IsGenericInstance) {
-						var git = (GenericInstanceType)fieldReference.DeclaringType;
+					if (fieldReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
 						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
 						field = (IField)field.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
@@ -199,7 +200,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 		}
 
-		IField FindNonGenericField(FieldReference fieldReference)
+		IField FindNonGenericField(dnlib.DotNet.IField fieldReference)
 		{
 			ITypeDefinition typeDef = Resolve(fieldReference.DeclaringType).GetDefinition();
 			if (typeDef == null)
@@ -210,13 +211,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return CreateFakeField(fieldReference);
 		}
 
-		IField CreateFakeField(FieldReference fieldReference)
+		IField CreateFakeField(dnlib.DotNet.IField fieldReference)
 		{
 			var declaringType = Resolve(fieldReference.DeclaringType);
 			var f = new DefaultUnresolvedField();
 			f.Name = fieldReference.Name;
 			lock (typeReferenceCecilLoader) {
-				f.ReturnType = typeReferenceCecilLoader.ReadTypeReference(fieldReference.FieldType);
+				f.ReturnType = typeReferenceCecilLoader.ReadTypeReference(fieldReference.FieldSig.Type);
 			}
 			return new ResolvedFakeField(f, context.WithCurrentTypeDefinition(declaringType.GetDefinition()), declaringType);
 		}
@@ -239,28 +240,26 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region Resolve Method
-		public IMethod Resolve(MethodReference methodReference)
+		public IMethod Resolve(dnlib.DotNet.IMethod methodReference)
 		{
 			if (methodReference == null)
 				throw new ArgumentNullException(nameof(methodReference));
 			lock (methodLookupCache) {
 				IMethod method;
 				if (!methodLookupCache.TryGetValue(methodReference, out method)) {
-					method = FindNonGenericMethod(methodReference.GetElementMethod());
-					if (methodReference.CallingConvention == MethodCallingConvention.VarArg) {
+					method = FindNonGenericMethod(methodReference);
+					if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
 						method = new VarArgInstanceMethod(
 							method,
-							methodReference.Parameters.SkipWhile(p => !p.ParameterType.IsSentinel).Select(p => ResolveInSignature(p.ParameterType))
+							methodReference.MethodSig.ParamsAfterSentinel is null ? new List<IType>() : methodReference.MethodSig.ParamsAfterSentinel.Select(ResolveInSignature)
 						);
-					} else if (methodReference.IsGenericInstance || methodReference.DeclaringType.IsGenericInstance) {
+					} else if (methodReference is MethodSpec || methodReference.DeclaringType.ToTypeSig() is GenericInstSig) {
 						IReadOnlyList<IType> classTypeArguments = null;
 						IReadOnlyList<IType> methodTypeArguments = null;
-						if (methodReference.IsGenericInstance) {
-							var gim = ((GenericInstanceMethod)methodReference);
-							methodTypeArguments = gim.GenericArguments.SelectArray(ResolveInSignature);
+						if (methodReference is MethodSpec gim && gim.GenericInstMethodSig != null) {
+							methodTypeArguments = gim.GenericInstMethodSig.GenericArguments.SelectArray(ResolveInSignature);
 						}
-						if (methodReference.DeclaringType.IsGenericInstance) {
-							var git = (GenericInstanceType)methodReference.DeclaringType;
+						if (methodReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
 							classTypeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
 						}
 						method = method.Specialize(new TypeParameterSubstitution(classTypeArguments, methodTypeArguments));
@@ -271,7 +270,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 		}
 
-		IMethod FindNonGenericMethod(MethodReference methodReference)
+		IMethod FindNonGenericMethod(dnlib.DotNet.IMethod methodReference)
 		{
 			ITypeDefinition typeDef = Resolve(methodReference.DeclaringType).GetDefinition();
 			if (typeDef == null)
@@ -285,25 +284,25 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				methods = typeDef.GetMethods(m => m.Name == methodReference.Name, GetMemberOptions.IgnoreInheritedMembers)
 					.Concat(typeDef.GetAccessors(m => m.Name == methodReference.Name, GetMemberOptions.IgnoreInheritedMembers));
 			}
-			if (methodReference.MetadataToken.TokenType == TokenType.Method) {
+			if (methodReference.MDToken.Table == Table.Method) {
 				foreach (var method in methods) {
-					if (method.MetadataToken == methodReference.MetadataToken)
+					if (method.MetadataToken == methodReference.MDToken)
 						return method;
 				}
 			}
 			IType[] parameterTypes;
-			if (methodReference.CallingConvention == MethodCallingConvention.VarArg) {
-				parameterTypes = methodReference.Parameters
-					.TakeWhile(p => !p.ParameterType.IsSentinel)
-					.Select(p => ResolveInSignature(p.ParameterType))
+			if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
+				parameterTypes = methodReference.MethodSig.Params
+					.TakeWhile(p => !p.IsSentinel)
+					.Select(p => ResolveInSignature(p))
 					.Concat(new[] { SpecialType.ArgList })
 					.ToArray();
 			} else {
-				parameterTypes = methodReference.Parameters.SelectArray(p => ResolveInSignature(p.ParameterType));
+				parameterTypes = methodReference.MethodSig.Params.SelectArray(p => ResolveInSignature(p));
 			}
-			var returnType = ResolveInSignature(methodReference.ReturnType);
+			var returnType = ResolveInSignature(methodReference.MethodSig.RetType);
 			foreach (var method in methods) {
-				if (method.TypeParameters.Count != methodReference.GenericParameters.Count)
+				if (method.TypeParameters.Count != methodReference.NumberOfGenericParameters)
 					continue;
 				if (!CompareSignatures(method.Parameters, parameterTypes) || !CompareTypes(method.ReturnType, returnType))
 					continue;
@@ -323,12 +322,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			IType type2 = b.AcceptVisitor(normalizeTypeVisitor);
 			return type1.Equals(type2);
 		}
-		
+
 		static bool IsVarArgMethod(IMethod method)
 		{
 			return method.Parameters.Count > 0 && method.Parameters[method.Parameters.Count - 1].Type.Kind == TypeKind.ArgList;
 		}
-		
+
 		static bool CompareSignatures(IReadOnlyList<IParameter> parameters, IType[] parameterTypes)
 		{
 			if (parameterTypes.Length != parameters.Count)
@@ -343,22 +342,23 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <summary>
 		/// Create a dummy IMethod from the specified MethodReference
 		/// </summary>
-		IMethod CreateFakeMethod(MethodReference methodReference)
+		IMethod CreateFakeMethod(dnlib.DotNet.IMethod methodReference)
 		{
 			var m = new DefaultUnresolvedMethod();
 			ITypeReference declaringTypeReference;
 			lock (typeReferenceCecilLoader) {
-				declaringTypeReference = typeReferenceCecilLoader.ReadTypeReference(methodReference.DeclaringType);
+				declaringTypeReference = typeReferenceCecilLoader.ReadTypeReference(methodReference.DeclaringType.ToTypeSig());
 				if (methodReference.Name == ".ctor" || methodReference.Name == ".cctor")
 					m.SymbolKind = SymbolKind.Constructor;
 				m.Name = methodReference.Name;
-				m.ReturnType = typeReferenceCecilLoader.ReadTypeReference(methodReference.ReturnType);
-				m.IsStatic = !methodReference.HasThis;
-				for (int i = 0; i < methodReference.GenericParameters.Count; i++) {
-					m.TypeParameters.Add(new DefaultUnresolvedTypeParameter(SymbolKind.Method, i, methodReference.GenericParameters[i].Name));
+				m.ReturnType = typeReferenceCecilLoader.ReadTypeReference(methodReference.MethodSig.RetType);
+				m.IsStatic = !methodReference.MethodSig.HasThis;
+				// not sure if empty is ok !?
+				for (int i = 0; i < methodReference.NumberOfGenericParameters; i++) {
+					m.TypeParameters.Add(new DefaultUnresolvedTypeParameter(SymbolKind.Method, i, string.Empty));
 				}
-				foreach (var p in methodReference.Parameters) {
-					m.Parameters.Add(new DefaultUnresolvedParameter(typeReferenceCecilLoader.ReadTypeReference(p.ParameterType), p.Name));
+				foreach (var p in methodReference.MethodSig.Params) {
+					m.Parameters.Add(new DefaultUnresolvedParameter(typeReferenceCecilLoader.ReadTypeReference(p), string.Empty));
 				}
 			}
 			var type = declaringTypeReference.Resolve(context);
@@ -383,7 +383,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region Resolve Property
-		public IProperty Resolve(PropertyReference propertyReference)
+		public IProperty Resolve(PropertyDef propertyReference)
 		{
 			if (propertyReference == null)
 				throw new ArgumentNullException(nameof(propertyReference));
@@ -391,8 +391,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				IProperty property;
 				if (!propertyLookupCache.TryGetValue(propertyReference, out property)) {
 					property = FindNonGenericProperty(propertyReference);
-					if (propertyReference.DeclaringType.IsGenericInstance) {
-						var git = (GenericInstanceType)propertyReference.DeclaringType;
+					if (propertyReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
 						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
 						property = (IProperty)property.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
@@ -402,13 +401,15 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 		}
 
-		IProperty FindNonGenericProperty(PropertyReference propertyReference)
+		IProperty FindNonGenericProperty(PropertyDef propertyReference)
 		{
 			ITypeDefinition typeDef = Resolve(propertyReference.DeclaringType).GetDefinition();
 			if (typeDef == null)
 				return null;
-			var parameterTypes = propertyReference.Parameters.SelectArray(p => ResolveInSignature(p.ParameterType));
-			var returnType = Resolve(propertyReference.PropertyType);
+
+			var parameters = propertyReference.GetParameters().ToList();
+			var parameterTypes = parameters.SelectArray(p => ResolveInSignature(p.Type));
+			var returnType = Resolve(propertyReference.PropertySig.RetType.ToTypeDefOrRef());
 			foreach (IProperty property in typeDef.Properties) {
 				if (property.Name == propertyReference.Name
 				    && CompareTypes(property.ReturnType, returnType)
@@ -420,7 +421,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region Resolve Event
-		public IEvent Resolve(EventReference eventReference)
+		public IEvent Resolve(EventDef eventReference)
 		{
 			if (eventReference == null)
 				throw new ArgumentNullException("propertyReference");
@@ -428,8 +429,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				IEvent ev;
 				if (!eventLookupCache.TryGetValue(eventReference, out ev)) {
 					ev = FindNonGenericEvent(eventReference);
-					if (eventReference.DeclaringType.IsGenericInstance) {
-						var git = (GenericInstanceType)eventReference.DeclaringType;
+					if (eventReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
 						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
 						ev = (IEvent)ev.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
@@ -439,7 +439,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 		}
 
-		IEvent FindNonGenericEvent(EventReference eventReference)
+		IEvent FindNonGenericEvent(EventDef eventReference)
 		{
 			ITypeDefinition typeDef = Resolve(eventReference.DeclaringType).GetDefinition();
 			if (typeDef == null)

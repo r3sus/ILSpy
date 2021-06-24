@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011-2016 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -28,7 +28,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 	{
 		ILTransformContext context;
 		ITypeResolveContext decompilationContext;
-		
+
 		void IILTransform.Run(ILFunction function, ILTransformContext context)
 		{
 			if (!context.Settings.AnonymousMethods)
@@ -97,7 +97,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (inst == null || inst.Arguments.Count != 2 || inst.Method.DeclaringType.Kind != TypeKind.Delegate)
 				return false;
 			var opCode = inst.Arguments[1].OpCode;
-			
+
 			return opCode == OpCode.LdFtn || opCode == OpCode.LdVirtFtn || (allowTransformed && opCode == OpCode.ILFunction);
 		}
 
@@ -106,7 +106,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var decompilationContext = new SimpleTypeResolveContext(context.Function.Method);
 			return IsPotentialClosure(decompilationContext.CurrentTypeDefinition, inst.Method.DeclaringTypeDefinition);
 		}
-		
+
 		static bool IsAnonymousMethod(ITypeDefinition decompiledTypeDefinition, IMethod method)
 		{
 			if (method == null || !(method.HasGeneratedName() || method.Name.Contains("$")))
@@ -115,7 +115,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return false;
 			return true;
 		}
-		
+
 		static bool IsPotentialClosure(ITypeDefinition decompiledTypeDefinition, ITypeDefinition potentialDisplayClass)
 		{
 			if (potentialDisplayClass == null || !potentialDisplayClass.IsCompilerGeneratedOrIsInCompilerGeneratedClass())
@@ -127,7 +127,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return true;
 		}
-		
+
 		ILFunction TransformDelegateConstruction(NewObj value, out ILInstruction target)
 		{
 			target = null;
@@ -137,13 +137,13 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (!IsAnonymousMethod(decompilationContext.CurrentTypeDefinition, targetMethod))
 				return null;
 			target = value.Arguments[0];
-			var methodDefinition = (Mono.Cecil.MethodDefinition)context.TypeSystem.GetCecil(targetMethod);
+			var methodDefinition = (dnlib.DotNet.MethodDef)context.TypeSystem.GetCecil(targetMethod);
 			if (methodDefinition == null)
 				return null;
 			var localTypeSystem = context.TypeSystem.GetSpecializingTypeSystem(targetMethod.Substitution);
 			var ilReader = new ILReader(localTypeSystem);
 			ilReader.UseDebugSymbols = context.Settings.UseDebugSymbols;
-			var function = ilReader.ReadIL(methodDefinition.Body, context.CancellationToken);
+			var function = ilReader.ReadIL(methodDefinition, methodDefinition.Body, context.CancellationToken);
 			function.DelegateType = value.Method.DeclaringType;
 			function.CheckInvariant(ILPhase.Normal);
 
@@ -157,14 +157,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				DecompileRun = context.DecompileRun
 			};
 			function.RunTransforms(CSharpDecompiler.GetILTransforms().TakeWhile(t => !(t is DelegateConstruction)), nestedContext);
-			function.AcceptVisitor(new ReplaceDelegateTargetVisitor(target, function.Variables.SingleOrDefault(v => v.Index == -1 && v.Kind == VariableKind.Parameter)));
+			function.AcceptVisitor(new ReplaceDelegateTargetVisitor(target, function.Variables.SingleOrDefault(v => v.Index == -2 && v.Kind == VariableKind.Parameter)));
 			// handle nested lambdas
 			((IILTransform)new DelegateConstruction()).Run(function, nestedContext);
 			function.AddILRange(target.ILRange);
 			function.AddILRange(value.Arguments[1].ILRange);
 			return function;
 		}
-		
+
 		/// <summary>
 		/// Replaces loads of 'this' with the target expression.
 		/// Async delegates use: ldobj(ldloca this).
@@ -173,20 +173,20 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		{
 			readonly ILVariable thisVariable;
 			readonly ILInstruction target;
-			
+
 			public ReplaceDelegateTargetVisitor(ILInstruction target, ILVariable thisVariable)
 			{
 				this.target = target;
 				this.thisVariable = thisVariable;
 			}
-			
+
 			protected override void Default(ILInstruction inst)
 			{
 				foreach (var child in inst.Children) {
 					child.AcceptVisitor(this);
 				}
 			}
-			
+
 			protected internal override void VisitLdLoc(LdLoc inst)
 			{
 				if (inst.Variable == thisVariable) {
@@ -205,7 +205,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				base.VisitLdObj(inst);
 			}
 		}
-		
+
 		/// <summary>
 		/// 1. Stores to display class fields are replaced with stores to local variables (in some
 		///    cases existing variables are used; otherwise fresh variables are added to the
@@ -222,13 +222,13 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			readonly List<ILInstruction> orphanedVariableInits;
 			readonly HashSet<ITypeDefinition> translatedDisplayClasses;
 			readonly Dictionary<IField, DisplayClassVariable> initValues = new Dictionary<IField, DisplayClassVariable>();
-			
+
 			struct DisplayClassVariable
 			{
 				public ILVariable variable;
 				public ILInstruction value;
 			}
-			
+
 			public TransformDisplayClassUsages(ILFunction function, IInstructionWithVariableOperand targetLoad, BlockContainer captureScope, List<ILInstruction> orphanedVariableInits, HashSet<ITypeDefinition> translatedDisplayClasses)
 			{
 				this.currentFunction = function;
@@ -238,14 +238,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				this.translatedDisplayClasses = translatedDisplayClasses;
 				this.targetAndCopies.Add(targetLoad.Variable);
 			}
-			
+
 			protected override void Default(ILInstruction inst)
 			{
 				foreach (var child in inst.Children) {
 					child.AcceptVisitor(this);
 				}
 			}
-			
+
 			protected internal override void VisitStLoc(StLoc inst)
 			{
 				base.VisitStLoc(inst);
@@ -256,12 +256,12 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					orphanedVariableInits.Add(inst);
 				}
 			}
-			
+
 			bool MatchesTargetOrCopyLoad(ILInstruction inst)
 			{
 				return targetAndCopies.Any(v => inst.MatchLdLoc(v));
 			}
-			
+
 			protected internal override void VisitStObj(StObj inst)
 			{
 				base.VisitStObj(inst);
@@ -287,7 +287,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					initValues.Add(field, new DisplayClassVariable { value = value, variable = v });
 				}
 			}
-			
+
 			protected internal override void VisitLdObj(LdObj inst)
 			{
 				base.VisitLdObj(inst);
@@ -297,7 +297,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					return;
 				inst.ReplaceWith(info.value.Clone());
 			}
-			
+
 			protected internal override void VisitLdFlda(LdFlda inst)
 			{
 				base.VisitLdFlda(inst);

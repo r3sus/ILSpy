@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -22,6 +22,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
+using dnlib.DotNet.MD;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.Util;
 
@@ -49,7 +51,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				FreezableHelper.Freeze(type);
 			}
 		}
-		
+
 		/// <summary>
 		/// Creates a new unresolved assembly.
 		/// </summary>
@@ -64,7 +66,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.assemblyAttributes = new List<IUnresolvedAttribute>();
 			this.moduleAttributes = new List<IUnresolvedAttribute>();
 		}
-		
+
 		/// <summary>
 		/// Gets/Sets the short assembly name.
 		/// </summary>
@@ -81,7 +83,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				assemblyName = value;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets/Sets the full assembly name.
 		/// </summary>
@@ -98,7 +100,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				fullAssemblyName = value;
 			}
 		}
-		
+
 		string location;
 		public string Location {
 			get {
@@ -113,23 +115,23 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public IList<IUnresolvedAttribute> AssemblyAttributes {
 			get { return assemblyAttributes; }
 		}
-		
+
 		IEnumerable<IUnresolvedAttribute> IUnresolvedAssembly.AssemblyAttributes {
 			get { return assemblyAttributes; }
 		}
-		
+
 		public IList<IUnresolvedAttribute> ModuleAttributes {
 			get { return moduleAttributes; }
 		}
-		
+
 		IEnumerable<IUnresolvedAttribute> IUnresolvedAssembly.ModuleAttributes {
 			get { return moduleAttributes; }
 		}
-		
+
 		public IEnumerable<IUnresolvedTypeDefinition> TopLevelTypeDefinitions {
 			get { return typeDefinitions.Values; }
 		}
-		
+
 		/// <summary>
 		/// Adds a new top-level type definition to this assembly.
 		/// </summary>
@@ -145,9 +147,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var key = new TopLevelTypeName(typeDefinition.Namespace, typeDefinition.Name, typeDefinition.TypeParameters.Count);
 			typeDefinitions.Add(key, typeDefinition);
 		}
-		
+
 		static readonly ITypeReference typeForwardedToAttributeTypeRef = typeof(System.Runtime.CompilerServices.TypeForwardedToAttribute).ToTypeReference();
-		
+
 		/// <summary>
 		/// Adds a type forwarder.
 		/// This adds both an assembly attribute and an internal forwarder entry, which will be used
@@ -163,26 +165,26 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var attribute = new DefaultUnresolvedAttribute(typeForwardedToAttributeTypeRef, new[] { KnownTypeReference.Type });
 			attribute.PositionalArguments.Add(new TypeOfConstantValue(referencedType));
 			assemblyAttributes.Add(attribute);
-			
+
 			typeForwarders[typeName] = referencedType;
 		}
-		
+
 		[Serializable]
 		sealed class TypeOfConstantValue : IConstantValue
 		{
 			readonly ITypeReference typeRef;
-			
+
 			public TypeOfConstantValue(ITypeReference typeRef)
 			{
 				this.typeRef = typeRef;
 			}
-			
+
 			public ResolveResult Resolve(ITypeResolveContext context)
 			{
 				return new TypeOfResolveResult(context.Compilation.FindType(KnownTypeCode.Type), typeRef.Resolve(context));
 			}
 		}
-		
+
 		public IUnresolvedTypeDefinition GetTypeDefinition(string ns, string name, int typeParameterCount)
 		{
 			var key = new TopLevelTypeName(ns ?? string.Empty, name, typeParameterCount);
@@ -192,7 +194,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			else
 				return null;
 		}
-		
+
 		public IAssembly Resolve(ITypeResolveContext context)
 		{
 			if (context == null)
@@ -207,15 +209,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return (IAssembly)cache.GetOrAddShared(this, asm);
 			}
 		}
-		
+
 		public override string ToString()
 		{
 			return "[" + GetType().Name + " " + assemblyName + "]";
 		}
-		
+
 		//[NonSerialized]
 		//List<Dictionary<TopLevelTypeName, IUnresolvedTypeDefinition>> cachedTypeDictionariesPerNameComparer;
-		
+
 		Dictionary<TopLevelTypeName, IUnresolvedTypeDefinition> GetTypeDictionary(StringComparer nameComparer)
 		{
 			Debug.Assert(IsFrozen);
@@ -224,24 +226,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			else
 				throw new NotImplementedException();
 		}
-		
+
 		#region UnresolvedNamespace
 		sealed class UnresolvedNamespace
 		{
 			internal readonly string FullName;
 			internal readonly string Name;
 			internal readonly List<UnresolvedNamespace> Children = new List<UnresolvedNamespace>();
-			
+
 			public UnresolvedNamespace(string fullName, string name)
 			{
 				this.FullName = fullName;
 				this.Name = name;
 			}
 		}
-		
+
 		[NonSerialized]
 		List<KeyValuePair<StringComparer, UnresolvedNamespace>> unresolvedNamespacesPerNameComparer;
-		
+
 		UnresolvedNamespace GetUnresolvedRootNamespace(StringComparer nameComparer)
 		{
 			Debug.Assert(IsFrozen);
@@ -261,7 +263,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return root;
 			}
 		}
-		
+
 		static UnresolvedNamespace GetOrAddNamespace(Dictionary<string, UnresolvedNamespace> dict, string fullName)
 		{
 			UnresolvedNamespace ns;
@@ -292,30 +294,30 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			uint maxRowId = 0;
 			foreach (var td in this.GetAllTypeDefinitions()) {
 				var token = td.MetadataToken;
-				if (token.TokenType == Mono.Cecil.TokenType.TypeDef && token.RID > maxRowId) {
-					maxRowId = token.RID;
+				if (token.Table == Table.TypeDef && token.Rid > maxRowId) {
+					maxRowId = token.Rid;
 				}
 			}
 			var lookup = new IUnresolvedTypeDefinition[maxRowId + 1];
 			foreach (var td in this.GetAllTypeDefinitions()) {
 				var token = td.MetadataToken;
-				if (token.TokenType == Mono.Cecil.TokenType.TypeDef) {
-					lookup[token.RID] = td;
+				if (token.Table == Table.TypeDef) {
+					lookup[token.Rid] = td;
 				}
 			}
 			return lookup;
 		}
 
-		internal IUnresolvedTypeDefinition GetTypeDefByToken(Mono.Cecil.MetadataToken token)
+		internal IUnresolvedTypeDefinition GetTypeDefByToken(MDToken token)
 		{
-			if (token.TokenType != Mono.Cecil.TokenType.TypeDef)
+			if (token.Table != Table.TypeDef)
 				throw new ArgumentException("Token must be typedef-token.");
 			var lookup = LazyInit.VolatileRead(ref allTypesByMetadata);
 			if (lookup == null) {
 				lookup = LazyInit.GetOrSet(ref allTypesByMetadata, BuildMetadataLookup());
 			}
-			if (token.RID < lookup.Length)
-				return lookup[token.RID];
+			if (token.Rid < lookup.Length)
+				return lookup[token.Rid];
 			else
 				return null;
 		}
@@ -328,7 +330,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			readonly Dictionary<TopLevelTypeName, IUnresolvedTypeDefinition> unresolvedTypeDict;
 			readonly ConcurrentDictionary<IUnresolvedTypeDefinition, ITypeDefinition> typeDict = new ConcurrentDictionary<IUnresolvedTypeDefinition, ITypeDefinition>();
 			readonly INamespace rootNamespace;
-			
+
 			public DefaultResolvedAssembly(ICompilation compilation, DefaultUnresolvedAssembly unresolved)
 			{
 				this.compilation = compilation;
@@ -339,34 +341,34 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				this.AssemblyAttributes = unresolved.AssemblyAttributes.CreateResolvedAttributes(context);
 				this.ModuleAttributes = unresolved.ModuleAttributes.CreateResolvedAttributes(context);
 			}
-			
+
 			public IUnresolvedAssembly UnresolvedAssembly {
 				get { return unresolvedAssembly; }
 			}
-			
+
 			public bool IsMainAssembly {
 				get { return this.Compilation.MainAssembly == this; }
 			}
-			
+
 			public string AssemblyName {
 				get { return unresolvedAssembly.AssemblyName; }
 			}
-			
+
 			public string FullAssemblyName {
 				get { return unresolvedAssembly.FullAssemblyName; }
 			}
-			
+
 			public IReadOnlyList<IAttribute> AssemblyAttributes { get; private set; }
 			public IReadOnlyList<IAttribute> ModuleAttributes { get; private set; }
-			
+
 			public INamespace RootNamespace {
 				get { return rootNamespace; }
 			}
-			
+
 			public ICompilation Compilation {
 				get { return compilation; }
 			}
-	
+
 			public bool InternalsVisibleTo(IAssembly assembly)
 			{
 				if (this == assembly)
@@ -429,7 +431,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 				return null;
 			}
-			
+
 			ITypeDefinition GetTypeDefinition(IUnresolvedTypeDefinition unresolved)
 			{
 				return typeDict.GetOrAdd(unresolved, t => CreateTypeDefinition(t));
@@ -446,14 +448,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return new DefaultResolvedTypeDefinition(context, unresolved);
 				}
 			}
-			
+
 			public IEnumerable<ITypeDefinition> TopLevelTypeDefinitions {
 				get {
 					return unresolvedAssembly.TopLevelTypeDefinitions.Select(t => GetTypeDefinition(t));
 				}
 			}
 
-			public ITypeDefinition ResolveTypeDefToken(Mono.Cecil.MetadataToken token)
+			public ITypeDefinition ResolveTypeDefToken(MDToken token)
 			{
 				var td = unresolvedAssembly.GetTypeDefByToken(token);
 				if (td != null)
@@ -482,7 +484,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			{
 				return "[DefaultResolvedAssembly " + AssemblyName + "]";
 			}
-			
+
 			sealed class NS : INamespace
 			{
 				readonly DefaultResolvedAssembly assembly;
@@ -490,7 +492,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				readonly INamespace parentNamespace;
 				readonly IReadOnlyList<NS> childNamespaces;
 				IEnumerable<ITypeDefinition> types;
-				
+
 				public NS(DefaultResolvedAssembly assembly, UnresolvedNamespace ns, INamespace parentNamespace)
 				{
 					this.assembly = assembly;
@@ -499,35 +501,35 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.childNamespaces = new ProjectedList<NS, UnresolvedNamespace, NS>(
 						this, ns.Children, (self, c) => new NS(self.assembly, c, self));
 				}
-				
+
 				string INamespace.ExternAlias {
 					get { return null; }
 				}
-				
+
 				string INamespace.FullName {
 					get { return ns.FullName; }
 				}
-				
+
 				SymbolKind ISymbol.SymbolKind {
 					get { return SymbolKind.Namespace; }
 				}
-				
+
 				public string Name {
 					get { return ns.Name; }
 				}
-				
+
 				INamespace INamespace.ParentNamespace {
 					get { return parentNamespace; }
 				}
-				
+
 				IEnumerable<IAssembly> INamespace.ContributingAssemblies {
 					get { return new [] { assembly }; }
 				}
-				
+
 				IEnumerable<INamespace> INamespace.ChildNamespaces {
 					get { return childNamespaces; }
 				}
-				
+
 				INamespace INamespace.GetChildNamespace(string name)
 				{
 					var nameComparer = assembly.compilation.NameComparer;
@@ -537,11 +539,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					}
 					return null;
 				}
-				
+
 				ICompilation ICompilationProvider.Compilation {
 					get { return assembly.compilation; }
 				}
-				
+
 				IEnumerable<ITypeDefinition> INamespace.Types {
 					get {
 						var result = LazyInit.VolatileRead(ref this.types);
@@ -557,7 +559,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						}
 					}
 				}
-				
+
 				ITypeDefinition INamespace.GetTypeDefinition(string name, int typeParameterCount)
 				{
 					var key = new TopLevelTypeName(ns.FullName, name, typeParameterCount);

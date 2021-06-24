@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2015 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -32,7 +32,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 	public class TransformArrayInitializers : IStatementTransform
 	{
 		StatementTransformContext context;
-		
+
 		void IStatementTransform.Run(Block block, int pos, StatementTransformContext context)
 		{
 			if (!context.Settings.ArrayInitializers)
@@ -202,7 +202,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			instructionsToRemove = 0;
 			finalStore = null;
 			values = new ILInstruction[length];
-			
+
 			ILInstruction initializer;
 			IType type;
 			for (int i = 0; i < length; i++) {
@@ -271,7 +271,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return false;
 		}
-		
+
 		Block BlockFromInitializer(ILVariable v, IType elementType, int[] arrayLength, ILInstruction[] values)
 		{
 			var block = new Block(BlockKind.ArrayInitializer);
@@ -289,7 +289,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			block.FinalInstruction = new LdLoc(v);
 			return block;
 		}
-		
+
 		internal static bool MatchNewArr(ILInstruction instruction, out IType arrayType, out int[] length)
 		{
 			NewArr newArr = instruction as NewArr;
@@ -307,8 +307,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return true;
 		}
-		
-		bool MatchInitializeArrayCall(ILInstruction instruction, out IMethod method, out ILVariable array, out Mono.Cecil.FieldReference field)
+
+		bool MatchInitializeArrayCall(ILInstruction instruction, out IMethod method, out ILVariable array, out dnlib.DotNet.IField field)
 		{
 			method = null;
 			array = null;
@@ -326,7 +326,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			IMember member;
 			if (!call.Arguments[1].MatchLdMemberToken(out member))
 				return false;
-			field = context.TypeSystem.GetCecil(member) as Mono.Cecil.FieldReference;
+			field = context.TypeSystem.GetCecil(member) as dnlib.DotNet.IField;
 			if (field == null)
 				return false;
 			return true;
@@ -336,9 +336,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		{
 			ILVariable v2;
 			IMethod method;
-			Mono.Cecil.FieldReference field;
+			dnlib.DotNet.IField field;
 			if (MatchInitializeArrayCall(body.Instructions[pos], out method, out v2, out field) && array == v2) {
-				var fieldDef = field.ResolveWithinSameModule();
+				var fieldDef = field.ResolveFieldWithinSameModule();
 				if (fieldDef != null && fieldDef.InitialValue != null) {
 					var valuesList = new List<ILInstruction>();
 					if (DecodeArrayInitializer(arrayType, array, fieldDef.InitialValue, arrayLength, valuesList)) {
@@ -406,11 +406,11 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 			return true;
 		}
-		
+
 		static ILInstruction StElem(ILInstruction array, ILInstruction[] indices, ILInstruction value, IType type)
 		{
 			if (type.GetStackType() != value.ResultType) {
-				value = new Conv(value, type.ToPrimitiveType(), false, Sign.None); 
+				value = new Conv(value, type.ToPrimitiveType(), false, Sign.None);
 			}
 			return new StObj(new LdElema(type, array, indices), value, type);
 		}

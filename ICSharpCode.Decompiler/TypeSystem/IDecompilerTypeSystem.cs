@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -16,7 +16,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
@@ -26,13 +26,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	public interface IDecompilerTypeSystem
 	{
 		ICompilation Compilation { get; }
-		
-		TypeDefinition GetCecil(ITypeDefinition typeDefinition);
-		MemberReference GetCecil(IMember member);
-		
-		IType Resolve(TypeReference typeReference, bool isFromSignature = false);
-		IField Resolve(FieldReference fieldReference);
-		IMethod Resolve(MethodReference methodReference);
+
+		TypeDef GetCecil(ITypeDefinition typeDefinition);
+		IMemberRef GetCecil(IMember member);
+
+		IType Resolve(ITypeDefOrRef typeReference, bool isFromSignature = false);
+		IField Resolve(dnlib.DotNet.IField fieldReference);
+		IMethod Resolve(dnlib.DotNet.IMethod methodReference);
 
 		/// <summary>
 		/// Gets a type system instance that automatically specializes the results

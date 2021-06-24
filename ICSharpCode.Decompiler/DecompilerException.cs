@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -24,8 +24,8 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Security;
 using System.Text;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.Decompiler
 {
@@ -34,15 +34,15 @@ namespace ICSharpCode.Decompiler
 	/// </summary>
 	public class DecompilerException : Exception, ISerializable
 	{
-		public AssemblyNameDefinition AssemblyName => DecompiledMethod.Module.Assembly.Name;
+		public dnlib.DotNet.IAssembly AssemblyName => DecompiledMethod.Module.Assembly;
 
-		public string FileName => DecompiledMethod.Module.FileName;
+		public string FileName => DecompiledMethod.Module.Location;
 
 		public FullTypeName DecompiledType => new FullTypeName(DecompiledMethod.DeclaringType.FullName);
 
-		public MethodDefinition DecompiledMethod { get; }
-		
-		public DecompilerException(MethodDefinition decompiledMethod, Exception innerException) 
+		public MethodDef DecompiledMethod { get; }
+
+		public DecompilerException(MethodDef decompiledMethod, Exception innerException)
 			: base("Error decompiling " + decompiledMethod.FullName + Environment.NewLine, innerException)
 		{
 			this.DecompiledMethod = decompiledMethod;

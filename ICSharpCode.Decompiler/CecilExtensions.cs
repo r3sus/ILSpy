@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,10 +19,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
-using ArrayType = Mono.Cecil.ArrayType;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 
 namespace ICSharpCode.Decompiler
 {
@@ -34,116 +32,33 @@ namespace ICSharpCode.Decompiler
 		#region GetPushDelta / GetPopDelta
 		public static int GetPushDelta(this Instruction instruction)
 		{
-			OpCode code = instruction.OpCode;
-			switch (code.StackBehaviourPush) {
-				case StackBehaviour.Push0:
-					return 0;
-
-				case StackBehaviour.Push1:
-				case StackBehaviour.Pushi:
-				case StackBehaviour.Pushi8:
-				case StackBehaviour.Pushr4:
-				case StackBehaviour.Pushr8:
-				case StackBehaviour.Pushref:
-					return 1;
-
-				case StackBehaviour.Push1_push1:
-					return 2;
-
-				case StackBehaviour.Varpush:
-					if (code.FlowControl != FlowControl.Call)
-						break;
-
-					IMethodSignature method = (IMethodSignature) instruction.Operand;
-					return IsVoid (method.ReturnType) ? 0 : 1;
-			}
-
-			throw new NotSupportedException ();
+			instruction.CalculateStackUsage(out int push, out int _);
+			return push;
 		}
-		
-		public static int? GetPopDelta(this Instruction instruction, MethodDefinition methodDef)
+
+		public static int? GetPopDelta(this Instruction instruction, MethodDef methodDef)
 		{
-			OpCode code = instruction.OpCode;
-			switch (code.StackBehaviourPop) {
-				case StackBehaviour.Pop0:
-					return 0;
-				case StackBehaviour.Popi:
-				case StackBehaviour.Popref:
-				case StackBehaviour.Pop1:
-					return 1;
-
-				case StackBehaviour.Pop1_pop1:
-				case StackBehaviour.Popi_pop1:
-				case StackBehaviour.Popi_popi:
-				case StackBehaviour.Popi_popi8:
-				case StackBehaviour.Popi_popr4:
-				case StackBehaviour.Popi_popr8:
-				case StackBehaviour.Popref_pop1:
-				case StackBehaviour.Popref_popi:
-					return 2;
-
-				case StackBehaviour.Popi_popi_popi:
-				case StackBehaviour.Popref_popi_popi:
-				case StackBehaviour.Popref_popi_popi8:
-				case StackBehaviour.Popref_popi_popr4:
-				case StackBehaviour.Popref_popi_popr8:
-				case StackBehaviour.Popref_popi_popref:
-					return 3;
-
-				case StackBehaviour.PopAll:
-					return null;
-
-				case StackBehaviour.Varpop:
-					if (code == OpCodes.Ret)
-						return methodDef.ReturnType.IsVoid() ? 0 : 1;
-
-					if (code.FlowControl != FlowControl.Call)
-						break;
-
-					IMethodSignature method = (IMethodSignature) instruction.Operand;
-					int count = method.HasParameters ? method.Parameters.Count : 0;
-					if (method.HasThis && code != OpCodes.Newobj)
-						++count;
-					if (code == OpCodes.Calli)
-						++count; // calli takes a function pointer in additional to the normal args
-
-					return count;
-			}
-
-			throw new NotSupportedException ();
-		}
-		
-		public static bool IsVoid(this TypeReference type)
-		{
-			while (type is OptionalModifierType || type is RequiredModifierType)
-				type = ((TypeSpecification)type).ElementType;
-			return type.MetadataType == MetadataType.Void;
-		}
-		
-		public static bool IsValueTypeOrVoid(this TypeReference type)
-		{
-			while (type is OptionalModifierType || type is RequiredModifierType)
-				type = ((TypeSpecification)type).ElementType;
-			if (type is ArrayType)
-				return false;
-			return type.IsValueType || type.IsVoid();
+			instruction.CalculateStackUsage(methodDef.HasReturnType, out int _, out int pops);
+			return pops;
 		}
 
 		/// <summary>
 		/// checks if the given TypeReference is one of the following types:
 		/// [sbyte, short, int, long, IntPtr]
 		/// </summary>
-		public static bool IsSignedIntegralType(this TypeReference type)
+		public static bool IsSignedIntegralType(this TypeSig type)
 		{
-			return type.MetadataType == MetadataType.SByte ||
-				   type.MetadataType == MetadataType.Int16 ||
-				   type.MetadataType == MetadataType.Int32 ||
-				   type.MetadataType == MetadataType.Int64 ||
-				   type.MetadataType == MetadataType.IntPtr;
+			if (type == null)
+				return false;
+			return type.ElementType == ElementType.I1 ||
+				   type.ElementType == ElementType.I2 ||
+				   type.ElementType == ElementType.I4 ||
+				   type.ElementType == ElementType.I8 ||
+				   type.ElementType == ElementType.I;
 		}
 
 		#endregion
-		
+
 		/// <summary>
 		/// Gets the (exclusive) end offset of this instruction.
 		/// </summary>
@@ -151,22 +66,22 @@ namespace ICSharpCode.Decompiler
 		{
 			if (inst == null)
 				throw new ArgumentNullException(nameof(inst));
-			return inst.Offset + inst.GetSize();
+			return (int)inst.Offset + inst.GetSize();
 		}
-		
+
 		public static string OffsetToString(int offset)
 		{
 			return string.Format("IL_{0:x4}", offset);
 		}
-		
+
 		public static string OffsetToString(long offset)
 		{
 			return string.Format("IL_{0:x4}", offset);
 		}
-		
-		public static HashSet<MethodDefinition> GetAccessorMethods(this TypeDefinition type)
+
+		public static HashSet<MethodDef> GetAccessorMethods(this TypeDef type)
 		{
-			HashSet<MethodDefinition> accessorMethods = new HashSet<MethodDefinition>();
+			HashSet<MethodDef> accessorMethods = new HashSet<MethodDef>();
 			foreach (var property in type.Properties) {
 				accessorMethods.Add(property.GetMethod);
 				accessorMethods.Add(property.SetMethod);
@@ -175,7 +90,7 @@ namespace ICSharpCode.Decompiler
 						accessorMethods.Add(m);
 				}
 			}
-			foreach (EventDefinition ev in type.Events) {
+			foreach (var ev in type.Events) {
 				accessorMethods.Add(ev.AddMethod);
 				accessorMethods.Add(ev.RemoveMethod);
 				accessorMethods.Add(ev.InvokeMethod);
@@ -186,40 +101,92 @@ namespace ICSharpCode.Decompiler
 			}
 			return accessorMethods;
 		}
-		
-		public static TypeDefinition ResolveWithinSameModule(this TypeReference type)
+
+		public static TypeDef ResolveWithinSameModule(this ITypeDefOrRef type)
 		{
-			if (type != null && type.GetElementType().Module == type.Module)
-				return type.Resolve();
-			else
-				return null;
-		}
-		
-		public static FieldDefinition ResolveWithinSameModule(this FieldReference field)
-		{
-			if (field != null && field.DeclaringType.GetElementType().Module == field.Module)
-				return field.Resolve();
-			else
-				return null;
-		}
-		
-		public static MethodDefinition ResolveWithinSameModule(this MethodReference method)
-		{
-			if (method != null && method.DeclaringType.GetElementType().Module == method.Module)
-				return method.Resolve();
+			if (type != null && type.Scope == type.Module)
+				return type.ResolveTypeDef();
 			else
 				return null;
 		}
 
-		public static TypeDefinition ResolveOrThrow(this TypeReference typeReference)
+		public static FieldDef ResolveFieldWithinSameModule(this MemberRef field)
 		{
-			var resolved = typeReference.Resolve();
-			if (resolved == null)
-				throw new ReferenceResolvingException();
-			return resolved;
+			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
+				return field.ResolveField();
+			else
+				return null;
 		}
 
-		public static bool IsCompilerGenerated(this ICustomAttributeProvider provider)
+		public static FieldDef ResolveFieldWithinSameModule(this dnlib.DotNet.IField field)
+		{
+			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
+				return field is FieldDef ? (FieldDef)field : ((MemberRef)field).ResolveField();
+			else
+				return null;
+		}
+
+		public static MethodDef ResolveMethodWithinSameModule(this dnlib.DotNet.IMethod method)
+		{
+			if (method is MethodSpec)
+				method = ((MethodSpec)method).Method;
+			if (method != null && method.DeclaringType != null && method.DeclaringType.Scope == method.Module)
+				return method is MethodDef ? (MethodDef)method : ((MemberRef)method).ResolveMethod();
+			else
+				return null;
+		}
+
+		public static MethodDef Resolve(this dnlib.DotNet.IMethod method)
+		{
+			if (method is MethodSpec)
+				method = ((MethodSpec)method).Method;
+			if (method is MemberRef)
+				return ((MemberRef)method).ResolveMethod();
+			else
+				return (MethodDef)method;
+		}
+
+		public static FieldDef Resolve(this dnlib.DotNet.IField field)
+		{
+			if (field is MemberRef)
+				return ((MemberRef)field).ResolveField();
+			else
+				return (FieldDef)field;
+		}
+
+		public static TypeDef Resolve(this dnlib.DotNet.IType type)
+		{
+			return type == null ? null : type.GetScopeTypeDefOrRef().ResolveTypeDef();
+		}
+
+		public static ITypeDefOrRef GetScopeTypeDefOrRef(this dnlib.DotNet.IType type) {
+			var t = type.GetScopeType();
+			if (t is ITypeDefOrRef tdr)
+				return tdr;
+			if (t is TypeSig sig)
+				return sig.ToTypeDefOrRef();
+			return null;
+		}
+
+		public static dnlib.DotNet.IType GetScopeType(this dnlib.DotNet.IType type) {
+			if (type is TypeDef td)
+				return td;
+			if (type is TypeRef tr)
+				return tr;
+			if (!(type is TypeSig sig)) {
+				if (!(type is TypeSpec ts))
+					return type;
+				sig = ts.TypeSig;
+			}
+			sig = sig.RemovePinnedAndModifiers();
+			if (sig is GenericInstSig gis)
+				return gis.GenericType?.TypeDefOrRef;
+			if (sig is TypeDefOrRefSig tdrs)
+				return tdrs.TypeDefOrRef;
+			return type;
+		}
+
+		public static bool IsCompilerGenerated(this IHasCustomAttribute  provider)
 		{
 			if (provider != null && provider.HasCustomAttributes) {
 				foreach (CustomAttribute a in provider.CustomAttributes) {
@@ -229,8 +196,8 @@ namespace ICSharpCode.Decompiler
 			}
 			return false;
 		}
-		
-		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this IMemberDefinition member)
+
+		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this IMemberDef member)
 		{
 			if (member == null)
 				return false;
@@ -239,94 +206,83 @@ namespace ICSharpCode.Decompiler
 			return IsCompilerGeneratedOrIsInCompilerGeneratedClass(member.DeclaringType);
 		}
 
-		public static TypeReference GetEnumUnderlyingType(this TypeDefinition type)
-		{
-			if (!type.IsEnum)
-				throw new ArgumentException("Type must be an enum", nameof(type));
-
-			var fields = type.Fields;
-
-			for (int i = 0; i < fields.Count; i++)
-			{
-				var field = fields[i];
-				if (!field.IsStatic)
-					return field.FieldType;
-			}
-
-			throw new NotSupportedException();
-		}
-		
-		public static bool IsAnonymousType(this TypeReference type)
+		public static bool IsAnonymousType(this ITypeDefOrRef type)
 		{
 			if (type == null)
 				return false;
 			if (string.IsNullOrEmpty(type.Namespace) && type.HasGeneratedName() && (type.Name.Contains("AnonType") || type.Name.Contains("AnonymousType"))) {
-				TypeDefinition td = type.Resolve();
+				TypeDef td = type.Resolve();
 				return td != null && td.IsCompilerGenerated();
 			}
 			return false;
 		}
 
-		public static bool HasGeneratedName(this MemberReference member)
+		public static bool HasGeneratedName(this IMemberRef member)
 		{
 			return member.Name.StartsWith("<", StringComparison.Ordinal);
 		}
-		
-		public static bool ContainsAnonymousType(this TypeReference type)
+
+		public static bool ContainsAnonymousType(this TypeSig type)
 		{
-			GenericInstanceType git = type as GenericInstanceType;
-			if (git != null) {
-				if (IsAnonymousType(git))
+			return type.ContainsAnonymousType(0);
+		}
+
+		static bool ContainsAnonymousType(this TypeSig type, int depth)
+		{
+			if (depth >= 30)
+				return false;
+			GenericInstSig git = type as GenericInstSig;
+			if (git != null && git.GenericType != null) {
+				if (IsAnonymousType(git.GenericType.TypeDefOrRef))
 					return true;
 				for (int i = 0; i < git.GenericArguments.Count; i++) {
-					if (git.GenericArguments[i].ContainsAnonymousType())
+					if (git.GenericArguments[i].ContainsAnonymousType(depth + 1))
 						return true;
 				}
 				return false;
 			}
-			TypeSpecification typeSpec = type as TypeSpecification;
-			if (typeSpec != null)
-				return typeSpec.ElementType.ContainsAnonymousType();
-			else
-				return false;
+			if (type != null && type.Next != null)
+				return type.Next.ContainsAnonymousType(depth + 1);
+			return false;
 		}
 
-		public static string GetDefaultMemberName(this TypeDefinition type)
+		public static string GetDefaultMemberName(this TypeDef type)
 		{
 			CustomAttribute attr;
 			return type.GetDefaultMemberName(out attr);
 		}
 
-		public static string GetDefaultMemberName(this TypeDefinition type, out CustomAttribute defaultMemberAttribute)
+		public static string GetDefaultMemberName(this TypeDef type, out CustomAttribute defaultMemberAttribute)
 		{
-			if (type.HasCustomAttributes)
-				foreach (CustomAttribute ca in type.CustomAttributes)
-					if (ca.Constructor.DeclaringType.Name == "DefaultMemberAttribute" && ca.Constructor.DeclaringType.Namespace == "System.Reflection"
-						&& ca.Constructor.FullName == @"System.Void System.Reflection.DefaultMemberAttribute::.ctor(System.String)") {
+			if (type != null)
+				foreach (CustomAttribute ca in type.CustomAttributes.FindAll("System.Reflection.DefaultMemberAttribute"))
+					if (ca.Constructor != null && ca.Constructor.FullName == @"System.Void System.Reflection.DefaultMemberAttribute::.ctor(System.String)" &&
+						ca.ConstructorArguments.Count == 1 &&
+						ca.ConstructorArguments[0].Value is UTF8String) {
 						defaultMemberAttribute = ca;
-						return ca.ConstructorArguments[0].Value as string;
+						return (UTF8String)ca.ConstructorArguments[0].Value;
 					}
 			defaultMemberAttribute = null;
 			return null;
 		}
 
-		public static bool IsIndexer(this PropertyDefinition property)
+		public static bool IsIndexer(this PropertyDef property)
 		{
 			CustomAttribute attr;
 			return property.IsIndexer(out attr);
 		}
 
-		public static bool IsIndexer(this PropertyDefinition property, out CustomAttribute defaultMemberAttribute)
+		public static bool IsIndexer(this PropertyDef property, out CustomAttribute defaultMemberAttribute)
 		{
 			defaultMemberAttribute = null;
-			if (property.HasParameters) {
+			if (property != null && property.PropertySig.GetParamCount() > 0) {
 				var accessor = property.GetMethod ?? property.SetMethod;
-				PropertyDefinition basePropDef = property;
+				PropertyDef basePropDef = property;
 				if (accessor.HasOverrides) {
 					// if the property is explicitly implementing an interface, look up the property in the interface:
-					MethodDefinition baseAccessor = accessor.Overrides.First().Resolve();
+					MethodDef baseAccessor = accessor.Overrides.First().MethodDeclaration.Resolve();
 					if (baseAccessor != null) {
-						foreach (PropertyDefinition baseProp in baseAccessor.DeclaringType.Properties) {
+						foreach (PropertyDef baseProp in baseAccessor.DeclaringType.Properties) {
 							if (baseProp.GetMethod == baseAccessor || baseProp.SetMethod == baseAccessor) {
 								basePropDef = baseProp;
 								break;
@@ -363,12 +319,12 @@ namespace ICSharpCode.Decompiler
 			}
 		}
 
-		public static FullTypeName GetFullTypeName(this TypeDefinition typeDef)
+		public static TypeSystem.FullTypeName GetFullTypeName(this TypeDef typeDef)
 		{
-			return new FullTypeName(typeDef.FullName);
+			return new TypeSystem.FullTypeName(typeDef.FullName);
 		}
 
-		public static bool IsDelegate(this TypeDefinition type)
+		public static bool IsDelegate(this TypeDef type)
 		{
 			if (type.BaseType != null && type.BaseType.Namespace == "System") {
 				if (type.BaseType.Name == "MulticastDelegate")
@@ -377,6 +333,118 @@ namespace ICSharpCode.Decompiler
 					return true;
 			}
 			return false;
+		}
+
+		public static int GetCodeSize(this CilBody body)
+		{
+			if (body.Instructions.Count == 0)
+				return 0;
+			var instr = body.Instructions.Last();
+			return instr.GetEndOffset();
+		}
+
+		public static IList<Parameter> GetParameters(this IMethod method) {
+			if (method is null || method.MethodSig is null)
+				return new List<Parameter>();
+
+			if (method is MethodDef md)
+				return md.Parameters;
+
+			var list = new List<Parameter>();
+			int paramIndex = 0, methodSigIndex = 0;
+			if (method.MethodSig.HasThis)
+				list.Add(new Parameter(paramIndex++, Parameter.HIDDEN_THIS_METHOD_SIG_INDEX, method.DeclaringType.ToTypeSig()));
+			foreach (var type in method.MethodSig.GetParams())
+				list.Add(new Parameter(paramIndex++, methodSigIndex++, type));
+			return list;
+		}
+
+		public static IEnumerable<Parameter> GetParameters(this PropertyDef property)
+		{
+			if (property == null)
+				yield break;
+			if (property.GetMethod != null)
+			{
+				foreach (var param in property.GetMethod.Parameters)
+					yield return param;
+				yield break;
+			}
+			if (property.SetMethod != null)
+			{
+				int last = property.SetMethod.Parameters.Count - 1;
+				foreach (var param in property.SetMethod.Parameters)
+				{
+					if (param.Index != last)
+						yield return param;
+				}
+				yield break;
+			}
+
+			int i = 0;
+			foreach (TypeSig param in property.PropertySig.GetParameters())
+			{
+				yield return new Parameter(i,i,param);
+				i++;
+			}
+		}
+
+		public static IList<TypeSig> GetParameters(this MethodBaseSig methodSig)
+		{
+			if (methodSig == null)
+				return new List<TypeSig>();
+			if (methodSig.ParamsAfterSentinel != null)
+				return methodSig.Params
+								.Concat(new TypeSig[] { new SentinelSig() })
+								.Concat(methodSig.ParamsAfterSentinel)
+								.ToList();
+			else
+				return methodSig.Params;
+		}
+
+		public static int GetParametersSkip(this IList<Parameter> parameters)
+		{
+			if (parameters == null || parameters.Count == 0)
+				return 0;
+			if (parameters[0].IsHiddenThisParameter)
+				return 1;
+			return 0;
+		}
+
+		public static int GetNumberOfNormalParameters(this IList<Parameter> parameters)
+		{
+			if (parameters == null)
+				return 0;
+			return parameters.Count - GetParametersSkip(parameters);
+		}
+
+		public static Instruction GetPrevious(this CilBody body, Instruction instr)
+		{
+			int index = body.Instructions.IndexOf(instr);
+			if (index <= 0)
+				return null;
+			return body.Instructions[index - 1];
+		}
+
+		public static bool IsValueType(ITypeDefOrRef tdr)
+		{
+			if (tdr == null)
+				return false;
+			var ts = tdr as TypeSpec;
+			if (ts != null)
+				return IsValueType(ts.TypeSig);
+			return tdr.IsValueType;
+		}
+
+		public static bool IsValueType(TypeSig ts) => ts?.IsValueType ?? false;
+
+		public static string GetScopeName(this IScope scope)
+		{
+			if (scope == null)
+				return string.Empty;
+			if (scope is IFullName)
+				return ((IFullName)scope).Name;
+			else
+				return scope.ScopeName;	// Shouldn't be reached
 		}
 	}
 }

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -109,7 +109,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			if (!stateVariables.Contains(v))
 				stateVariables.Add(v);
 		}
-		
+
 		public IEnumerable<ILVariable> StateVariables { get => stateVariables; }
 
 		static readonly SymbolicValue Failed = new SymbolicValue(SymbolicValueType.Unknown);
@@ -133,7 +133,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			} else if (inst.MatchLdLoc(out var loadedVariable)) {
 				if (stateVariables.Contains(loadedVariable))
 					return new SymbolicValue(SymbolicValueType.State);
-				else if (loadedVariable.Kind == VariableKind.Parameter && loadedVariable.Index < 0)
+				else if (loadedVariable.Kind == VariableKind.Parameter && loadedVariable.Index == -2)
 					return new SymbolicValue(SymbolicValueType.This);
 				else
 					return Failed;
