@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,16 +20,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedPropertyOverridesTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly PropertyDefinition analyzedProperty;
+		private readonly PropertyDef analyzedProperty;
 
-		public AnalyzedPropertyOverridesTreeNode(PropertyDefinition analyzedProperty)
+		public AnalyzedPropertyOverridesTreeNode(PropertyDef analyzedProperty)
 		{
 			if (analyzedProperty == null)
 				throw new ArgumentNullException(nameof(analyzedProperty));
@@ -48,15 +48,15 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return analyzer.PerformAnalysis(ct).OrderBy(n => n.Text);
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			if (!TypesHierarchyHelpers.IsBaseType(analyzedProperty.DeclaringType, type, resolveTypeArguments: false))
 				yield break;
 
-			foreach (PropertyDefinition property in type.Properties) {
+			foreach (PropertyDef property in type.Properties) {
 
 				if (TypesHierarchyHelpers.IsBaseProperty(analyzedProperty, property)) {
-					MethodDefinition anyAccessor = property.GetMethod ?? property.SetMethod;
+					MethodDef anyAccessor = property.GetMethod ?? property.SetMethod;
 					bool hidesParent = !anyAccessor.IsVirtual ^ anyAccessor.IsNewSlot;
 					var node = new AnalyzedPropertyTreeNode(property, hidesParent ? "(hides) " : "");
 					node.Language = this.Language;
@@ -65,7 +65,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		public static bool CanShow(PropertyDefinition property)
+		public static bool CanShow(PropertyDef property)
 		{
 			var accessor = property.GetMethod ?? property.SetMethod;
 			return accessor.IsVirtual && !accessor.IsFinal && !accessor.DeclaringType.IsInterface;

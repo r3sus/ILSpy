@@ -4,11 +4,11 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Media;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 using ICSharpCode.ILSpy.TreeNodes;
-using Mono.Cecil;
-using Code = Mono.Cecil.Cil.Code;
 
 namespace ICSharpCode.ILSpy
 {
@@ -38,7 +38,7 @@ namespace ICSharpCode.ILSpy
 			searchTerm = terms;
 		}
 
-		protected float CalculateFitness(MemberReference member)
+		protected float CalculateFitness(IMemberRef member)
 		{
 			string text = member.Name;
 
@@ -59,27 +59,27 @@ namespace ICSharpCode.ILSpy
 			return 1.0f / text.Length;
 		}
 
-		protected virtual bool IsMatch(FieldDefinition field, Language language)
+		protected virtual bool IsMatch(FieldDef field, Language language)
 		{
 			return false;
 		}
 
-		protected virtual bool IsMatch(PropertyDefinition property, Language language)
+		protected virtual bool IsMatch(PropertyDef property, Language language)
 		{
 			return false;
 		}
 
-		protected virtual bool IsMatch(EventDefinition ev, Language language)
+		protected virtual bool IsMatch(EventDef ev, Language language)
 		{
 			return false;
 		}
 
-		protected virtual bool IsMatch(MethodDefinition m, Language language)
+		protected virtual bool IsMatch(MethodDef m, Language language)
 		{
 			return false;
 		}
 
-		protected virtual bool MatchName(IMemberDefinition m, Language language)
+		protected virtual bool MatchName(IMemberDef m, Language language)
 		{
 			return IsMatch(t => GetLanguageSpecificName(language, m, regex != null ? fullNameSearch : t.Contains(".")));
 		}
@@ -153,25 +153,25 @@ namespace ICSharpCode.ILSpy
 			return false;
 		}
 
-		string GetLanguageSpecificName(Language language, IMemberDefinition member, bool fullName = false)
+		string GetLanguageSpecificName(Language language, IMemberDef member, bool fullName = false)
 		{
 			switch (member) {
-				case TypeDefinition t:
+				case TypeDef t:
 					return language.TypeToString(t, fullName);
-				case FieldDefinition f:
+				case FieldDef f:
 					return fullName ? language.TypeToString(f.DeclaringType, fullName) + "." + language.FormatFieldName(f) : language.FormatFieldName(f);
-				case PropertyDefinition p:
+				case PropertyDef p:
 					return fullName ? language.TypeToString(p.DeclaringType, fullName) + "." + language.FormatPropertyName(p) : language.FormatPropertyName(p);
-				case MethodDefinition m:
+				case MethodDef m:
 					return fullName ? language.TypeToString(m.DeclaringType, fullName) + "." + language.FormatMethodName(m) : language.FormatMethodName(m);
-				case EventDefinition e:
+				case EventDef e:
 					return fullName ? language.TypeToString(e.DeclaringType, fullName) + "." + language.FormatEventName(e) : language.FormatEventName(e);
 				default:
 					throw new NotSupportedException(member?.GetType() + " not supported!");
 			}
 		}
 
-		void Add<T>(Func<IEnumerable<T>> itemsGetter, TypeDefinition type, Language language, Action<SearchResult> addResult, Func<T, Language, bool> matcher, Func<T, ImageSource> image) where T : MemberReference
+		void Add<T>(Func<IEnumerable<T>> itemsGetter, TypeDef type, Language language, Action<SearchResult> addResult, Func<T, Language, bool> matcher, Func<T, ImageSource> image) where T : IMemberRef
 		{
 			IEnumerable<T> items = Enumerable.Empty<T>();
 			try {
@@ -185,7 +185,7 @@ namespace ICSharpCode.ILSpy
 						Member = item,
 						Fitness = CalculateFitness(item),
 						Image = image(item),
-						Name = GetLanguageSpecificName(language, (IMemberDefinition)item),
+						Name = GetLanguageSpecificName(language, (IMemberDef)item),
 						LocationImage = TypeTreeNode.GetIcon(type),
 						Location = language.TypeToString(type, includeNamespace: true)
 					});
@@ -193,19 +193,19 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		public virtual void Search(TypeDefinition type, Language language, Action<SearchResult> addResult)
+		public virtual void Search(TypeDef type, Language language, Action<SearchResult> addResult)
 		{
 			Add(() => type.Fields, type, language, addResult, IsMatch, FieldTreeNode.GetIcon);
 			Add(() => type.Properties, type, language, addResult, IsMatch, p => PropertyTreeNode.GetIcon(p));
 			Add(() => type.Events, type, language, addResult, IsMatch, EventTreeNode.GetIcon);
 			Add(() => type.Methods.Where(NotSpecialMethod), type, language, addResult, IsMatch, MethodTreeNode.GetIcon);
 
-			foreach (TypeDefinition nestedType in type.NestedTypes) {
+			foreach (TypeDef nestedType in type.NestedTypes) {
 				Search(nestedType, language, addResult);
 			}
 		}
 
-		bool NotSpecialMethod(MethodDefinition arg)
+		bool NotSpecialMethod(MethodDef arg)
 		{
 			return (arg.SemanticsAttributes & (
 				MethodSemanticsAttributes.Setter
@@ -237,9 +237,9 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		protected override bool MatchName(IMemberDefinition m, Language language)
+		protected override bool MatchName(IMemberDef m, Language language)
 		{
-			return m.MetadataToken.ToInt32() == searchTermToken;
+			return m.MDToken.ToInt32() == searchTermToken;
 		}
 	}
 
@@ -280,22 +280,22 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		protected override bool IsMatch(FieldDefinition field, Language language)
+		protected override bool IsMatch(FieldDef field, Language language)
 		{
 			return IsLiteralMatch(field.Constant);
 		}
 
-		protected override bool IsMatch(PropertyDefinition property, Language language)
+		protected override bool IsMatch(PropertyDef property, Language language)
 		{
 			return MethodIsLiteralMatch(property.GetMethod) || MethodIsLiteralMatch(property.SetMethod);
 		}
 
-		protected override bool IsMatch(EventDefinition ev, Language language)
+		protected override bool IsMatch(EventDef ev, Language language)
 		{
 			return MethodIsLiteralMatch(ev.AddMethod) || MethodIsLiteralMatch(ev.RemoveMethod) || MethodIsLiteralMatch(ev.InvokeMethod);
 		}
 
-		protected override bool IsMatch(MethodDefinition m, Language language)
+		protected override bool IsMatch(MethodDef m, Language language)
 		{
 			return MethodIsLiteralMatch(m);
 		}
@@ -321,7 +321,7 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		bool MethodIsLiteralMatch(MethodDefinition m)
+		bool MethodIsLiteralMatch(MethodDef m)
 		{
 			if (m == null)
 				return false;
@@ -439,22 +439,22 @@ namespace ICSharpCode.ILSpy
 			this.searchKind = searchKind;
 		}
 
-		protected override bool IsMatch(FieldDefinition field, Language language)
+		protected override bool IsMatch(FieldDef field, Language language)
 		{
 			return (searchKind == MemberSearchKind.All || searchKind == MemberSearchKind.Field) && MatchName(field, language);
 		}
 
-		protected override bool IsMatch(PropertyDefinition property, Language language)
+		protected override bool IsMatch(PropertyDef property, Language language)
 		{
 			return (searchKind == MemberSearchKind.All || searchKind == MemberSearchKind.Property) && MatchName(property, language);
 		}
 
-		protected override bool IsMatch(EventDefinition ev, Language language)
+		protected override bool IsMatch(EventDef ev, Language language)
 		{
 			return (searchKind == MemberSearchKind.All || searchKind == MemberSearchKind.Event) && MatchName(ev, language);
 		}
 
-		protected override bool IsMatch(MethodDefinition m, Language language)
+		protected override bool IsMatch(MethodDef m, Language language)
 		{
 			return (searchKind == MemberSearchKind.All || searchKind == MemberSearchKind.Method) && MatchName(m, language);
 		}
@@ -467,7 +467,7 @@ namespace ICSharpCode.ILSpy
 		{
 		}
 
-		public override void Search(TypeDefinition type, Language language, Action<SearchResult> addResult)
+		public override void Search(TypeDef type, Language language, Action<SearchResult> addResult)
 		{
 			if (MatchName(type, language)) {
 				string name = language.TypeToString(type, includeNamespace: false);
@@ -477,11 +477,11 @@ namespace ICSharpCode.ILSpy
 					Image = TypeTreeNode.GetIcon(type),
 					Name = name,
 					LocationImage = type.DeclaringType != null ? TypeTreeNode.GetIcon(type.DeclaringType) : Images.Namespace,
-					Location = type.DeclaringType != null ? language.TypeToString(type.DeclaringType, includeNamespace: true) : type.Namespace
+					Location = type.DeclaringType != null ? language.TypeToString(type.DeclaringType, includeNamespace: true) : type.Namespace.String
 				});
 			}
 
-			foreach (TypeDefinition nestedType in type.NestedTypes) {
+			foreach (TypeDef nestedType in type.NestedTypes) {
 				Search(nestedType, language, addResult);
 			}
 		}
@@ -494,7 +494,7 @@ namespace ICSharpCode.ILSpy
 		{
 		}
 
-		public override void Search(TypeDefinition type, Language language, Action<SearchResult> addResult)
+		public override void Search(TypeDef type, Language language, Action<SearchResult> addResult)
 		{
 			if (MatchName(type, language))
 			{
@@ -506,29 +506,29 @@ namespace ICSharpCode.ILSpy
 					Fitness = CalculateFitness(type),
 					Name = name,
 					LocationImage = type.DeclaringType != null ? TypeTreeNode.GetIcon(type.DeclaringType) : Images.Namespace,
-					Location = type.DeclaringType != null ? language.TypeToString(type.DeclaringType, includeNamespace: true) : type.Namespace
+					Location = type.DeclaringType != null ? language.TypeToString(type.DeclaringType, includeNamespace: true) : type.Namespace.String
 				});
 			}
 
 			base.Search(type, language, addResult);
 		}
 
-		protected override bool IsMatch(FieldDefinition field, Language language)
+		protected override bool IsMatch(FieldDef field, Language language)
 		{
 			return MatchName(field, language);
 		}
 
-		protected override bool IsMatch(PropertyDefinition property, Language language)
+		protected override bool IsMatch(PropertyDef property, Language language)
 		{
 			return MatchName(property, language);
 		}
 
-		protected override bool IsMatch(EventDefinition ev, Language language)
+		protected override bool IsMatch(EventDef ev, Language language)
 		{
 			return MatchName(ev, language);
 		}
 
-		protected override bool IsMatch(MethodDefinition m, Language language)
+		protected override bool IsMatch(MethodDef m, Language language)
 		{
 			return MatchName(m, language);
 		}

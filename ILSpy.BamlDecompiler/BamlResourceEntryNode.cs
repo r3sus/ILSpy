@@ -8,13 +8,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-
+using dnlib.DotNet;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.Decompiler.Util;
 using ICSharpCode.ILSpy;
 using ICSharpCode.ILSpy.TextView;
 using ICSharpCode.ILSpy.TreeNodes;
-using Mono.Cecil;
 using Ricciolo.StylesExplorer.MarkupReflection;
 
 namespace ILSpy.BamlDecompiler
@@ -24,11 +23,11 @@ namespace ILSpy.BamlDecompiler
 		public BamlResourceEntryNode(string key, Stream data) : base(key, data)
 		{
 		}
-		
+
 		public override bool View(DecompilerTextView textView)
 		{
 			IHighlightingDefinition highlighting = null;
-			
+
 			textView.RunWithCancellation(
 				token => Task.Factory.StartNew(
 					() => {
@@ -45,7 +44,7 @@ namespace ILSpy.BamlDecompiler
 				.HandleExceptions();
 			return true;
 		}
-		
+
 		bool LoadBaml(AvalonEditTextOutput output, CancellationToken cancellationToken)
 		{
 			var asm = this.Ancestors().OfType<AssemblyTreeNode>().FirstOrDefault().LoadedAssembly;
@@ -55,7 +54,7 @@ namespace ILSpy.BamlDecompiler
 			return true;
 		}
 
-		internal static XDocument LoadIntoDocument(IAssemblyResolver resolver, AssemblyDefinition asm, Stream stream, CancellationToken cancellationToken)
+		internal static XDocument LoadIntoDocument(IAssemblyResolver resolver, AssemblyDef asm, Stream stream, CancellationToken cancellationToken)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			XDocument xamlDocument;
@@ -68,7 +67,7 @@ namespace ILSpy.BamlDecompiler
 			}
 		}
 
-		static void ConvertConnectionIds(XDocument xamlDocument, AssemblyDefinition asm, CancellationToken cancellationToken)
+		static void ConvertConnectionIds(XDocument xamlDocument, AssemblyDef asm, CancellationToken cancellationToken)
 		{
 			var attr = xamlDocument.Root.Attribute(XName.Get("Class", XmlBamlReader.XWPFNamespace));
 			if (attr != null) {
@@ -107,7 +106,7 @@ namespace ILSpy.BamlDecompiler
 					.Where(ns => !string.IsNullOrWhiteSpace(ns.Prefix))
 					.Select(ns => new XAttribute(XName.Get(ns.Prefix, XNamespace.Xmlns.NamespaceName), ns.Namespace))
 			);
-			
+
 			foreach (var element in xamlDocument.Root.DescendantsAndSelf()) {
 				if (element.Name.NamespaceName != XmlBamlReader.DefaultWPFNamespace && !additionalXmlns.Any(ka => ka.Value == element.Name.NamespaceName)) {
 					string newPrefix = new string(element.Name.LocalName.Where(c => char.IsUpper(c)).ToArray()).ToLowerInvariant();
@@ -119,12 +118,12 @@ namespace ILSpy.BamlDecompiler
 						additionalXmlns.Add(new XAttribute(defaultXmlns, element.Name.NamespaceName));
 				}
 			}
-			
+
 			foreach (var xmlns in additionalXmlns.Except(xamlDocument.Root.Attributes())) {
 				xamlDocument.Root.Add(xmlns);
 			}
 		}
-		
+
 		static void ConvertToEmptyElements(XElement element)
 		{
 			foreach (var el in element.Elements()) {
@@ -135,12 +134,12 @@ namespace ILSpy.BamlDecompiler
 				ConvertToEmptyElements(el);
 			}
 		}
-		
+
 		static void RemoveConnectionIds(XElement element, List<(LongSet key, EventRegistration[] value)> eventMappings)
 		{
 			foreach (var child in element.Elements())
 				RemoveConnectionIds(child, eventMappings);
-			
+
 			var removableAttrs = new List<XAttribute>();
 			var addableAttrs = new List<XAttribute>();
 			foreach (var attr in element.Attributes(XName.Get("ConnectionId", XmlBamlReader.XWPFNamespace))) {

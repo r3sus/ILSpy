@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using dnlib.DotNet;
 using EnvDTE;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.AddIn.Commands
 {
@@ -69,7 +69,7 @@ namespace ICSharpCode.ILSpy.AddIn.Commands
 			if (resolvedPath != null) {
 				return new ILSpyParameters(new[] { $"{resolvedPath}" });
 			} else if (!string.IsNullOrWhiteSpace(fusionName)) {
-				return new ILSpyParameters(new string[] { GacInterop.FindAssemblyInNetGac(AssemblyNameReference.Parse(fusionName)) });
+				return new ILSpyParameters(new string[] { GacInterop.FindAssemblyInNetGac(new AssemblyRefUser(new AssemblyNameInfo(fusionName))) });
 			}
 
 			return null;

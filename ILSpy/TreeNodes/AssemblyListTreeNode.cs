@@ -23,9 +23,9 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.TreeView;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -179,7 +179,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		}
 
 
-		public AssemblyTreeNode FindAssemblyNode(ModuleDefinition module)
+		public AssemblyTreeNode FindAssemblyNode(ModuleDef module)
 		{
 			if (module == null)
 				return null;
@@ -191,7 +191,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			return null;
 		}
 
-		public AssemblyTreeNode FindAssemblyNode(AssemblyDefinition asm)
+		public AssemblyTreeNode FindAssemblyNode(AssemblyDef asm)
 		{
 			if (asm == null)
 				return null;
@@ -219,7 +219,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// Looks up the type node corresponding to the type definition.
 		/// Returns null if no matching node is found.
 		/// </summary>
-		public TypeTreeNode FindTypeNode(TypeDefinition def)
+		public TypeTreeNode FindTypeNode(TypeDef def)
 		{
 			if (def == null)
 				return null;
@@ -242,7 +242,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// Looks up the method node corresponding to the method definition.
 		/// Returns null if no matching node is found.
 		/// </summary>
-		public ILSpyTreeNode FindMethodNode(MethodDefinition def)
+		public ILSpyTreeNode FindMethodNode(MethodDef def)
 		{
 			if (def == null)
 				return null;
@@ -279,7 +279,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// Looks up the field node corresponding to the field definition.
 		/// Returns null if no matching node is found.
 		/// </summary>
-		public FieldTreeNode FindFieldNode(FieldDefinition def)
+		public FieldTreeNode FindFieldNode(FieldDef def)
 		{
 			if (def == null)
 				return null;
@@ -294,7 +294,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// Looks up the property node corresponding to the property definition.
 		/// Returns null if no matching node is found.
 		/// </summary>
-		public PropertyTreeNode FindPropertyNode(PropertyDefinition def)
+		public PropertyTreeNode FindPropertyNode(PropertyDef def)
 		{
 			if (def == null)
 				return null;
@@ -309,7 +309,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// Looks up the event node corresponding to the event definition.
 		/// Returns null if no matching node is found.
 		/// </summary>
-		public EventTreeNode FindEventNode(EventDefinition def)
+		public EventTreeNode FindEventNode(EventDef def)
 		{
 			if (def == null)
 				return null;

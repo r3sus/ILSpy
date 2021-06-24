@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -26,9 +26,8 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-
+using dnlib.DotNet;
 using ICSharpCode.ILSpy.Controls;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy
 {
@@ -61,11 +60,11 @@ namespace ICSharpCode.ILSpy
 		#region Fetch Gac Contents
 		sealed class GacEntry
 		{
-			readonly AssemblyNameReference r;
+			readonly IAssembly r;
 			readonly string fileName;
 			string formattedVersion;
 
-			public GacEntry(AssemblyNameReference r, string fileName)
+			public GacEntry(IAssembly r, string fileName)
 			{
 				this.r = r;
 				this.fileName = fileName;
@@ -102,7 +101,7 @@ namespace ICSharpCode.ILSpy
 			public string PublicKeyToken {
 				get {
 					StringBuilder s = new StringBuilder();
-					foreach (byte b in r.PublicKeyToken)
+					foreach (byte b in r.PublicKeyOrToken.Token.Data)
 						s.Append(b.ToString("x2"));
 					return s.ToString();
 				}

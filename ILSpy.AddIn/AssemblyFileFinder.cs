@@ -4,18 +4,16 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.AddIn
 {
 	public class AssemblyFileFinder
 	{
-		public static string FindAssemblyFile(AssemblyDefinition assemblyDefinition, string assemblyFile)
+		public static string FindAssemblyFile(AssemblyDef assemblyDefinition, string assemblyFile)
 		{
-			var assemblyName = assemblyDefinition.Name;
-
 			var detectedTargetFramework = assemblyDefinition.DetectTargetFrameworkId(assemblyFile);
 			if (string.IsNullOrEmpty(detectedTargetFramework)) {
 				// Without a target framework id it makes no sense to continue
@@ -31,7 +29,7 @@ namespace ICSharpCode.ILSpy.AddIn
 						return FindAssemblyFromGAC(assemblyDefinition);
 					var version = targetFramework[1].Length == 3 ? targetFramework[1] + ".0" : targetFramework[1];
 					var dotNetCorePathFinder = new DotNetCorePathFinder(assemblyFile, detectedTargetFramework, version);
-					file = dotNetCorePathFinder.TryResolveDotNetCore(assemblyName);
+					file = dotNetCorePathFinder.TryResolveDotNetCore(assemblyDefinition);
 					if (file != null)
 						return file;
 					return FindAssemblyFromGAC(assemblyDefinition);
@@ -40,14 +38,14 @@ namespace ICSharpCode.ILSpy.AddIn
 			}
 		}
 
-		static string FindAssemblyFromGAC(AssemblyDefinition assemblyDefinition)
+		static string FindAssemblyFromGAC(AssemblyDef assemblyDefinition)
 		{
-			return GacInterop.FindAssemblyInNetGac(assemblyDefinition.Name);
+			return GacInterop.FindAssemblyInNetGac(assemblyDefinition);
 		}
 
 		static readonly string RefPathPattern = @"NuGetFallbackFolder[/\\][^/\\]+[/\\][^/\\]+[/\\]ref[/\\]";
 
-		public static bool IsReferenceAssembly(AssemblyDefinition assemblyDef, string assemblyFile)
+		public static bool IsReferenceAssembly(AssemblyDef assemblyDef, string assemblyFile)
 		{
 			if (assemblyDef.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.ReferenceAssemblyAttribute"))
 				return true;

@@ -6,9 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using dnlib.DotNet;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.AddIn.Commands
 {
@@ -87,23 +87,22 @@ namespace ICSharpCode.ILSpy.AddIn.Commands
 		{
 			var dict = new Dictionary<string, DetectedReference>();
 			foreach (var reference in parentProject.MetadataReferences) {
-				using (var assemblyDef = AssemblyDefinition.ReadAssembly(reference.Display)) {
-					string assemblyName = assemblyDef.Name.Name;
-					if (AssemblyFileFinder.IsReferenceAssembly(assemblyDef, reference.Display)) {
-						string resolvedAssemblyFile = AssemblyFileFinder.FindAssemblyFile(assemblyDef, reference.Display);
-						dict.Add(assemblyName, 
-							new DetectedReference(assemblyName, resolvedAssemblyFile, false));
-					} else {
-						dict.Add(assemblyName, 
-							new DetectedReference(assemblyName, reference.Display, false));
-					}
+				var assemblyDef = AssemblyDef.Load(reference.Display);
+				string assemblyName = assemblyDef.Name;
+				if (AssemblyFileFinder.IsReferenceAssembly(assemblyDef, reference.Display)) {
+					string resolvedAssemblyFile = AssemblyFileFinder.FindAssemblyFile(assemblyDef, reference.Display);
+					dict.Add(assemblyName,
+						new DetectedReference(assemblyName, resolvedAssemblyFile, false));
+				} else {
+					dict.Add(assemblyName,
+						new DetectedReference(assemblyName, reference.Display, false));
 				}
 			}
 			foreach (var projectReference in parentProject.ProjectReferences) {
 				var roslynProject = owner.Workspace.CurrentSolution.GetProject(projectReference.ProjectId);
 				var project = FindProject(owner.DTE.Solution.Projects.OfType<EnvDTE.Project>(), roslynProject.FilePath);
 				if (roslynProject != null && project != null)
-					dict.Add(roslynProject.AssemblyName, 
+					dict.Add(roslynProject.AssemblyName,
 						new DetectedReference(roslynProject.AssemblyName, Utils.GetProjectOutputAssembly(project, roslynProject), true));
 			}
 			return dict;
@@ -115,7 +114,7 @@ namespace ICSharpCode.ILSpy.AddIn.Commands
 				if (project.Kind == ProjectKinds.vsProjectKindSolutionFolder) {
 					// This is a solution folder -> search in sub-projects
 					var subProject = FindProject(
-						project.ProjectItems.OfType<EnvDTE.ProjectItem>().Select(pi => pi.SubProject).OfType<EnvDTE.Project>(), 
+						project.ProjectItems.OfType<EnvDTE.ProjectItem>().Select(pi => pi.SubProject).OfType<EnvDTE.Project>(),
 						projectFile);
 					if (subProject != null)
 						return subProject;

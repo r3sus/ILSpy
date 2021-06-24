@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,9 +17,10 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Windows.Media;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -30,7 +31,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	{
 		readonly bool isIndexer;
 
-		public PropertyTreeNode(PropertyDefinition property)
+		public PropertyTreeNode(PropertyDef property)
 		{
 			if (property == null)
 				throw new ArgumentNullException(nameof(property));
@@ -49,28 +50,29 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		public PropertyDefinition PropertyDefinition { get; }
+		public PropertyDef PropertyDefinition { get; }
 
-		public override object Text => GetText(PropertyDefinition, Language, isIndexer) + PropertyDefinition.MetadataToken.ToSuffixString();
+		public override object Text => GetText(PropertyDefinition, Language, isIndexer) + PropertyDefinition.MDToken.ToSuffixString();
 
-		public static object GetText(PropertyDefinition property, Language language, bool? isIndexer = null)
+		public static object GetText(PropertyDef property, Language language, bool? isIndexer = null)
 		{
 			string name = language.FormatPropertyName(property, isIndexer);
 
 			var b = new System.Text.StringBuilder();
-			if (property.HasParameters)
+			var parameters = new List<Parameter>(property.GetParameters());
+			if (parameters.GetNumberOfNormalParameters() > 0)
 			{
 				b.Append('(');
-				for (int i = 0; i < property.Parameters.Count; i++)
+				for (int i = 0; i < parameters.Count; i++)
 				{
 					if (i > 0)
 						b.Append(", ");
-					b.Append(language.TypeToString(property.Parameters[i].ParameterType, false, property.Parameters[i]));
+					b.Append(language.TypeToString(parameters[i].Type.ToTypeDefOrRef(), false, parameters[i].ParamDef));
 				}
 				var method = property.GetMethod ?? property.SetMethod;
-				if (method.CallingConvention == MethodCallingConvention.VarArg)
+				if (method.CallingConvention == CallingConvention.VarArg)
 				{
-					if (property.HasParameters)
+					if (parameters.GetNumberOfNormalParameters() > 0)
 						b.Append(", ");
 					b.Append("...");
 				}
@@ -80,14 +82,14 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			{
 				b.Append(" : ");
 			}
-			b.Append(language.TypeToString(property.PropertyType, false, property));
+			b.Append(language.TypeToString(property.PropertySig.RetType.ToTypeDefOrRef(), false, property));
 
 			return HighlightSearchMatch(name, b.ToString());
 		}
 
 		public override object Icon => GetIcon(PropertyDefinition);
 
-		public static ImageSource GetIcon(PropertyDefinition property, bool isIndexer = false)
+		public static ImageSource GetIcon(PropertyDef property, bool isIndexer = false)
 		{
 			MemberIcon icon = isIndexer ? MemberIcon.Indexer : MemberIcon.Property;
 			MethodAttributes attributesOfMostAccessibleMethod = GetAttributesOfMostAccessibleMethod(property);
@@ -117,7 +119,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		private static MethodAttributes GetAttributesOfMostAccessibleMethod(PropertyDefinition property)
+		private static MethodAttributes GetAttributesOfMostAccessibleMethod(PropertyDef property)
 		{
 			// There should always be at least one method from which to
 			// obtain the result, but the compiler doesn't know this so
@@ -171,7 +173,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		{
 			language.DecompileProperty(PropertyDefinition, output, options);
 		}
-		
+
 		public override bool IsPublicAPI {
 			get {
 				switch (GetAttributesOfMostAccessibleMethod(PropertyDefinition) & MethodAttributes.MemberAccessMask) {
@@ -185,6 +187,6 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		MemberReference IMemberTreeNode.Member => PropertyDefinition;
+		IMemberRef IMemberTreeNode.Member => PropertyDefinition;
 	}
 }

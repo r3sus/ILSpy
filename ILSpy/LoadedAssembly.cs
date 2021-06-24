@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -23,9 +23,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.ILSpy.Options;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy
 {
@@ -34,7 +34,7 @@ namespace ICSharpCode.ILSpy
 	/// </summary>
 	public sealed class LoadedAssembly
 	{
-		readonly Task<ModuleDefinition> assemblyTask;
+		readonly Task<dnlib.DotNet.ModuleDef> assemblyTask;
 		readonly AssemblyList assemblyList;
 		readonly string fileName;
 		readonly string shortName;
@@ -47,8 +47,8 @@ namespace ICSharpCode.ILSpy
 				throw new ArgumentNullException(nameof(fileName));
 			this.assemblyList = assemblyList;
 			this.fileName = fileName;
-			
-			this.assemblyTask = Task.Factory.StartNew<ModuleDefinition>(LoadAssembly, stream); // requires that this.fileName is set
+
+			this.assemblyTask = Task.Factory.StartNew<dnlib.DotNet.ModuleDef>(LoadAssembly, stream); // requires that this.fileName is set
 			this.shortName = Path.GetFileNameWithoutExtension(fileName);
 		}
 
@@ -67,7 +67,7 @@ namespace ICSharpCode.ILSpy
 		/// <summary>
 		/// Gets the Cecil ModuleDefinition.
 		/// </summary>
-		public Task<ModuleDefinition> GetModuleDefinitionAsync()
+		public Task<dnlib.DotNet.ModuleDef> GetModuleDefinitionAsync()
 		{
 			return assemblyTask;
 		}
@@ -76,7 +76,7 @@ namespace ICSharpCode.ILSpy
 		/// Gets the Cecil ModuleDefinition.
 		/// Returns null in case of load errors.
 		/// </summary>
-		public ModuleDefinition GetModuleDefinitionOrNull()
+		public dnlib.DotNet.ModuleDef GetModuleDefinitionOrNull()
 		{
 			try {
 				return GetModuleDefinitionAsync().Result;
@@ -89,7 +89,7 @@ namespace ICSharpCode.ILSpy
 		/// <summary>
 		/// Gets the Cecil AssemblyDefinition.
 		/// </summary>
-		public async Task<AssemblyDefinition> GetAssemblyDefinitionAsync()
+		public async Task<dnlib.DotNet.AssemblyDef> GetAssemblyDefinitionAsync()
 		{
 			var module = await assemblyTask.ConfigureAwait(false);
 			return module != null ? module.Assembly : null;
@@ -99,7 +99,7 @@ namespace ICSharpCode.ILSpy
 		/// Gets the Cecil AssemblyDefinition.
 		/// Returns null when there was a load error; or when opening a netmodule.
 		/// </summary>
-		public AssemblyDefinition GetAssemblyDefinitionOrNull()
+		public dnlib.DotNet.AssemblyDef GetAssemblyDefinitionOrNull()
 		{
 			try {
 				return GetAssemblyDefinitionAsync().Result;
@@ -118,7 +118,7 @@ namespace ICSharpCode.ILSpy
 		public string Text {
 			get {
 				if (IsLoaded && !HasLoadError) {
-					string version = GetAssemblyDefinitionOrNull()?.Name.Version.ToString();
+					string version = GetAssemblyDefinitionOrNull()?.Version.ToString();
 					if (version == null)
 						return ShortName;
 					return String.Format("{0} ({1})", ShortName, version);
@@ -134,25 +134,24 @@ namespace ICSharpCode.ILSpy
 
 		public bool IsAutoLoaded { get; set; }
 
-		ModuleDefinition LoadAssembly(object state)
+		ModuleDef LoadAssembly(object state)
 		{
 			var stream = state as Stream;
-			ModuleDefinition module;
+			ModuleDefMD module;
 
 			// runs on background thread
-			ReaderParameters p = new ReaderParameters();
-			p.AssemblyResolver = new MyAssemblyResolver(this);
-			p.InMemory = true;
+			var assemblyResolver = new MyAssemblyResolver(this);
+			var ctx = new ModuleContext(assemblyResolver);
 
 			if (stream != null)
 			{
 				// Read the module from a precrafted stream
-				module = ModuleDefinition.ReadModule(stream, p);
+				module = ModuleDefMD.Load(stream, ctx);
 			}
 			else
 			{
 				// Read the module from disk (by default)
-				module = ModuleDefinition.ReadModule(fileName, p);
+				module = ModuleDefMD.Load(fileName, ctx);
 			}
 
 			if (DecompilerSettingsPanel.CurrentDecompilerSettings.UseDebugSymbols) {
@@ -166,38 +165,32 @@ namespace ICSharpCode.ILSpy
 			}
 			return module;
 		}
-		
-		private void LoadSymbols(ModuleDefinition module)
-		{
-			if (!module.HasDebugHeader) {
-				return;
-			}
 
+		private void LoadSymbols(ModuleDefMD module)
+		{
 			// search for pdb in same directory as dll
 			string pdbName = Path.Combine(Path.GetDirectoryName(fileName), Path.GetFileNameWithoutExtension(fileName) + ".pdb");
 			if (File.Exists(pdbName)) {
-				using (Stream s = File.OpenRead(pdbName)) {
-					module.ReadSymbols(new Mono.Cecil.Pdb.PdbReaderProvider().GetSymbolReader(module, s));
-				}
+				module.LoadPdb(pdbName);
 				return;
 			}
-			
+
 			// TODO: use symbol cache, get symbols from microsoft
 		}
-		
+
 		[ThreadStatic]
 		static int assemblyLoadDisableCount;
-		
+
 		public static IDisposable DisableAssemblyLoad()
 		{
 			assemblyLoadDisableCount++;
 			return new DecrementAssemblyLoadDisableCount();
 		}
-		
+
 		sealed class DecrementAssemblyLoadDisableCount : IDisposable
 		{
 			bool disposed;
-			
+
 			public void Dispose()
 			{
 				if (!disposed) {
@@ -208,41 +201,32 @@ namespace ICSharpCode.ILSpy
 				}
 			}
 		}
-		
+
 		sealed class MyAssemblyResolver : IAssemblyResolver
 		{
 			readonly LoadedAssembly parent;
-			
+
 			public MyAssemblyResolver(LoadedAssembly parent)
 			{
 				this.parent = parent;
 			}
-			
-			public AssemblyDefinition Resolve(AssemblyNameReference name)
-			{
-				return parent.LookupReferencedAssembly(name)?.GetAssemblyDefinitionOrNull();
-			}
-			
-			public AssemblyDefinition Resolve(AssemblyNameReference name, ReaderParameters parameters)
-			{
-				return parent.LookupReferencedAssembly(name)?.GetAssemblyDefinitionOrNull();
-			}
 
-			public void Dispose()
+			public AssemblyDef Resolve(IAssembly assembly, ModuleDef sourceModule)
 			{
+				return parent.LookupReferencedAssembly(assembly)?.GetAssemblyDefinitionOrNull();
 			}
 		}
-		
+
 		public IAssemblyResolver GetAssemblyResolver()
 		{
 			return new MyAssemblyResolver(this);
 		}
-		
-		public LoadedAssembly LookupReferencedAssembly(AssemblyNameReference name)
+
+		public LoadedAssembly LookupReferencedAssembly(IAssembly name)
 		{
 			if (name == null)
 				throw new ArgumentNullException(nameof(name));
-			if (name.IsWindowsRuntime) {
+			if (name.IsContentTypeWindowsRuntime) {
 				return assemblyList.assemblyLookupCache.GetOrAdd((name.Name, true), key => LookupReferencedAssemblyInternal(name, true));
 			} else {
 				return assemblyList.assemblyLookupCache.GetOrAdd((name.FullName, false), key => LookupReferencedAssemblyInternal(name, false));
@@ -259,16 +243,16 @@ namespace ICSharpCode.ILSpy
 
 		static Dictionary<string, LoadedAssembly> loadingAssemblies = new Dictionary<string, LoadedAssembly>();
 
-		LoadedAssembly LookupReferencedAssemblyInternal(AssemblyNameReference fullName, bool isWinRT)
+		LoadedAssembly LookupReferencedAssemblyInternal(IAssembly fullName, bool isWinRT)
 		{
-			string GetName(AssemblyNameReference name) => isWinRT ? name.Name : name.FullName;
+			string GetName(IAssembly name) => isWinRT ? name.Name.String : name.FullName;
 
 			string file;
 			LoadedAssembly asm;
 			lock (loadingAssemblies) {
 				foreach (LoadedAssembly loaded in assemblyList.GetAssemblies()) {
 					var asmDef = loaded.GetAssemblyDefinitionOrNull();
-					if (asmDef != null && GetName(fullName).Equals(GetName(asmDef.Name), StringComparison.OrdinalIgnoreCase)) {
+					if (asmDef != null && GetName(fullName).Equals(GetName(asmDef), StringComparison.OrdinalIgnoreCase)) {
 						LoadedAssemblyReferencesInfo.AddMessageOnce(fullName.ToString(), MessageKind.Info, "Success - Found in Assembly List");
 						return loaded;
 					}
@@ -312,12 +296,12 @@ namespace ICSharpCode.ILSpy
 			});
 			return asm;
 		}
-		
-		public Task ContinueWhenLoaded(Action<Task<ModuleDefinition>> onAssemblyLoaded, TaskScheduler taskScheduler)
+
+		public Task ContinueWhenLoaded(Action<Task<ModuleDef>> onAssemblyLoaded, TaskScheduler taskScheduler)
 		{
 			return this.assemblyTask.ContinueWith(onAssemblyLoaded, default(CancellationToken), TaskContinuationOptions.RunContinuationsAsynchronously, taskScheduler);
 		}
-		
+
 		/// <summary>
 		/// Wait until the assembly is loaded.
 		/// Throws an AggregateException when loading the assembly fails.

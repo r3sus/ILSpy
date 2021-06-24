@@ -4,7 +4,6 @@ using System.Linq;
 using EnvDTE;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.Shell;
-using Mono.Cecil;
 using VSLangProj;
 
 namespace ICSharpCode.ILSpy.AddIn.Commands

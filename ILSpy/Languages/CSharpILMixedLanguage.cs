@@ -16,8 +16,6 @@ using ICSharpCode.Decompiler.Disassembler;
 using ICSharpCode.Decompiler.IL;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
 
 namespace ICSharpCode.ILSpy
 {
@@ -28,7 +26,7 @@ namespace ICSharpCode.ILSpy
 
 		protected override ReflectionDisassembler CreateDisassembler(ITextOutput output, DecompilationOptions options)
 		{
-			return new ReflectionDisassembler(output, 
+			return new ReflectionDisassembler(output,
 				new MixedMethodBodyDisassembler(output, options) {
 					DetectControlStructure = detectControlStructure,
 					ShowSequencePoints = options.DecompilerSettings.ShowDebugInfo
@@ -36,7 +34,7 @@ namespace ICSharpCode.ILSpy
 				options.CancellationToken);
 		}
 
-		static CSharpDecompiler CreateDecompiler(ModuleDefinition module, DecompilationOptions options)
+		static CSharpDecompiler CreateDecompiler(dnlib.DotNet.ModuleDef module, DecompilationOptions options)
 		{
 			CSharpDecompiler decompiler = new CSharpDecompiler(module, options.DecompilerSettings);
 			decompiler.CancellationToken = options.CancellationToken;
@@ -50,7 +48,7 @@ namespace ICSharpCode.ILSpy
 			tokenWriter = TokenWriter.WrapInWriterThatSetsLocationsInAST(tokenWriter);
 			syntaxTree.AcceptVisitor(new CSharpOutputVisitor(tokenWriter, settings.CSharpFormattingOptions));
 		}
-		
+
 		class MixedMethodBodyDisassembler : MethodBodyDisassembler
 		{
 			readonly DecompilationOptions options;
@@ -65,9 +63,8 @@ namespace ICSharpCode.ILSpy
 				this.options = options;
 			}
 
-			public override void Disassemble(MethodBody body)
+			public override void Disassemble(dnlib.DotNet.MethodDef method, dnlib.DotNet.Emit.CilBody body)
 			{
-				var method = body.Method;
 				try {
 					var csharpOutput = new StringWriter();
 					CSharpDecompiler decompiler = CreateDecompiler(method.Module, options);
@@ -76,16 +73,16 @@ namespace ICSharpCode.ILSpy
 					var mapping = decompiler.CreateSequencePoints(st).FirstOrDefault(kvp => kvp.Key.CecilMethod == method);
 					this.sequencePoints = mapping.Value ?? (IList<Decompiler.IL.SequencePoint>)EmptyList<Decompiler.IL.SequencePoint>.Instance;
 					this.codeLines = csharpOutput.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-					base.Disassemble(body);
+					base.Disassemble(method, body);
 				} finally {
 					this.sequencePoints = null;
 					this.codeLines = null;
 				}
 			}
 
-			protected override void WriteInstruction(ITextOutput output, Instruction instruction)
+			protected override void WriteInstruction(ITextOutput output, dnlib.DotNet.Emit.Instruction instruction)
 			{
-				int index = sequencePoints.BinarySearch(instruction.Offset, seq => seq.Offset);
+				int index = sequencePoints.BinarySearch((int)instruction.Offset, seq => seq.Offset);
 				if (index >= 0) {
 					var info = sequencePoints[index];
 					var highlightingOutput = output as ISmartTextOutput;

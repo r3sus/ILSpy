@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,8 +17,8 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -27,23 +27,23 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	/// </summary>
 	sealed class ModuleReferenceTreeNode : ILSpyTreeNode
 	{
-		readonly ModuleReference r;
-		
-		public ModuleReferenceTreeNode(ModuleReference r)
+		readonly ModuleRef r;
+
+		public ModuleReferenceTreeNode(ModuleRef r)
 		{
 			if (r == null)
 				throw new ArgumentNullException(nameof(r));
 			this.r = r;
 		}
-		
+
 		public override object Text {
-			get { return r.Name + r.MetadataToken.ToSuffixString(); }
+			get { return r.Name + r.MDToken.ToSuffixString(); }
 		}
-		
+
 		public override object Icon {
 			get { return Images.Library; }
 		}
-		
+
 		public override void Decompile(Language language, ITextOutput output, DecompilationOptions options)
 		{
 			language.WriteCommentLine(output, r.Name);

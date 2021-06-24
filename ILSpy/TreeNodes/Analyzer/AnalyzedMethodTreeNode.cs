@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,16 +17,16 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal class AnalyzedMethodTreeNode : AnalyzerEntityTreeNode
 	{
-		private readonly MethodDefinition analyzedMethod;
+		private readonly MethodDef analyzedMethod;
 		private readonly string prefix;
 
-		public AnalyzedMethodTreeNode(MethodDefinition analyzedMethod, string prefix = "")
+		public AnalyzedMethodTreeNode(MethodDef analyzedMethod, string prefix = "")
 		{
 			if (analyzedMethod == null)
 				throw new ArgumentNullException(nameof(analyzedMethod));
@@ -65,7 +65,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				this.Children.Add(new AnalyzedInterfaceMethodImplementedByTreeNode(analyzedMethod));
 		}
 
-		public override MemberReference Member {
+		public override IMemberRef Member {
 			get { return analyzedMethod; }
 		}
 	}

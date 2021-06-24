@@ -4,7 +4,7 @@
 using System;
 using System.ComponentModel.Composition;
 using System.IO;
-
+using dnlib.DotNet;
 using ICSharpCode.ILSpy.TreeNodes;
 using ICSharpCode.ILSpy;
 
@@ -13,11 +13,11 @@ namespace ILSpy.BamlDecompiler
 	[Export(typeof(IResourceNodeFactory))]
 	public sealed class BamlResourceNodeFactory : IResourceNodeFactory
 	{
-		public ILSpyTreeNode CreateNode(Mono.Cecil.Resource resource)
+		public ILSpyTreeNode CreateNode(Resource resource)
 		{
 			return null;
 		}
-		
+
 		public ILSpyTreeNode CreateNode(string key, object data)
 		{
 			if (key.EndsWith(".baml", StringComparison.OrdinalIgnoreCase) && data is Stream)

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,8 +19,8 @@
 using System;
 using System.Linq;
 using System.Windows.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -29,36 +29,36 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	/// </summary>
 	sealed class ReferenceFolderTreeNode : ILSpyTreeNode
 	{
-		readonly ModuleDefinition module;
+		readonly ModuleDef module;
 		readonly AssemblyTreeNode parentAssembly;
-		
-		public ReferenceFolderTreeNode(ModuleDefinition module, AssemblyTreeNode parentAssembly)
+
+		public ReferenceFolderTreeNode(ModuleDef module, AssemblyTreeNode parentAssembly)
 		{
 			this.module = module;
 			this.parentAssembly = parentAssembly;
 			this.LazyLoading = true;
 		}
-		
+
 		public override object Text {
 			get { return "References"; }
 		}
-		
+
 		public override object Icon {
 			get { return Images.ReferenceFolderClosed; }
 		}
-		
+
 		public override object ExpandedIcon {
 			get { return Images.ReferenceFolderOpen; }
 		}
-		
+
 		protected override void LoadChildren()
 		{
-			foreach (var r in module.AssemblyReferences.OrderBy(r => r.Name))
+			foreach (var r in module.GetAssemblyRefs().OrderBy(r => r.Name))
 				this.Children.Add(new AssemblyReferenceTreeNode(r, parentAssembly));
-			foreach (var r in module.ModuleReferences.OrderBy(r => r.Name))
+			foreach (var r in module.GetModuleRefs().OrderBy(r => r.Name))
 				this.Children.Add(new ModuleReferenceTreeNode(r));
 		}
-		
+
 		public override void Decompile(Language language, ITextOutput output, DecompilationOptions options)
 		{
 			language.WriteCommentLine(output, $"Detected Target-Framework-Id: {parentAssembly.LoadedAssembly.GetTargetFrameworkIdAsync().Result}");
@@ -66,9 +66,9 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			output.WriteLine();
 			language.WriteCommentLine(output, "Referenced assemblies (in metadata order):");
 			// Show metadata order of references
-			foreach (var r in module.AssemblyReferences)
+			foreach (var r in module.GetAssemblyRefs())
 				new AssemblyReferenceTreeNode(r, parentAssembly).Decompile(language, output, options);
-			foreach (var r in module.ModuleReferences)
+			foreach (var r in module.GetModuleRefs())
 				language.WriteCommentLine(output, r.Name);
 		}
 	}

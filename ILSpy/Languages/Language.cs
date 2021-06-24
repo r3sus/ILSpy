@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,9 +18,9 @@
 
 using System;
 using System.Collections.Generic;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy
 {
@@ -91,32 +91,32 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		public virtual void DecompileMethod(MethodDefinition method, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileMethod(MethodDef method, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, TypeToString(method.DeclaringType, true) + "." + method.Name);
 		}
 
-		public virtual void DecompileProperty(PropertyDefinition property, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileProperty(PropertyDef property, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, TypeToString(property.DeclaringType, true) + "." + property.Name);
 		}
 
-		public virtual void DecompileField(FieldDefinition field, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileField(FieldDef field, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, TypeToString(field.DeclaringType, true) + "." + field.Name);
 		}
 
-		public virtual void DecompileEvent(EventDefinition ev, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileEvent(EventDef ev, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, TypeToString(ev.DeclaringType, true) + "." + ev.Name);
 		}
 
-		public virtual void DecompileType(TypeDefinition type, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileType(TypeDef type, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, TypeToString(type, true));
 		}
 
-		public virtual void DecompileNamespace(string nameSpace, IEnumerable<TypeDefinition> types, ITextOutput output, DecompilationOptions options)
+		public virtual void DecompileNamespace(string nameSpace, IEnumerable<TypeDef> types, ITextOutput output, DecompilationOptions options)
 		{
 			WriteCommentLine(output, nameSpace);
 		}
@@ -126,8 +126,8 @@ namespace ICSharpCode.ILSpy
 			WriteCommentLine(output, assembly.FileName);
 			var asm = assembly.GetAssemblyDefinitionOrNull();
 			if (asm != null) {
-				var name = asm.Name;
-				if (name.IsWindowsRuntime) {
+				var name = asm;
+				if (name.IsContentTypeWindowsRuntime) {
 					WriteCommentLine(output, name.Name + " [WinRT]");
 				} else {
 					WriteCommentLine(output, name.FullName);
@@ -145,7 +145,7 @@ namespace ICSharpCode.ILSpy
 		/// <summary>
 		/// Converts a type reference into a string. This method is used by the member tree node for parameter and return types.
 		/// </summary>
-		public virtual string TypeToString(TypeReference type, bool includeNamespace, ICustomAttributeProvider typeAttributes = null)
+		public virtual string TypeToString(ITypeDefOrRef type, bool includeNamespace, IHasCustomAttribute typeAttributes = null)
 		{
 			if (includeNamespace)
 				return type.FullName;
@@ -157,43 +157,43 @@ namespace ICSharpCode.ILSpy
 		/// Converts a member signature to a string.
 		/// This is used for displaying the tooltip on a member reference.
 		/// </summary>
-		public virtual string GetTooltip(MemberReference member)
+		public virtual string GetTooltip(IMemberRef member)
 		{
-			if (member is TypeReference)
-				return TypeToString((TypeReference)member, true);
+			if (member is ITypeDefOrRef)
+				return TypeToString((ITypeDefOrRef)member, true);
 			else
 				return member.ToString();
 		}
 
-		public virtual string FormatFieldName(FieldDefinition field)
+		public virtual string FormatFieldName(FieldDef field)
 		{
 			if (field == null)
 				throw new ArgumentNullException(nameof(field));
 			return field.Name;
 		}
 
-		public virtual string FormatPropertyName(PropertyDefinition property, bool? isIndexer = null)
+		public virtual string FormatPropertyName(PropertyDef property, bool? isIndexer = null)
 		{
 			if (property == null)
 				throw new ArgumentNullException(nameof(property));
 			return property.Name;
 		}
 
-		public virtual string FormatMethodName(MethodDefinition method)
+		public virtual string FormatMethodName(MethodDef method)
 		{
 			if (method == null)
 				throw new ArgumentNullException(nameof(method));
 			return method.Name;
 		}
 
-		public virtual string FormatEventName(EventDefinition @event)
+		public virtual string FormatEventName(EventDef @event)
 		{
 			if (@event == null)
 				throw new ArgumentNullException(nameof(@event));
 			return @event.Name;
 		}
 
-		public virtual string FormatTypeName(TypeDefinition type)
+		public virtual string FormatTypeName(TypeDef type)
 		{
 			if (type == null)
 				throw new ArgumentNullException(nameof(type));
@@ -208,7 +208,7 @@ namespace ICSharpCode.ILSpy
 			return Name;
 		}
 
-		public virtual bool ShowMember(MemberReference member)
+		public virtual bool ShowMember(IMemberRef member)
 		{
 			return true;
 		}
@@ -216,7 +216,7 @@ namespace ICSharpCode.ILSpy
 		/// <summary>
 		/// Used by the analyzer to map compiler generated code back to the original code's location
 		/// </summary>
-		public virtual MemberReference GetOriginalCodeLocation(MemberReference member)
+		public virtual IMemberRef GetOriginalCodeLocation(IMemberRef member)
 		{
 			return member;
 		}

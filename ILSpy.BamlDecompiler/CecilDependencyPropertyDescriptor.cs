@@ -3,7 +3,7 @@
 
 using System;
 using System.Linq;
-using Mono.Cecil;
+using dnlib.DotNet;
 using Ricciolo.StylesExplorer.MarkupReflection;
 
 namespace ILSpy.BamlDecompiler
@@ -11,22 +11,22 @@ namespace ILSpy.BamlDecompiler
 	public class CecilDependencyPropertyDescriptor : IDependencyPropertyDescriptor
 	{
 		string member;
-		TypeDefinition type;
-		
-		public CecilDependencyPropertyDescriptor(string member, TypeDefinition type)
+		TypeDef type;
+
+		public CecilDependencyPropertyDescriptor(string member, TypeDef type)
 		{
 			if (type == null)
 				throw new ArgumentNullException("type");
 			this.member = member;
 			this.type = type;
 		}
-		
+
 		public bool IsAttached {
 			get {
 				return type.Methods.Any(m  => m.Name == "Get" + member);
 			}
 		}
-		
+
 		public override string ToString()
 		{
 			return string.Format("[CecilDependencyPropertyDescriptor Member={0}, Type={1}]", member, type);

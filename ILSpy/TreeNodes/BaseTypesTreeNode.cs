@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,9 +18,9 @@
 
 using System;
 using System.Windows.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.TreeView;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -29,9 +29,9 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	/// </summary>
 	sealed class BaseTypesTreeNode : ILSpyTreeNode
 	{
-		readonly TypeDefinition type;
+		readonly TypeDef type;
 
-		public BaseTypesTreeNode(TypeDefinition type)
+		public BaseTypesTreeNode(TypeDef type)
 		{
 			this.type = type;
 			this.LazyLoading = true;
@@ -52,12 +52,12 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			AddBaseTypes(this.Children, type);
 		}
 
-		internal static void AddBaseTypes(SharpTreeNodeCollection children, TypeDefinition type)
+		internal static void AddBaseTypes(SharpTreeNodeCollection children, TypeDef type)
 		{
 			if (type.BaseType != null)
 				children.Add(new BaseTypesEntryNode(type.BaseType, false));
 			foreach (var i in type.Interfaces) {
-				children.Add(new BaseTypesEntryNode(i.InterfaceType, true));
+				children.Add(new BaseTypesEntryNode(i.Interface, true));
 			}
 		}
 

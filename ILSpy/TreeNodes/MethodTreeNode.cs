@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,9 +21,8 @@ using System.Linq;
 using System.Text;
 using System.Windows.Controls;
 using System.Windows.Media;
-
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -32,28 +31,28 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	/// </summary>
 	public sealed class MethodTreeNode : ILSpyTreeNode, IMemberTreeNode
 	{
-		public MethodDefinition MethodDefinition { get; }
+		public MethodDef MethodDefinition { get; }
 
-		public MethodTreeNode(MethodDefinition method)
+		public MethodTreeNode(MethodDef method)
 		{
 			if (method == null)
 				throw new ArgumentNullException(nameof(method));
 			this.MethodDefinition = method;
 		}
 
-		public override object Text => GetText(MethodDefinition, Language) + MethodDefinition.MetadataToken.ToSuffixString();
+		public override object Text => GetText(MethodDefinition, Language) + MethodDefinition.MDToken.ToSuffixString();
 
-		public static object GetText(MethodDefinition method, Language language)
+		public static object GetText(MethodDef method, Language language)
 		{
 			StringBuilder b = new StringBuilder();
 			b.Append('(');
 			for (int i = 0; i < method.Parameters.Count; i++) {
 				if (i > 0)
 					b.Append(", ");
-				b.Append(language.TypeToString(method.Parameters[i].ParameterType, false, method.Parameters[i]));
+				b.Append(language.TypeToString(method.Parameters[i].Type.ToTypeDefOrRef(), false, method.Parameters[i].ParamDef));
 			}
-			if (method.CallingConvention == MethodCallingConvention.VarArg) {
-				if (method.HasParameters)
+			if (method.CallingConvention == CallingConvention.VarArg) {
+				if (method.MethodSig.Params.Count > 0)
 					b.Append(", ");
 				b.Append("...");
 			}
@@ -61,14 +60,14 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				b.Append(')');
 			} else {
 				b.Append(") : ");
-				b.Append(language.TypeToString(method.ReturnType, false, method.MethodReturnType));
+				b.Append(language.TypeToString(method.ReturnType.ToTypeDefOrRef(), false, method.Parameters.ReturnParameter.ParamDef));
 			}
 			return HighlightSearchMatch(language.FormatMethodName(method), b.ToString());
 		}
 
 		public override object Icon => GetIcon(MethodDefinition);
 
-		public static ImageSource GetIcon(MethodDefinition method)
+		public static ImageSource GetIcon(MethodDef method)
 		{
 			if (method.IsSpecialName && method.Name.StartsWith("op_", StringComparison.Ordinal)) {
 				return Images.GetIcon(MemberIcon.Operator, GetOverlayIcon(method.Attributes), false);
@@ -87,7 +86,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				return Images.GetIcon(MemberIcon.Constructor, GetOverlayIcon(method.Attributes), method.IsStatic);
 			}
 
-			if (method.HasPInvokeInfo)
+			if (method.HasImplMap)
 				return Images.GetIcon(MemberIcon.PInvokeMethod, GetOverlayIcon(method.Attributes), true);
 
 			bool showAsVirtual = method.IsVirtual && !(method.IsNewSlot && method.IsFinal) && !method.DeclaringType.IsInterface;
@@ -141,6 +140,6 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		MemberReference IMemberTreeNode.Member => MethodDefinition;
+		IMemberRef IMemberTreeNode.Member => MethodDefinition;
 	}
 }

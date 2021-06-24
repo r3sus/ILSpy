@@ -5,11 +5,12 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Threading;
 using System.Xml.Linq;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.Tests.Helpers;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 using NUnit.Framework;
 
 namespace ILSpy.BamlDecompiler.Tests
@@ -112,11 +113,11 @@ namespace ILSpy.BamlDecompiler.Tests
 
 		void RunTest(string name, string asmPath, string sourcePath)
 		{
-			var resolver = new DefaultAssemblyResolver();
-			resolver.RemoveSearchDirectory(".");
-			resolver.AddSearchDirectory(Path.GetDirectoryName(asmPath));
-			var assembly = AssemblyDefinition.ReadAssembly(asmPath, new ReaderParameters { AssemblyResolver = resolver, InMemory = true });
-			Resource res = assembly.MainModule.Resources.First();
+			var resolver = new AssemblyResolver();
+			resolver.PreSearchPaths.Add(Path.GetDirectoryName(asmPath));
+			resolver.DefaultModuleContext = new ModuleContext(resolver);
+			var assembly = AssemblyDef.Load(asmPath, resolver.DefaultModuleContext);
+			Resource res = assembly.ManifestModule.Resources.First();
 			Stream bamlStream = LoadBaml(res, name + ".baml");
 			Assert.IsNotNull(bamlStream);
 			XDocument document = BamlResourceEntryNode.LoadIntoDocument(resolver, assembly, bamlStream, CancellationToken.None);
@@ -141,7 +142,7 @@ namespace ILSpy.BamlDecompiler.Tests
 		{
 			EmbeddedResource er = res as EmbeddedResource;
 			if (er != null) {
-				Stream s = er.GetResourceStream();
+				Stream s = er.CreateReader().AsStream();
 				s.Position = 0;
 				ResourcesFile resources;
 				try {

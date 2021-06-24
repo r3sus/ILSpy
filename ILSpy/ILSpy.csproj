@@ -405,8 +405,7 @@
       <NuGetPackagesToCopy Include="$(TargetDir)System.Threading.Tasks.Dataflow.dll" />
       <NuGetPackagesToCopy Include="$(TargetDir)ICSharpCode.AvalonEdit.dll" />
       <NuGetPackagesToCopy Include="$(TargetDir)Humanizer.dll" />
-      <NuGetPackagesToCopy Include="$(TargetDir)Mono.Cecil.dll" />
-      <NuGetPackagesToCopy Include="$(TargetDir)Mono.Cecil.Pdb.dll" />
+      <NuGetPackagesToCopy Include="$(TargetDir)dnlib.dll" />
       <NuGetPackagesToCopy Include="$(TargetDir)Microsoft.VisualStudio.Composition.dll" />
       <NuGetPackagesToCopy Include="$(TargetDir)Microsoft.VisualStudio.Validation.dll" />
     </ItemGroup>

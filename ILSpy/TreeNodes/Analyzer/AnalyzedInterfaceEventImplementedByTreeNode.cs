@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,17 +20,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
+using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedInterfaceEventImplementedByTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly EventDefinition analyzedEvent;
-		private readonly MethodDefinition analyzedMethod;
+		private readonly EventDef analyzedEvent;
+		private readonly MethodDef analyzedMethod;
 
-		public AnalyzedInterfaceEventImplementedByTreeNode(EventDefinition analyzedEvent)
+		public AnalyzedInterfaceEventImplementedByTreeNode(EventDef analyzedEvent)
 		{
 			if (analyzedEvent == null)
 				throw new ArgumentNullException(nameof(analyzedEvent));
@@ -52,16 +53,16 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			if (!type.HasInterfaces)
 				yield break;
-			TypeReference implementedInterfaceRef = type.Interfaces.FirstOrDefault(i => i.InterfaceType.Resolve() == analyzedMethod.DeclaringType)?.InterfaceType;
+			ITypeDefOrRef implementedInterfaceRef = type.Interfaces.FirstOrDefault(i => i.Interface.Resolve() == analyzedMethod.DeclaringType)?.Interface;
 			if (implementedInterfaceRef == null)
 				yield break;
 
-			foreach (EventDefinition ev in type.Events.Where(e => e.Name == analyzedEvent.Name)) {
-				MethodDefinition accessor = ev.AddMethod ?? ev.RemoveMethod;
+			foreach (EventDef ev in type.Events.Where(e => e.Name == analyzedEvent.Name)) {
+				MethodDef accessor = ev.AddMethod ?? ev.RemoveMethod;
 				if (TypesHierarchyHelpers.MatchInterfaceMethod(accessor, analyzedMethod, implementedInterfaceRef)) {
 					var node = new AnalyzedEventTreeNode(ev);
 					node.Language = this.Language;
@@ -70,9 +71,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				yield break;
 			}
 
-			foreach (EventDefinition ev in type.Events.Where(e => e.Name.EndsWith(analyzedEvent.Name))) {
-				MethodDefinition accessor = ev.AddMethod ?? ev.RemoveMethod;
-				if (accessor.HasOverrides && accessor.Overrides.Any(m => m.Resolve() == analyzedMethod)) {
+			foreach (EventDef ev in type.Events.Where(e => e.Name.EndsWith(analyzedEvent.Name))) {
+				MethodDef accessor = ev.AddMethod ?? ev.RemoveMethod;
+				if (accessor.HasOverrides && accessor.Overrides.Any(m => m.MethodDeclaration.Resolve() == analyzedMethod)) {
 					var node = new AnalyzedEventTreeNode(ev);
 					node.Language = this.Language;
 					yield return node;
@@ -80,7 +81,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		public static bool CanShow(EventDefinition ev)
+		public static bool CanShow(EventDef ev)
 		{
 			return ev.DeclaringType.IsInterface;
 		}

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,8 +19,8 @@
 using System.Collections.Generic;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Disassembler;
-using Mono.Cecil;
 using System.ComponentModel.Composition;
+using dnlib.DotNet;
 
 namespace ICSharpCode.ILSpy
 {
@@ -35,15 +35,15 @@ namespace ICSharpCode.ILSpy
 	public class ILLanguage : Language
 	{
 		protected bool detectControlStructure = true;
-		
+
 		public override string Name {
 			get { return "IL"; }
 		}
-		
+
 		public override string FileExtension {
 			get { return ".il"; }
 		}
-		
+
 		protected virtual ReflectionDisassembler CreateDisassembler(ITextOutput output, DecompilationOptions options)
 		{
 			return new ReflectionDisassembler(output, options.CancellationToken) {
@@ -53,19 +53,19 @@ namespace ICSharpCode.ILSpy
 			};
 		}
 
-		public override void DecompileMethod(MethodDefinition method, ITextOutput output, DecompilationOptions options)
+		public override void DecompileMethod(MethodDef method, ITextOutput output, DecompilationOptions options)
 		{
 			var dis = CreateDisassembler(output, options);
 			dis.DisassembleMethod(method);
 		}
-		
-		public override void DecompileField(FieldDefinition field, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileField(FieldDef field, ITextOutput output, DecompilationOptions options)
 		{
 			var dis = CreateDisassembler(output, options);
 			dis.DisassembleField(field);
 		}
-		
-		public override void DecompileProperty(PropertyDefinition property, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileProperty(PropertyDef property, ITextOutput output, DecompilationOptions options)
 		{
 			ReflectionDisassembler rd = CreateDisassembler(output, options);
 			rd.DisassembleProperty(property);
@@ -82,8 +82,8 @@ namespace ICSharpCode.ILSpy
 				rd.DisassembleMethod(m);
 			}
 		}
-		
-		public override void DecompileEvent(EventDefinition ev, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileEvent(EventDef ev, ITextOutput output, DecompilationOptions options)
 		{
 			ReflectionDisassembler rd = CreateDisassembler(output, options);
 			rd.DisassembleEvent(ev);
@@ -100,24 +100,24 @@ namespace ICSharpCode.ILSpy
 				rd.DisassembleMethod(m);
 			}
 		}
-		
-		public override void DecompileType(TypeDefinition type, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileType(TypeDef type, ITextOutput output, DecompilationOptions options)
 		{
 			var dis = CreateDisassembler(output, options);
 			dis.DisassembleType(type);
 		}
-		
-		public override void DecompileNamespace(string nameSpace, IEnumerable<TypeDefinition> types, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileNamespace(string nameSpace, IEnumerable<TypeDef> types, ITextOutput output, DecompilationOptions options)
 		{
 			var dis = CreateDisassembler(output, options);
 			dis.DisassembleNamespace(nameSpace, types);
 		}
-		
+
 		public override void DecompileAssembly(LoadedAssembly assembly, ITextOutput output, DecompilationOptions options)
 		{
 			output.WriteLine("// " + assembly.FileName);
 			output.WriteLine();
-			
+
 			var dis = CreateDisassembler(output, options);
 			var module = assembly.GetModuleDefinitionAsync().Result;
 			if (options.FullDecompilation)
@@ -132,8 +132,8 @@ namespace ICSharpCode.ILSpy
 				dis.WriteModuleContents(module);
 			}
 		}
-		
-		public override string TypeToString(TypeReference type, bool includeNamespace, ICustomAttributeProvider typeAttributes = null)
+
+		public override string TypeToString(ITypeDefOrRef type, bool includeNamespace, IHasCustomAttribute typeAttributes = null)
 		{
 			PlainTextOutput output = new PlainTextOutput();
 			type.WriteTo(output, includeNamespace ? ILNameSyntax.TypeName : ILNameSyntax.ShortTypeName);

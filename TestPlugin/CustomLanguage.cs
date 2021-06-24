@@ -3,9 +3,9 @@
 
 using System.ComponentModel.Composition;
 using System.Windows.Controls;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.ILSpy;
-using Mono.Cecil;
 
 namespace TestPlugin
 {
@@ -20,21 +20,21 @@ namespace TestPlugin
 				return "Custom";
 			}
 		}
-		
+
 		public override string FileExtension {
 			get {
 				// used in 'Save As' dialog
 				return ".txt";
 			}
 		}
-		
+
 		// There are several methods available to override; in this sample, we deal with methods only
-		
-		public override void DecompileMethod(MethodDefinition method, ITextOutput output, DecompilationOptions options)
+
+		public override void DecompileMethod(MethodDef method, ITextOutput output, DecompilationOptions options)
 		{
 			if (method.Body != null) {
-				output.WriteLine("Size of method: {0} bytes", method.Body.CodeSize);
-				
+				output.WriteLine("Size of method: {0} bytes", method.Body.GetCodeSize());
+
 				ISmartTextOutput smartOutput = output as ISmartTextOutput;
 				if (smartOutput != null) {
 					// when writing to the text view (but not when writing to a file), we can even add UI elements such as buttons:

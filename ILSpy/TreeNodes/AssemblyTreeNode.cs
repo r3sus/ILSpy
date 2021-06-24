@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -24,11 +24,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.ILSpy.TextView;
 using ICSharpCode.TreeView;
 using Microsoft.Win32;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -65,8 +65,8 @@ namespace ICSharpCode.ILSpy.TreeNodes
 
 		public override bool IsAutoLoaded
 		{
-			get { 
-				return assembly.IsAutoLoaded; 
+			get {
+				return assembly.IsAutoLoaded;
 			}
 		}
 
@@ -125,7 +125,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			get { return !assembly.HasLoadError; }
 		}
 
-		void OnAssemblyLoaded(Task<ModuleDefinition> moduleTask)
+		void OnAssemblyLoaded(Task<ModuleDef> moduleTask)
 		{
 			// change from "Loading" icon to final icon
 			RaisePropertyChanged("Icon");
@@ -141,11 +141,11 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		readonly Dictionary<TypeDefinition, TypeTreeNode> typeDict = new Dictionary<TypeDefinition, TypeTreeNode>();
+		readonly Dictionary<TypeDef, TypeTreeNode> typeDict = new Dictionary<TypeDef, TypeTreeNode>();
 
 		protected override void LoadChildren()
 		{
-			ModuleDefinition moduleDefinition = assembly.GetModuleDefinitionOrNull();
+			ModuleDef moduleDefinition = assembly.GetModuleDefinitionOrNull();
 			if (moduleDefinition == null) {
 				// if we crashed on loading, then we don't have any children
 				return;
@@ -157,7 +157,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			foreach (NamespaceTreeNode ns in namespaces.Values) {
 				ns.Children.Clear();
 			}
-			foreach (TypeDefinition type in moduleDefinition.Types.OrderBy(t => t.FullName, NaturalStringComparer.Instance)) {
+			foreach (TypeDef type in moduleDefinition.Types.OrderBy(t => t.FullName, NaturalStringComparer.Instance)) {
 				NamespaceTreeNode ns;
 				if (!namespaces.TryGetValue(type.Namespace, out ns)) {
 					ns = new NamespaceTreeNode(type.Namespace);
@@ -172,7 +172,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 					this.Children.Add(ns);
 			}
 		}
-		
+
 		public override bool CanExpandRecursively {
 			get { return true; }
 		}
@@ -180,7 +180,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// <summary>
 		/// Finds the node for a top-level type.
 		/// </summary>
-		public TypeTreeNode FindTypeNode(TypeDefinition def)
+		public TypeTreeNode FindTypeNode(TypeDef def)
 		{
 			if (def == null)
 				return null;
@@ -206,7 +206,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			else
 				return null;
 		}
-		
+
 		public override bool CanDrag(SharpTreeNode[] nodes)
 		{
 			return nodes.All(n => n is AssemblyTreeNode);
@@ -401,7 +401,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				var la = ((AssemblyTreeNode)node).LoadedAssembly;
 				var module = la.GetModuleDefinitionOrNull();
 				if (module != null) {
-					foreach (var assyRef in module.AssemblyReferences) {
+					foreach (var assyRef in module.GetAssemblyRefs()) {
 						la.LookupReferencedAssembly(assyRef);
 					}
 				}

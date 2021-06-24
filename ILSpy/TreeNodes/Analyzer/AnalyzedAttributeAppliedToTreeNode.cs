@@ -1,14 +1,14 @@
 // Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,28 +20,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Mono.Cecil;
 using System.Collections.Concurrent;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedAttributeAppliedToTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly TypeDefinition analyzedType;
+		private readonly TypeDef analyzedType;
 		private readonly string attributeName;
 
 		private AttributeTargets usage = AttributeTargets.All;
 		private bool allowMutiple;
 		private bool inherited = true;
-		private ConcurrentDictionary<MethodDefinition, int> foundMethods;
+		private ConcurrentDictionary<MethodDef, int> foundMethods;
 
-		public static bool CanShow(TypeDefinition type)
+		public static bool CanShow(TypeDef type)
 		{
 			return type.IsClass && type.IsCustomAttribute();
 		}
 
-		public AnalyzedAttributeAppliedToTreeNode(TypeDefinition analyzedType)
+		public AnalyzedAttributeAppliedToTreeNode(TypeDef analyzedType)
 		{
 			if (analyzedType == null)
 				throw new ArgumentNullException(nameof(analyzedType));
@@ -55,23 +55,21 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 		{
 			if (analyzedType.HasCustomAttributes) {
 				foreach (CustomAttribute ca in analyzedType.CustomAttributes) {
-					TypeReference t = ca.AttributeType;
+					ITypeDefOrRef t = ca.AttributeType;
 					if (t.Name == "AttributeUsageAttribute" && t.Namespace == "System") {
 						this.usage = (AttributeTargets)ca.ConstructorArguments[0].Value;
 						if (ca.ConstructorArguments.Count > 1) {
 							this.allowMutiple = (bool)ca.ConstructorArguments[1].Value;
 							this.inherited = (bool)ca.ConstructorArguments[2].Value;
 						}
-						if (ca.HasProperties) {
-							foreach (var namedArgument in ca.Properties) {
-								switch (namedArgument.Name) {
-									case "AllowMultiple":
-										this.allowMutiple = (bool)namedArgument.Argument.Value;
-										break;
-									case "Inherited":
-										this.inherited = (bool)namedArgument.Argument.Value;
-										break;
-								}
+						foreach (var namedArgument in ca.Properties) {
+							switch (namedArgument.Name) {
+								case "AllowMultiple":
+									this.allowMutiple = (bool)namedArgument.Argument.Value;
+									break;
+								case "Inherited":
+									this.inherited = (bool)namedArgument.Argument.Value;
+									break;
 							}
 						}
 					}
@@ -86,13 +84,13 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		protected override IEnumerable<AnalyzerTreeNode> FetchChildren(CancellationToken ct)
 		{
-			foundMethods = new ConcurrentDictionary<MethodDefinition, int>();
+			foundMethods = new ConcurrentDictionary<MethodDef, int>();
 
 			//get the assemblies to search
 			var currentAssembly = analyzedType.Module.Assembly;
 			var assemblies = analyzedType.IsPublic ? GetReferencingAssemblies(currentAssembly, ct) : GetAssemblyAndAnyFriends(currentAssembly, ct);
 
-			var results = assemblies.AsParallel().WithCancellation(ct).SelectMany(a => FindReferencesInAssembly(a.Item1.MainModule, a.Item2, ct));
+			var results = assemblies.AsParallel().WithCancellation(ct).SelectMany(a => FindReferencesInAssembly(a.Item1.ManifestModule, a.Item2, ct));
 
 			foreach (var result in results.OrderBy(n => n.Text)) {
 				yield return result;
@@ -103,13 +101,13 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		#region standard custom attributes
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInAssembly(ModuleDefinition module, TypeReference tr, CancellationToken ct)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInAssembly(ModuleDef module, ITypeDefOrRef tr, CancellationToken ct)
 		{
 			//since we do not display modules as separate entities, coalesce the assembly and module searches
 			bool foundInAssyOrModule = false;
 
 			if ((usage & AttributeTargets.Assembly) != 0) {
-				AssemblyDefinition asm = module.Assembly;
+				AssemblyDef asm = module.Assembly;
 				if (asm != null && asm.HasCustomAttributes) {
 					foreach (var attribute in asm.CustomAttributes) {
 						if (attribute.AttributeType == tr) {
@@ -143,7 +141,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 			ct.ThrowIfCancellationRequested();
 
-			foreach (TypeDefinition type in TreeTraversal.PreOrder(module.Types, t => t.NestedTypes).OrderBy(t => t.FullName)) {
+			foreach (TypeDef type in TreeTraversal.PreOrder(module.Types, t => t.NestedTypes).OrderBy(t => t.FullName)) {
 				ct.ThrowIfCancellationRequested();
 				foreach (var result in FindReferencesWithinInType(type, tr)) {
 					ct.ThrowIfCancellationRequested();
@@ -152,7 +150,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesWithinInType(TypeDefinition type, TypeReference attrTypeRef)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesWithinInType(TypeDef type, ITypeDefOrRef attrTypeRef)
 		{
 
 			bool searchRequired = (type.IsClass && usage.HasFlag(AttributeTargets.Class))
@@ -246,8 +244,8 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 					}
 					if (!found &&
 						((usage & AttributeTargets.ReturnValue) != 0) &&
-						method.MethodReturnType.HasCustomAttributes) {
-						foreach (var attribute in method.MethodReturnType.CustomAttributes) {
+						method.Parameters.ReturnParameter.HasParamDef && method.Parameters.ReturnParameter.ParamDef.HasCustomAttributes) {
+						foreach (var attribute in method.Parameters.ReturnParameter.ParamDef.CustomAttributes) {
 							if (attribute.AttributeType == attrTypeRef) {
 								found = true;
 								break;
@@ -256,20 +254,21 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 					}
 
 					if (!found &&
-						((usage & AttributeTargets.Parameter) != 0) &&
-						method.HasParameters) {
+						((usage & AttributeTargets.Parameter) != 0)) {
 						foreach (var parameter in method.Parameters) {
-							foreach (var attribute in parameter.CustomAttributes) {
-								if (attribute.AttributeType == attrTypeRef) {
-									found = true;
-									break;
+							if (parameter.HasParamDef) {
+								foreach (var attribute in parameter.ParamDef.CustomAttributes) {
+									if (attribute.AttributeType == attrTypeRef) {
+										found = true;
+										break;
+									}
 								}
 							}
 						}
 					}
 
 					if (found) {
-						MethodDefinition codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDefinition;
+						MethodDef codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDef;
 						if (codeLocation != null && !HasAlreadyBeenFound(codeLocation)) {
 							var node = new AnalyzedMethodTreeNode(codeLocation);
 							node.Language = this.Language;
@@ -280,7 +279,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private bool HasAlreadyBeenFound(MethodDefinition method)
+		private bool HasAlreadyBeenFound(MethodDef method)
 		{
 			return !foundMethods.TryAdd(method, 0);
 		}
@@ -289,9 +288,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		#region search scope
 
-		private IEnumerable<Tuple<AssemblyDefinition, TypeReference>> GetReferencingAssemblies(AssemblyDefinition asm, CancellationToken ct)
+		private IEnumerable<Tuple<AssemblyDef, ITypeDefOrRef>> GetReferencingAssemblies(AssemblyDef asm, CancellationToken ct)
 		{
-			yield return new Tuple<AssemblyDefinition, TypeReference>(asm, this.analyzedType);
+			yield return new Tuple<AssemblyDef, ITypeDefOrRef>(asm, this.analyzedType);
 
 			string requiredAssemblyFullName = asm.FullName;
 
@@ -303,7 +302,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				var module = assembly.GetModuleDefinitionOrNull();
 				if (module == null)
 					continue;
-				foreach (var reference in module.AssemblyReferences) {
+				foreach (var reference in module.GetAssemblyRefs()) {
 					if (requiredAssemblyFullName == reference.FullName) {
 						found = true;
 						break;
@@ -312,14 +311,14 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				if (found) {
 					var typeref = GetScopeTypeReferenceInAssembly(module.Assembly);
 					if (typeref != null)
-						yield return new Tuple<AssemblyDefinition, TypeReference>(module.Assembly, typeref);
+						yield return new Tuple<AssemblyDef, ITypeDefOrRef>(module.Assembly, typeref);
 				}
 			}
 		}
 
-		private IEnumerable<Tuple<AssemblyDefinition, TypeReference>> GetAssemblyAndAnyFriends(AssemblyDefinition asm, CancellationToken ct)
+		private IEnumerable<Tuple<AssemblyDef, ITypeDefOrRef>> GetAssemblyAndAnyFriends(AssemblyDef asm, CancellationToken ct)
 		{
-			yield return new Tuple<AssemblyDefinition, TypeReference>(asm, analyzedType);
+			yield return new Tuple<AssemblyDef, ITypeDefOrRef>(asm, analyzedType);
 
 			if (asm.HasCustomAttributes) {
 				var attributes = asm.CustomAttributes
@@ -342,7 +341,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 						if (friendAssemblies.Contains(assembly.ShortName)) {
 							var typeref = GetScopeTypeReferenceInAssembly(module.Assembly);
 							if (typeref != null) {
-								yield return new Tuple<AssemblyDefinition, TypeReference>(module.Assembly, typeref);
+								yield return new Tuple<AssemblyDef, ITypeDefOrRef>(module.Assembly, typeref);
 							}
 						}
 					}
@@ -350,9 +349,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private TypeReference GetScopeTypeReferenceInAssembly(AssemblyDefinition asm)
+		private ITypeDefOrRef GetScopeTypeReferenceInAssembly(AssemblyDef asm)
 		{
-			foreach (var typeref in asm.MainModule.GetTypeReferences()) {
+			foreach (var typeref in asm.ManifestModule.GetTypeRefs()) {
 				if (typeref.Name == analyzedType.Name && typeref.Namespace == analyzedType.Namespace) {
 					return typeref;
 				}
@@ -364,7 +363,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 	}
 	internal static class ExtensionMethods
 	{
-		public static bool HasCustomAttribute(this MemberReference member, string attributeTypeName)
+		public static bool HasCustomAttribute(this IMemberRef member, string attributeTypeName)
 		{
 			return false;
 		}

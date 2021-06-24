@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,8 +18,8 @@
 
 using System;
 using System.Windows.Media;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -28,9 +28,9 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	/// </summary>
 	public sealed class FieldTreeNode : ILSpyTreeNode, IMemberTreeNode
 	{
-		public FieldDefinition FieldDefinition { get; }
+		public FieldDef FieldDefinition { get; }
 
-		public FieldTreeNode(FieldDefinition field)
+		public FieldTreeNode(FieldDef field)
 		{
 			if (field == null)
 				throw new ArgumentNullException(nameof(field));
@@ -42,14 +42,14 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			get {
 				return HighlightSearchMatch(
 					FieldDefinition.Name,
-					" : " + this.Language.TypeToString(FieldDefinition.FieldType, false, FieldDefinition) + FieldDefinition.MetadataToken.ToSuffixString()
+					" : " + this.Language.TypeToString(FieldDefinition.FieldType.ToTypeDefOrRef(), false, FieldDefinition) + FieldDefinition.MDToken.ToSuffixString()
 				);
 			}
 		}
 
 		public override object Icon => GetIcon(FieldDefinition);
 
-		public static ImageSource GetIcon(FieldDefinition field)
+		public static ImageSource GetIcon(FieldDef field)
 		{
 			if (field.DeclaringType.IsEnum && !field.Attributes.HasFlag(FieldAttributes.SpecialName))
 				return Images.GetIcon(MemberIcon.EnumValue, GetOverlayIcon(field.Attributes), false);
@@ -65,10 +65,10 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				return Images.GetIcon(MemberIcon.Field, GetOverlayIcon(field.Attributes), field.IsStatic);
 		}
 
-		private static bool IsDecimalConstant(FieldDefinition field)
+		private static bool IsDecimalConstant(FieldDef field)
 		{
 			var fieldType = field.FieldType;
-			if (fieldType.Name == "Decimal" && fieldType.Namespace == "System") {
+			if (fieldType.TypeName == "Decimal" && fieldType.Namespace == "System") {
 				if (field.HasCustomAttributes) {
 					var attrs = field.CustomAttributes;
 					for (int i = 0; i < attrs.Count; i++) {
@@ -117,13 +117,13 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		{
 			language.DecompileField(FieldDefinition, output, options);
 		}
-		
+
 		public override bool IsPublicAPI {
 			get {
 				return FieldDefinition.IsPublic || FieldDefinition.IsFamily || FieldDefinition.IsFamilyOrAssembly;
 			}
 		}
 
-		MemberReference IMemberTreeNode.Member => FieldDefinition;
+		IMemberRef IMemberTreeNode.Member => FieldDefinition;
 	}
 }

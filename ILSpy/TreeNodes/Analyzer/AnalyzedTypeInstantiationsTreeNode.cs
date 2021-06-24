@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,18 +20,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
+using IMethod = dnlib.DotNet.IMethod;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedTypeInstantiationsTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly TypeDefinition analyzedType;
+		private readonly TypeDef analyzedType;
 		private readonly bool isSystemObject;
 
-		public AnalyzedTypeInstantiationsTreeNode(TypeDefinition analyzedType)
+		public AnalyzedTypeInstantiationsTreeNode(TypeDef analyzedType)
 		{
 			if (analyzedType == null)
 				throw new ArgumentNullException(nameof(analyzedType));
@@ -52,9 +53,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return analyzer.PerformAnalysis(ct).OrderBy(n => n.Text);
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
-			foreach (MethodDefinition method in type.Methods) {
+			foreach (MethodDef method in type.Methods) {
 				bool found = false;
 				if (!method.HasBody)
 					continue;
@@ -66,7 +67,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 					continue;
 
 				foreach (Instruction instr in method.Body.Instructions) {
-					MethodReference mr = instr.Operand as MethodReference;
+					IMethod mr = instr.Operand as IMethod;
 					if (mr != null && mr.Name == ".ctor") {
 						if (Helpers.IsReferencedBy(analyzedType, mr.DeclaringType)) {
 							found = true;
@@ -85,7 +86,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		public static bool CanShow(TypeDefinition type)
+		public static bool CanShow(TypeDef type)
 		{
 			return (type.IsClass && !(type.IsAbstract && type.IsSealed) && !type.IsEnum);
 		}

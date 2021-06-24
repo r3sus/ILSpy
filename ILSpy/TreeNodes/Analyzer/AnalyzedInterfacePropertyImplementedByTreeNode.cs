@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,17 +20,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
+using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.TypeSystem;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedInterfacePropertyImplementedByTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly PropertyDefinition analyzedProperty;
-		private readonly MethodDefinition analyzedMethod;
+		private readonly PropertyDef analyzedProperty;
+		private readonly MethodDef analyzedMethod;
 
-		public AnalyzedInterfacePropertyImplementedByTreeNode(PropertyDefinition analyzedProperty)
+		public AnalyzedInterfacePropertyImplementedByTreeNode(PropertyDef analyzedProperty)
 		{
 			if (analyzedProperty == null)
 				throw new ArgumentNullException(nameof(analyzedProperty));
@@ -50,16 +51,16 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return analyzer.PerformAnalysis(ct).OrderBy(n => n.Text);
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			if (!type.HasInterfaces)
 				yield break;
-			TypeReference implementedInterfaceRef = type.Interfaces.FirstOrDefault(i => i.InterfaceType.Resolve() == analyzedMethod.DeclaringType)?.InterfaceType;
+			ITypeDefOrRef implementedInterfaceRef = type.Interfaces.FirstOrDefault(i => i.Interface.Resolve() == analyzedMethod.DeclaringType)?.Interface;
 			if (implementedInterfaceRef == null)
 				yield break;
 
-			foreach (PropertyDefinition property in type.Properties.Where(e => e.Name == analyzedProperty.Name)) {
-				MethodDefinition accessor = property.GetMethod ?? property.SetMethod;
+			foreach (PropertyDef property in type.Properties.Where(e => e.Name == analyzedProperty.Name)) {
+				MethodDef accessor = property.GetMethod ?? property.SetMethod;
 				if (TypesHierarchyHelpers.MatchInterfaceMethod(accessor, analyzedMethod, implementedInterfaceRef)) {
 					var node = new AnalyzedPropertyTreeNode(property);
 					node.Language = this.Language;
@@ -68,9 +69,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				yield break;
 			}
 
-			foreach (PropertyDefinition property in type.Properties.Where(e => e.Name.EndsWith(analyzedProperty.Name))) {
-				MethodDefinition accessor = property.GetMethod ?? property.SetMethod;
-				if (accessor.HasOverrides && accessor.Overrides.Any(m => m.Resolve() == analyzedMethod)) {
+			foreach (PropertyDef property in type.Properties.Where(e => e.Name.EndsWith(analyzedProperty.Name))) {
+				MethodDef accessor = property.GetMethod ?? property.SetMethod;
+				if (accessor.HasOverrides && accessor.Overrides.Any(m => m.MethodDeclaration.Resolve() == analyzedMethod)) {
 					var node = new AnalyzedPropertyTreeNode(property);
 					node.Language = this.Language;
 					yield return node;
@@ -78,7 +79,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		public static bool CanShow(PropertyDefinition property)
+		public static bool CanShow(PropertyDef property)
 		{
 			return property.DeclaringType.IsInterface;
 		}

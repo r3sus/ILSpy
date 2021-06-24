@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -23,16 +23,21 @@ using System.IO;
 using System.Linq;
 
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.TypeSystem;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
+using dnlib.DotNet;
+using dnlib.DotNet.MD;
+using dnlib.PE;
 using ICSharpCode.ILSpy.TreeNodes;
 using ICSharpCode.Decompiler.CSharp.Transforms;
 using ICSharpCode.Decompiler.Util;
+using IField = ICSharpCode.Decompiler.TypeSystem.IField;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
 
 namespace ICSharpCode.ILSpy
 {
@@ -51,7 +56,9 @@ namespace ICSharpCode.ILSpy
 #if DEBUG
 		internal static IEnumerable<CSharpLanguage> GetDebugLanguages()
 		{
-			var decompiler = new CSharpDecompiler(ModuleDefinition.CreateModule("Dummy", ModuleKind.Dll), new DecompilerSettings());
+			var dummy = new ModuleDefUser("Dummy");
+			dummy.Kind = ModuleKind.Dll;
+			var decompiler = new CSharpDecompiler(dummy, new DecompilerSettings());
 			string lastTransformName = "no transforms";
 			int transformCount = 0;
 			foreach (var transform in decompiler.AstTransforms) {
@@ -104,7 +111,7 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		CSharpDecompiler CreateDecompiler(ModuleDefinition module, DecompilationOptions options)
+		CSharpDecompiler CreateDecompiler(dnlib.DotNet.ModuleDef module, DecompilationOptions options)
 		{
 			CSharpDecompiler decompiler = new CSharpDecompiler(module, options.DecompilerSettings);
 			decompiler.CancellationToken = options.CancellationToken;
@@ -123,13 +130,13 @@ namespace ICSharpCode.ILSpy
 			syntaxTree.AcceptVisitor(new CSharpOutputVisitor(tokenWriter, settings.CSharpFormattingOptions));
 		}
 
-		public override void DecompileMethod(MethodDefinition method, ITextOutput output, DecompilationOptions options)
+		public override void DecompileMethod(dnlib.DotNet.MethodDef method, ITextOutput output, DecompilationOptions options)
 		{
 			AddReferenceWarningMessage(method.Module.Assembly, output);
 			WriteCommentLine(output, TypeToString(method.DeclaringType, includeNamespace: true));
 			CSharpDecompiler decompiler = CreateDecompiler(method.Module, options);
 			if (method.IsConstructor && !method.DeclaringType.IsValueType) {
-				List<IMemberDefinition> members = CollectFieldsAndCtors(method.DeclaringType, method.IsStatic);
+				List<dnlib.DotNet.IMemberDef> members = CollectFieldsAndCtors(method.DeclaringType, method.IsStatic);
 				decompiler.AstTransforms.Add(new SelectCtorTransform(decompiler.TypeSystem.Resolve(method)));
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(members), decompiler.TypeSystem);
 			} else {
@@ -188,7 +195,7 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		public override void DecompileProperty(PropertyDefinition property, ITextOutput output, DecompilationOptions options)
+		public override void DecompileProperty(dnlib.DotNet.PropertyDef property, ITextOutput output, DecompilationOptions options)
 		{
 			AddReferenceWarningMessage(property.Module.Assembly, output);
 			WriteCommentLine(output, TypeToString(property.DeclaringType, includeNamespace: true));
@@ -196,7 +203,7 @@ namespace ICSharpCode.ILSpy
 			WriteCode(output, options.DecompilerSettings, decompiler.Decompile(property), decompiler.TypeSystem);
 		}
 
-		public override void DecompileField(FieldDefinition field, ITextOutput output, DecompilationOptions options)
+		public override void DecompileField(dnlib.DotNet.FieldDef field, ITextOutput output, DecompilationOptions options)
 		{
 			AddReferenceWarningMessage(field.Module.Assembly, output);
 			WriteCommentLine(output, TypeToString(field.DeclaringType, includeNamespace: true));
@@ -204,15 +211,15 @@ namespace ICSharpCode.ILSpy
 			if (field.IsLiteral) {
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(field), decompiler.TypeSystem);
 			} else {
-				List<IMemberDefinition> members = CollectFieldsAndCtors(field.DeclaringType, field.IsStatic);
+				List<dnlib.DotNet.IMemberDef> members = CollectFieldsAndCtors(field.DeclaringType, field.IsStatic);
 				decompiler.AstTransforms.Add(new SelectFieldTransform(decompiler.TypeSystem.Resolve(field)));
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(members), decompiler.TypeSystem);
 			}
 		}
 
-		private static List<IMemberDefinition> CollectFieldsAndCtors(TypeDefinition type, bool isStatic)
+		private static List<dnlib.DotNet.IMemberDef> CollectFieldsAndCtors(dnlib.DotNet.TypeDef type, bool isStatic)
 		{
-			var members = new List<IMemberDefinition>();
+			var members = new List<dnlib.DotNet.IMemberDef>();
 			foreach (var field in type.Fields) {
 				if (field.IsStatic == isStatic)
 					members.Add(field);
@@ -254,7 +261,7 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		public override void DecompileEvent(EventDefinition ev, ITextOutput output, DecompilationOptions options)
+		public override void DecompileEvent(dnlib.DotNet.EventDef ev, ITextOutput output, DecompilationOptions options)
 		{
 			AddReferenceWarningMessage(ev.Module.Assembly, output);
 			WriteCommentLine(output, TypeToString(ev.DeclaringType, includeNamespace: true));
@@ -262,7 +269,7 @@ namespace ICSharpCode.ILSpy
 			WriteCode(output, options.DecompilerSettings, decompiler.Decompile(ev), decompiler.TypeSystem);
 		}
 
-		public override void DecompileType(TypeDefinition type, ITextOutput output, DecompilationOptions options)
+		public override void DecompileType(dnlib.DotNet.TypeDef type, ITextOutput output, DecompilationOptions options)
 		{
 			AddReferenceWarningMessage(type.Module.Assembly, output);
 			WriteCommentLine(output, TypeToString(type, includeNamespace: true));
@@ -270,41 +277,41 @@ namespace ICSharpCode.ILSpy
 			WriteCode(output, options.DecompilerSettings, decompiler.Decompile(type), decompiler.TypeSystem);
 		}
 
-		public static string GetPlatformDisplayName(ModuleDefinition module)
+		public static string GetPlatformDisplayName(dnlib.DotNet.ModuleDef module)
 		{
-			switch (module.Architecture) {
-				case TargetArchitecture.I386:
-					if ((module.Attributes & ModuleAttributes.Preferred32Bit) == ModuleAttributes.Preferred32Bit)
+			switch (module.Machine) {
+				case Machine.I386:
+					if ((module.Cor20HeaderFlags & ComImageFlags.Bit32Preferred) == ComImageFlags.Bit32Preferred)
 						return "AnyCPU (32-bit preferred)";
-					else if ((module.Attributes & ModuleAttributes.Required32Bit) == ModuleAttributes.Required32Bit)
+					else if ((module.Cor20HeaderFlags & ComImageFlags.Bit32Required) == ComImageFlags.Bit32Required)
 						return "x86";
 					else
 						return "AnyCPU (64-bit preferred)";
-				case TargetArchitecture.AMD64:
+				case Machine.AMD64:
 					return "x64";
-				case TargetArchitecture.IA64:
+				case Machine.IA64:
 					return "Itanium";
 				default:
-					return module.Architecture.ToString();
+					return module.Machine.ToString();
 			}
 		}
 
-		public static string GetRuntimeDisplayName(ModuleDefinition module)
+		public static string GetRuntimeDisplayName(dnlib.DotNet.ModuleDef module)
 		{
-			switch (module.Runtime) {
-				case TargetRuntime.Net_1_0:
-					return ".NET 1.0";
-				case TargetRuntime.Net_1_1:
-					return ".NET 1.1";
-				case TargetRuntime.Net_2_0:
-					return ".NET 2.0";
-				case TargetRuntime.Net_4_0:
-					return ".NET 4.0";
+			if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_10_PREFIX)) {
+				return ".NET 1.0";
+			} else if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_11_PREFIX)) {
+				return ".NET 1.1";
+			} else if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_20_PREFIX)) {
+				return ".NET 2.0";
+			} else if (module.RuntimeVersion.StartsWith(MDHeaderRuntimeVersion.MS_CLR_40_PREFIX)) {
+				return ".NET 4.0";
 			}
+
 			return null;
 		}
 
-		void AddReferenceWarningMessage(AssemblyDefinition assembly, ITextOutput output)
+		void AddReferenceWarningMessage(dnlib.DotNet.AssemblyDef assembly, ITextOutput output)
 		{
 			var loadedAssembly = MainWindow.Instance.CurrentAssemblyList.GetAssemblies().FirstOrDefault(la => la.GetAssemblyDefinitionOrNull() == assembly);
 			if (loadedAssembly == null || !loadedAssembly.LoadedAssemblyReferencesInfo.HasErrors)
@@ -348,7 +355,7 @@ namespace ICSharpCode.ILSpy
 				AddReferenceWarningMessage(module.Assembly, output);
 				output.WriteLine();
 				base.DecompileAssembly(assembly, output, options);
-				ModuleDefinition mainModule = module;
+				dnlib.DotNet.ModuleDef mainModule = module;
 				if (mainModule.Types.Count > 0) {
 					output.Write("// Global type: ");
 					output.WriteReference(mainModule.Types[0].FullName, mainModule.Types[0]);
@@ -360,7 +367,7 @@ namespace ICSharpCode.ILSpy
 					output.WriteLine();
 				}
 				output.WriteLine("// Architecture: " + GetPlatformDisplayName(mainModule));
-				if ((mainModule.Attributes & ModuleAttributes.ILOnly) == 0) {
+				if ((mainModule.Cor20HeaderFlags & dnlib.DotNet.MD.ComImageFlags.ILOnly) == 0) {
 					output.WriteLine("// This assembly contains unmanaged code.");
 				}
 				string runtimeName = GetRuntimeDisplayName(mainModule);
@@ -418,7 +425,7 @@ namespace ICSharpCode.ILSpy
 			}
 		}
 
-		public override string TypeToString(TypeReference type, bool includeNamespace, ICustomAttributeProvider typeAttributes = null)
+		public override string TypeToString(dnlib.DotNet.ITypeDefOrRef type, bool includeNamespace, dnlib.DotNet.IHasCustomAttribute typeAttributes = null)
 		{
 			ConvertTypeOptions options = ConvertTypeOptions.IncludeTypeParameterDefinitions;
 			if (includeNamespace)
@@ -427,13 +434,13 @@ namespace ICSharpCode.ILSpy
 			return TypeToString(options, type, typeAttributes);
 		}
 
-		string TypeToString(ConvertTypeOptions options, TypeReference type, ICustomAttributeProvider typeAttributes = null)
+		string TypeToString(ConvertTypeOptions options, dnlib.DotNet.ITypeDefOrRef type, dnlib.DotNet.IHasCustomAttribute typeAttributes = null)
 		{
-			AstType astType = CSharpDecompiler.ConvertType(type, typeAttributes, options);
+			AstType astType = CSharpDecompiler.ConvertType(Extensions.ToTypeSig(type), typeAttributes, options);
 
 			StringWriter w = new StringWriter();
-			if (type.IsByReference) {
-				ParameterDefinition pd = typeAttributes as ParameterDefinition;
+			if (type.ToTypeSig() is ByRefSig) {
+				ParamDef pd = typeAttributes as ParamDef;
 				if (pd != null && (!pd.IsIn && pd.IsOut))
 					w.Write("out ");
 				else
@@ -449,7 +456,7 @@ namespace ICSharpCode.ILSpy
 
 		static readonly CSharpFormattingOptions TypeToStringFormattingOptions = FormattingOptionsFactory.CreateEmpty();
 
-		public override string FormatPropertyName(PropertyDefinition property, bool? isIndexer)
+		public override string FormatPropertyName(PropertyDef property, bool? isIndexer)
 		{
 			if (property == null)
 				throw new ArgumentNullException(nameof(property));
@@ -461,18 +468,18 @@ namespace ICSharpCode.ILSpy
 				var buffer = new System.Text.StringBuilder();
 				var accessor = property.GetMethod ?? property.SetMethod;
 				if (accessor.HasOverrides) {
-					var declaringType = accessor.Overrides[0].DeclaringType;
+					var declaringType = accessor.Overrides[0].MethodDeclaration.DeclaringType;
 					buffer.Append(TypeToString(declaringType, includeNamespace: true));
 					buffer.Append(@".");
 				}
 				buffer.Append(@"this[");
 				bool addSeparator = false;
-				foreach (var p in property.Parameters) {
+				foreach (var p in property.GetParameters()) {
 					if (addSeparator)
 						buffer.Append(@", ");
 					else
 						addSeparator = true;
-					buffer.Append(TypeToString(p.ParameterType, includeNamespace: true));
+					buffer.Append(TypeToString(p.Type.ToTypeDefOrRef(), includeNamespace: true));
 				}
 				buffer.Append(@"]");
 				return buffer.ToString();
@@ -480,15 +487,15 @@ namespace ICSharpCode.ILSpy
 				return property.Name;
 		}
 
-		public override string FormatMethodName(MethodDefinition method)
+		public override string FormatMethodName(MethodDef method)
 		{
 			if (method == null)
 				throw new ArgumentNullException("method");
 
-			return (method.IsConstructor) ? FormatTypeName(method.DeclaringType) : method.Name;
+			return (method.IsConstructor) ? FormatTypeName(method.DeclaringType) : method.Name.String;
 		}
 
-		public override string FormatTypeName(TypeDefinition type)
+		public override string FormatTypeName(TypeDef type)
 		{
 			if (type == null)
 				throw new ArgumentNullException("type");
@@ -496,12 +503,12 @@ namespace ICSharpCode.ILSpy
 			return TypeToString(ConvertTypeOptions.DoNotUsePrimitiveTypeNames | ConvertTypeOptions.IncludeTypeParameterDefinitions, type);
 		}
 
-		public override bool ShowMember(MemberReference member)
+		public override bool ShowMember(IMemberRef member)
 		{
 			return showAllMembers || !CSharpDecompiler.MemberIsHidden(member, new DecompilationOptions().DecompilerSettings);
 		}
 
-		public override MemberReference GetOriginalCodeLocation(MemberReference member)
+		public override IMemberRef GetOriginalCodeLocation(IMemberRef member)
 		{
 			if (showAllMembers || !new DecompilationOptions().DecompilerSettings.AnonymousMethods)
 				return member;
@@ -509,24 +516,35 @@ namespace ICSharpCode.ILSpy
 				return TreeNodes.Analyzer.Helpers.GetOriginalCodeLocation(member);
 		}
 
-		public override string GetTooltip(MemberReference member)
+		public override string GetTooltip(IMemberRef member)
 		{
 			var decompilerTypeSystem = new DecompilerTypeSystem(member.Module);
 			ISymbol symbol;
 			switch (member) {
-				case MethodReference mr:
+				case dnlib.DotNet.MemberRef memberRef:
+					if (memberRef.IsFieldRef) {
+						symbol = decompilerTypeSystem.Resolve((dnlib.DotNet.IField)memberRef);
+					}
+					else if (memberRef.IsMethodRef) {
+						symbol = decompilerTypeSystem.Resolve((dnlib.DotNet.IMethod)memberRef);
+					} else {
+						throw new InvalidOperationException();
+					}
+					if (symbol == null) return base.GetTooltip(member);
+					break;
+				case dnlib.DotNet.IMethod mr:
 					symbol = decompilerTypeSystem.Resolve(mr);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
-				case PropertyReference pr:
+				case PropertyDef pr:
 					symbol = decompilerTypeSystem.Resolve(pr);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
-				case EventReference er:
+				case EventDef er:
 					symbol = decompilerTypeSystem.Resolve(er);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
-				case FieldReference fr:
+				case dnlib.DotNet.IField fr:
 					symbol = decompilerTypeSystem.Resolve(fr);
 					if (symbol == null) return base.GetTooltip(member);
 					break;

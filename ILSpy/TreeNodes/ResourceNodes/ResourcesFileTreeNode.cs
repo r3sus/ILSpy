@@ -1,14 +1,14 @@
 // Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,12 +21,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.Composition;
 using System.IO;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Util;
 using ICSharpCode.ILSpy.Controls;
 using ICSharpCode.ILSpy.TextView;
 using Microsoft.Win32;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -68,7 +68,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		{
 			EmbeddedResource er = this.Resource as EmbeddedResource;
 			if (er != null) {
-				Stream s = er.GetResourceStream();
+				Stream s = er.CreateReader().AsStream();
 				s.Position = 0;
 				try {
 					foreach (var entry in new ResourcesFile(s)) {
@@ -106,7 +106,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				otherEntries.Add(new SerializedObjectRepresentation(entry.Key, entry.Value.GetType().FullName, entry.Value.ToString()));
 			}
 		}
-		
+
 		public override bool Save(DecompilerTextView textView)
 		{
 			EmbeddedResource er = this.Resource as EmbeddedResource;
@@ -115,7 +115,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				dlg.FileName = DecompilerTextView.CleanUpName(er.Name);
 				dlg.Filter = "Resources file (*.resources)|*.resources|Resource XML file|*.resx";
 				if (dlg.ShowDialog() == true) {
-					Stream s = er.GetResourceStream();
+					Stream s = er.CreateReader().AsStream();
 					s.Position = 0;
 					switch (dlg.FilterIndex) {
 						case 1:

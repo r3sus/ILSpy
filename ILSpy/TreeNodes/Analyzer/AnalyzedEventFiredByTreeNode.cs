@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,20 +21,21 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
+using ICSharpCode.Decompiler;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedEventFiredByTreeNode : AnalyzerSearchTreeNode
 	{
-		private readonly EventDefinition analyzedEvent;
-		private readonly FieldDefinition eventBackingField;
-		private readonly MethodDefinition eventFiringMethod;
+		private readonly EventDef analyzedEvent;
+		private readonly FieldDef eventBackingField;
+		private readonly MethodDef eventFiringMethod;
 
-		private ConcurrentDictionary<MethodDefinition, int> foundMethods;
+		private ConcurrentDictionary<MethodDef, int> foundMethods;
 
-		public AnalyzedEventFiredByTreeNode(EventDefinition analyzedEvent)
+		public AnalyzedEventFiredByTreeNode(EventDef analyzedEvent)
 		{
 			if (analyzedEvent == null)
 				throw new ArgumentNullException(nameof(analyzedEvent));
@@ -52,7 +53,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		protected override IEnumerable<AnalyzerTreeNode> FetchChildren(CancellationToken ct)
 		{
-			foundMethods = new ConcurrentDictionary<MethodDefinition, int>();
+			foundMethods = new ConcurrentDictionary<MethodDef, int>();
 
 			foreach (var child in FindReferencesInType(analyzedEvent.DeclaringType).OrderBy(n => n.Text)) {
 				yield return child;
@@ -61,13 +62,13 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			foundMethods = null;
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			// HACK: in lieu of proper flow analysis, I'm going to use a simple heuristic
-			// If the method accesses the event's backing field, and calls invoke on a delegate 
+			// If the method accesses the event's backing field, and calls invoke on a delegate
 			// with the same signature, then it is (most likely) raise the given event.
 
-			foreach (MethodDefinition method in type.Methods) {
+			foreach (MethodDef method in type.Methods) {
 				bool readBackingField = false;
 				bool found = false;
 				if (!method.HasBody)
@@ -75,13 +76,13 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				foreach (Instruction instr in method.Body.Instructions) {
 					Code code = instr.OpCode.Code;
 					if (code == Code.Ldfld || code == Code.Ldflda) {
-						FieldReference fr = instr.Operand as FieldReference;
+						IField fr = instr.Operand as IField;
 						if (fr != null && fr.Name == eventBackingField.Name && fr == eventBackingField) {
 							readBackingField = true;
 						}
 					}
 					if (readBackingField && (code == Code.Callvirt || code == Code.Call)) {
-						MethodReference mr = instr.Operand as MethodReference;
+						IMethod mr = instr.Operand as IMethod;
 						if (mr != null && mr.Name == eventFiringMethod.Name && mr.Resolve() == eventFiringMethod) {
 							found = true;
 							break;
@@ -92,7 +93,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				method.Body = null;
 
 				if (found) {
-					MethodDefinition codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDefinition;
+					MethodDef codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDef;
 					if (codeLocation != null && !HasAlreadyBeenFound(codeLocation)) {
 						var node = new AnalyzedMethodTreeNode(codeLocation);
 						node.Language = this.Language;
@@ -102,13 +103,13 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private bool HasAlreadyBeenFound(MethodDefinition method)
+		private bool HasAlreadyBeenFound(MethodDef method)
 		{
 			return !foundMethods.TryAdd(method, 0);
 		}
 
 		// HACK: we should probably examine add/remove methods to determine this
-		private static FieldDefinition GetBackingField(EventDefinition ev)
+		private static FieldDef GetBackingField(EventDef ev)
 		{
 			var fieldName = ev.Name;
 			var vbStyleFieldName = fieldName + "Event";
@@ -124,7 +125,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 		}
 
 
-		public static bool CanShow(EventDefinition ev)
+		public static bool CanShow(EventDef ev)
 		{
 			return GetBackingField(ev) != null;
 		}

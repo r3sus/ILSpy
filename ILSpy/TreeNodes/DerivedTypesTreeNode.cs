@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,9 +19,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -31,10 +31,10 @@ namespace ICSharpCode.ILSpy.TreeNodes
 	sealed class DerivedTypesTreeNode : ILSpyTreeNode
 	{
 		readonly AssemblyList list;
-		readonly TypeDefinition type;
+		readonly TypeDef type;
 		readonly ThreadingSupport threading;
 
-		public DerivedTypesTreeNode(AssemblyList list, TypeDefinition type)
+		public DerivedTypesTreeNode(AssemblyList list, TypeDef type)
 		{
 			this.list = list;
 			this.type = type;
@@ -64,14 +64,14 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			return FindDerivedTypes(type, assemblies, cancellationToken);
 		}
 
-		internal static IEnumerable<DerivedTypesEntryNode> FindDerivedTypes(TypeDefinition type, ModuleDefinition[] assemblies, CancellationToken cancellationToken)
+		internal static IEnumerable<DerivedTypesEntryNode> FindDerivedTypes(TypeDef type, ModuleDef[] assemblies, CancellationToken cancellationToken)
 		{
-			foreach (ModuleDefinition module in assemblies) {
-				foreach (TypeDefinition td in TreeTraversal.PreOrder(module.Types, t => t.NestedTypes)) {
+			foreach (ModuleDef module in assemblies) {
+				foreach (TypeDef td in TreeTraversal.PreOrder(module.Types, t => t.NestedTypes)) {
 					cancellationToken.ThrowIfCancellationRequested();
 					if (type.IsInterface && td.HasInterfaces) {
 						foreach (var iface in td.Interfaces) {
-							if (IsSameType(iface.InterfaceType, type))
+							if (IsSameType(iface.Interface, type))
 								yield return new DerivedTypesEntryNode(td, assemblies);
 						}
 					} else if (!type.IsInterface && td.BaseType != null && IsSameType(td.BaseType, type)) {
@@ -81,19 +81,17 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		static bool IsSameType(TypeReference typeRef, TypeDefinition type)
+		static bool IsSameType(ITypeDefOrRef typeRef, TypeDef type)
 		{
 			if (typeRef.FullName == type.FullName)
 				return true;
 			if (typeRef.Name != type.Name || type.Namespace != typeRef.Namespace)
 				return false;
-			if (typeRef.IsNested || type.IsNested)
-				if (!typeRef.IsNested || !type.IsNested || !IsSameType(typeRef.DeclaringType, type.DeclaringType))
+			if (typeRef.DeclaringType != null || type.IsNested)
+				if (typeRef.DeclaringType == null || !type.IsNested || !IsSameType(typeRef.DeclaringType, type.DeclaringType))
 					return false;
-			var gTypeRef = typeRef as GenericInstanceType;
-			if (gTypeRef != null || type.HasGenericParameters)
-				if (gTypeRef == null || !type.HasGenericParameters || gTypeRef.GenericArguments.Count != type.GenericParameters.Count)
-					return false;
+			if (typeRef.NumberOfGenericParameters != type.GenericParameters.Count)
+				return false;
 			return true;
 		}
 

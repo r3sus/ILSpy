@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using ICSharpCode.Decompiler.Util;
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
@@ -30,27 +30,27 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 	/// </summary>
 	internal class ScopedWhereUsedAnalyzer<T>
 	{
-		private readonly AssemblyDefinition assemblyScope;
-		private TypeDefinition typeScope;
+		private readonly AssemblyDef assemblyScope;
+		private TypeDef typeScope;
 
 		private readonly Accessibility memberAccessibility = Accessibility.Public;
 		private Accessibility typeAccessibility = Accessibility.Public;
-		private readonly Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction;
+		private readonly Func<TypeDef, IEnumerable<T>> typeAnalysisFunction;
 
-		public ScopedWhereUsedAnalyzer(TypeDefinition type, Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction)
+		public ScopedWhereUsedAnalyzer(TypeDef type, Func<TypeDef, IEnumerable<T>> typeAnalysisFunction)
 		{
 			this.typeScope = type;
 			this.assemblyScope = type.Module.Assembly;
 			this.typeAnalysisFunction = typeAnalysisFunction;
 		}
 
-		public ScopedWhereUsedAnalyzer(MethodDefinition method, Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction)
+		public ScopedWhereUsedAnalyzer(MethodDef method, Func<TypeDef, IEnumerable<T>> typeAnalysisFunction)
 			: this(method.DeclaringType, typeAnalysisFunction)
 		{
 			this.memberAccessibility = GetMethodAccessibility(method);
 		}
 
-		public ScopedWhereUsedAnalyzer(PropertyDefinition property, Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction)
+		public ScopedWhereUsedAnalyzer(PropertyDef property, Func<TypeDef, IEnumerable<T>> typeAnalysisFunction)
 			: this(property.DeclaringType, typeAnalysisFunction)
 		{
 			Accessibility getterAccessibility = (property.GetMethod == null) ? Accessibility.Private : GetMethodAccessibility(property.GetMethod);
@@ -58,7 +58,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			this.memberAccessibility = (Accessibility)Math.Max((int)getterAccessibility, (int)setterAccessibility);
 		}
 
-		public ScopedWhereUsedAnalyzer(EventDefinition eventDef, Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction)
+		public ScopedWhereUsedAnalyzer(EventDef eventDef, Func<TypeDef, IEnumerable<T>> typeAnalysisFunction)
 			: this(eventDef.DeclaringType, typeAnalysisFunction)
 		{
 			// we only have to check the accessibility of the the get method
@@ -66,7 +66,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			this.memberAccessibility = GetMethodAccessibility(eventDef.AddMethod);
 		}
 
-		public ScopedWhereUsedAnalyzer(FieldDefinition field, Func<TypeDefinition, IEnumerable<T>> typeAnalysisFunction)
+		public ScopedWhereUsedAnalyzer(FieldDef field, Func<TypeDef, IEnumerable<T>> typeAnalysisFunction)
 			: this(field.DeclaringType, typeAnalysisFunction)
 		{
 			switch (field.Attributes & FieldAttributes.FieldAccessMask) {
@@ -92,7 +92,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private Accessibility GetMethodAccessibility(MethodDefinition method)
+		private Accessibility GetMethodAccessibility(MethodDef method)
 		{
 			Accessibility accessibility;
 			switch (method.Attributes & MethodAttributes.MemberAccessMask) {
@@ -139,7 +139,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 			return FindReferencesGlobal(ct);
 		}
-		
+
 		private void DetermineTypeAccessibility()
 		{
 			while (typeScope.IsNested) {
@@ -158,7 +158,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private static Accessibility GetNestedTypeAccessibility(TypeDefinition type)
+		private static Accessibility GetNestedTypeAccessibility(TypeDef type)
 		{
 			Accessibility result;
 			switch (type.Attributes & TypeAttributes.VisibilityMask) {
@@ -215,9 +215,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return assemblies.AsParallel().WithCancellation(ct).SelectMany(asm => FindReferencesInAssembly(asm, ct));
 		}
 
-		private IEnumerable<T> FindReferencesInAssembly(AssemblyDefinition asm, CancellationToken ct)
+		private IEnumerable<T> FindReferencesInAssembly(AssemblyDef asm, CancellationToken ct)
 		{
-			foreach (TypeDefinition type in TreeTraversal.PreOrder(asm.MainModule.Types, t => t.NestedTypes)) {
+			foreach (TypeDef type in TreeTraversal.PreOrder(asm.ManifestModule.Types, t => t.NestedTypes)) {
 				ct.ThrowIfCancellationRequested();
 				foreach (var result in typeAnalysisFunction(type)) {
 					ct.ThrowIfCancellationRequested();
@@ -228,7 +228,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		private IEnumerable<T> FindReferencesInTypeScope(CancellationToken ct)
 		{
-			foreach (TypeDefinition type in TreeTraversal.PreOrder(typeScope, t => t.NestedTypes)) {
+			foreach (TypeDef type in TreeTraversal.PreOrder(typeScope, t => t.NestedTypes)) {
 				ct.ThrowIfCancellationRequested();
 				foreach (var result in typeAnalysisFunction(type)) {
 					ct.ThrowIfCancellationRequested();
@@ -239,7 +239,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 		private IEnumerable<T> FindReferencesInEnclosingTypeScope(CancellationToken ct)
 		{
-			foreach (TypeDefinition type in TreeTraversal.PreOrder(typeScope.DeclaringType, t => t.NestedTypes)) {
+			foreach (TypeDef type in TreeTraversal.PreOrder(typeScope.DeclaringType, t => t.NestedTypes)) {
 				ct.ThrowIfCancellationRequested();
 				foreach (var result in typeAnalysisFunction(type)) {
 					ct.ThrowIfCancellationRequested();
@@ -248,7 +248,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private IEnumerable<AssemblyDefinition> GetReferencingAssemblies(AssemblyDefinition asm, CancellationToken ct)
+		private IEnumerable<AssemblyDef> GetReferencingAssemblies(AssemblyDef asm, CancellationToken ct)
 		{
 			yield return asm;
 
@@ -261,9 +261,9 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				if (module == null)
 					continue;
 				var resolver = assembly.GetAssemblyResolver();
-				foreach (var reference in module.AssemblyReferences) {
+				foreach (var reference in module.GetAssemblyRefs()) {
 					using (LoadedAssembly.DisableAssemblyLoad()) {
-						if (resolver.Resolve(reference) == asm) {
+						if (resolver.Resolve(reference, asm.ManifestModule) == asm) {
 							found = true;
 							break;
 						}
@@ -274,7 +274,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private IEnumerable<AssemblyDefinition> GetAssemblyAndAnyFriends(AssemblyDefinition asm, CancellationToken ct)
+		private IEnumerable<AssemblyDef> GetAssemblyAndAnyFriends(AssemblyDef asm, CancellationToken ct)
 		{
 			yield return asm;
 
@@ -305,10 +305,10 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private bool AssemblyReferencesScopeType(AssemblyDefinition asm)
+		private bool AssemblyReferencesScopeType(AssemblyDef asm)
 		{
 			bool hasRef = false;
-			foreach (var typeref in asm.MainModule.GetTypeReferences()) {
+			foreach (var typeref in asm.ManifestModule.GetTypeRefs()) {
 				if (typeref.Name == typeScope.Name && typeref.Namespace == typeScope.Namespace) {
 					hasRef = true;
 					break;

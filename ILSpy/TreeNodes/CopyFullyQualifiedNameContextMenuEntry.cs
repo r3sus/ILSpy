@@ -1,5 +1,5 @@
 ﻿using System.Windows;
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
@@ -28,15 +28,15 @@ namespace ICSharpCode.ILSpy.TreeNodes
 		/// <summary>
 		/// Resolve full type name using .NET type representation for nested types.
 		/// </summary>
-		private string GetFullyQualifiedName(MemberReference member)
+		private string GetFullyQualifiedName(IMemberRef member)
 		{
 			if (member.DeclaringType != null) {
-				if (member is TypeReference)
+				if (member is ITypeDefOrRef)
 					return GetFullyQualifiedName(member.DeclaringType) + "+" + member.Name;
 				else
 					return GetFullyQualifiedName(member.DeclaringType) + "." + member.Name;
 			}
-			return (member is TypeReference t ? t.Namespace + "." : "") + member.Name;
+			return (member is ITypeDefOrRef t ? t.Namespace + "." : "") + member.Name;
 		}
 	}
 }

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,19 +21,20 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
+using ICSharpCode.Decompiler;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal sealed class AnalyzedFieldAccessTreeNode : AnalyzerSearchTreeNode
 	{
 		private readonly bool showWrites; // true: show writes; false: show read access
-		private readonly FieldDefinition analyzedField;
+		private readonly FieldDef analyzedField;
 		private Lazy<Hashtable> foundMethods;
 		private readonly object hashLock = new object();
 
-		public AnalyzedFieldAccessTreeNode(FieldDefinition analyzedField, bool showWrites)
+		public AnalyzedFieldAccessTreeNode(FieldDef analyzedField, bool showWrites)
 		{
 			if (analyzedField == null)
 				throw new ArgumentNullException(nameof(analyzedField));
@@ -59,17 +60,17 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			foundMethods = null;
 		}
 
-		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDefinition type)
+		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			string name = analyzedField.Name;
 
-			foreach (MethodDefinition method in type.Methods) {
+			foreach (MethodDef method in type.Methods) {
 				bool found = false;
 				if (!method.HasBody)
 					continue;
 				foreach (Instruction instr in method.Body.Instructions) {
 					if (CanBeReference(instr.OpCode.Code)) {
-						FieldReference fr = instr.Operand as FieldReference;
+						IField fr = instr.Operand as IField;
 						if (fr != null && fr.Name == name &&
 							Helpers.IsReferencedBy(analyzedField.DeclaringType, fr.DeclaringType) &&
 							fr.Resolve() == analyzedField) {
@@ -82,7 +83,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 				method.Body = null;
 
 				if (found) {
-					MethodDefinition codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDefinition;
+					MethodDef codeLocation = this.Language.GetOriginalCodeLocation(method) as MethodDef;
 					if (codeLocation != null && !HasAlreadyBeenFound(codeLocation)) {
 						var node = new AnalyzedMethodTreeNode(codeLocation);
 						node.Language = this.Language;
@@ -109,7 +110,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 		}
 
-		private bool HasAlreadyBeenFound(MethodDefinition method)
+		private bool HasAlreadyBeenFound(MethodDef method)
 		{
 			Hashtable hashtable = foundMethods.Value;
 			lock (hashLock) {

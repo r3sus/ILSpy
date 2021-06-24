@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,15 +18,15 @@
 
 using System;
 using System.Linq;
+using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
 
 namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 {
 	internal static class Helpers
 	{
-		public static bool IsReferencedBy(TypeDefinition type, TypeReference typeRef)
+		public static bool IsReferencedBy(TypeDef type, ITypeDefOrRef typeRef)
 		{
 			// TODO: move it to a better place after adding support for more cases.
 			if (type == null)
@@ -51,14 +51,14 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return true;
 		}
 
-		public static MemberReference GetOriginalCodeLocation(MemberReference member)
+		public static IMemberRef GetOriginalCodeLocation(IMemberRef member)
 		{
-			if (member is MethodDefinition)
-				return GetOriginalCodeLocation((MethodDefinition)member);
+			if (member is MethodDef)
+				return GetOriginalCodeLocation((MethodDef)member);
 			return member;
 		}
 
-		public static MethodDefinition GetOriginalCodeLocation(MethodDefinition method)
+		public static MethodDef GetOriginalCodeLocation(MethodDef method)
 		{
 			if (method.IsCompilerGenerated()) {
 				return FindMethodUsageInType(method.DeclaringType, method) ?? method;
@@ -68,12 +68,12 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 
 			return typeUsage ?? method;
 		}
-		
+
 		/// <summary>
 		/// Given a compiler-generated type, returns the method where that type is used.
 		/// Used to detect the 'parent method' for a lambda/iterator/async state machine.
 		/// </summary>
-		public static MethodDefinition GetOriginalCodeLocation(TypeDefinition type)
+		public static MethodDef GetOriginalCodeLocation(TypeDef type)
 		{
 			if (type != null && type.DeclaringType != null && type.IsCompilerGenerated()) {
 				if (type.IsValueType) {
@@ -81,7 +81,7 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 					// because 'initobj' (or 'call .ctor') expects a managed ref.
 					return FindVariableOfTypeUsageInType(type.DeclaringType, type);
 				} else {
-					MethodDefinition constructor = GetTypeConstructor(type);
+					MethodDef constructor = GetTypeConstructor(type);
 					if (constructor == null)
 						return null;
 					return FindMethodUsageInType(type.DeclaringType, constructor);
@@ -90,20 +90,20 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			return null;
 		}
 
-		private static MethodDefinition GetTypeConstructor(TypeDefinition type)
+		private static MethodDef GetTypeConstructor(TypeDef type)
 		{
 			return type.Methods.FirstOrDefault(method => !method.IsStatic && method.IsConstructor);
 		}
 
-		private static MethodDefinition FindMethodUsageInType(TypeDefinition type, MethodDefinition analyzedMethod)
+		private static MethodDef FindMethodUsageInType(TypeDef type, MethodDef analyzedMethod)
 		{
 			string name = analyzedMethod.Name;
-			foreach (MethodDefinition method in type.Methods) {
+			foreach (MethodDef method in type.Methods) {
 				bool found = false;
 				if (!method.HasBody)
 					continue;
 				foreach (Instruction instr in method.Body.Instructions) {
-					MethodReference mr = instr.Operand as MethodReference;
+					IMethod mr = instr.Operand as IMethod;
 					if (mr != null && mr.Name == name &&
 						IsReferencedBy(analyzedMethod.DeclaringType, mr.DeclaringType) &&
 						mr.Resolve() == analyzedMethod) {
@@ -119,15 +119,15 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 			}
 			return null;
 		}
-		
-		private static MethodDefinition FindVariableOfTypeUsageInType(TypeDefinition type, TypeDefinition variableType)
+
+		private static MethodDef FindVariableOfTypeUsageInType(TypeDef type, TypeDef variableType)
 		{
-			foreach (MethodDefinition method in type.Methods) {
+			foreach (MethodDef method in type.Methods) {
 				bool found = false;
 				if (!method.HasBody)
 					continue;
 				foreach (var v in method.Body.Variables) {
-					if (v.VariableType.ResolveWithinSameModule() == variableType) {
+					if (v.Type.Resolve() == variableType) {
 						found = true;
 						break;
 					}

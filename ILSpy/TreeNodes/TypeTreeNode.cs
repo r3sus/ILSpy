@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -20,16 +20,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Media;
-
+using dnlib.DotNet;
 using ICSharpCode.Decompiler;
-using Mono.Cecil;
 
 namespace ICSharpCode.ILSpy.TreeNodes
 {
 	public sealed class TypeTreeNode : ILSpyTreeNode, IMemberTreeNode
 	{
-		
-		public TypeTreeNode(TypeDefinition type, AssemblyTreeNode parentAssemblyNode)
+		public TypeTreeNode(TypeDef type, AssemblyTreeNode parentAssemblyNode)
 		{
 			if (parentAssemblyNode == null)
 				throw new ArgumentNullException(nameof(parentAssemblyNode));
@@ -40,11 +38,11 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			this.LazyLoading = true;
 		}
 
-		public TypeDefinition TypeDefinition { get; }
+		public TypeDef TypeDefinition { get; }
 
 		public AssemblyTreeNode ParentAssemblyNode { get; }
 
-		public override object Text => HighlightSearchMatch(this.Language.FormatTypeName(TypeDefinition), TypeDefinition.MetadataToken.ToSuffixString());
+		public override object Text => HighlightSearchMatch(this.Language.FormatTypeName(TypeDefinition), TypeDefinition.MDToken.ToSuffixString());
 
 		public override bool IsPublicAPI {
 			get {
@@ -59,7 +57,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				}
 			}
 		}
-		
+
 		public override FilterResult Filter(FilterSettings settings)
 		{
 			if (!settings.ShowInternalApi && !IsPublicAPI)
@@ -73,28 +71,28 @@ namespace ICSharpCode.ILSpy.TreeNodes
 				return FilterResult.Recurse;
 			}
 		}
-		
+
 		protected override void LoadChildren()
 		{
 			if (TypeDefinition.BaseType != null || TypeDefinition.HasInterfaces)
 				this.Children.Add(new BaseTypesTreeNode(TypeDefinition));
 			if (!TypeDefinition.IsSealed)
 				this.Children.Add(new DerivedTypesTreeNode(ParentAssemblyNode.AssemblyList, TypeDefinition));
-			foreach (TypeDefinition nestedType in TypeDefinition.NestedTypes.OrderBy(m => m.Name, NaturalStringComparer.Instance)) {
+			foreach (TypeDef nestedType in TypeDefinition.NestedTypes.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				this.Children.Add(new TypeTreeNode(nestedType, ParentAssemblyNode));
 			}
-			foreach (FieldDefinition field in TypeDefinition.Fields.OrderBy(m => m.Name, NaturalStringComparer.Instance)) {
+			foreach (FieldDef field in TypeDefinition.Fields.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				this.Children.Add(new FieldTreeNode(field));
 			}
-			
-			foreach (PropertyDefinition property in TypeDefinition.Properties.OrderBy(m => m.Name, NaturalStringComparer.Instance)) {
+
+			foreach (PropertyDef property in TypeDefinition.Properties.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				this.Children.Add(new PropertyTreeNode(property));
 			}
-			foreach (EventDefinition ev in TypeDefinition.Events.OrderBy(m => m.Name, NaturalStringComparer.Instance)) {
+			foreach (EventDef ev in TypeDefinition.Events.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				this.Children.Add(new EventTreeNode(ev));
 			}
-			HashSet<MethodDefinition> accessorMethods = TypeDefinition.GetAccessorMethods();
-			foreach (MethodDefinition method in TypeDefinition.Methods.OrderBy(m => m.Name, NaturalStringComparer.Instance)) {
+			HashSet<MethodDef> accessorMethods = TypeDefinition.GetAccessorMethods();
+			foreach (MethodDef method in TypeDefinition.Methods.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				if (!accessorMethods.Contains(method)) {
 					this.Children.Add(new MethodTreeNode(method));
 				}
@@ -110,7 +108,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 
 		public override object Icon => GetIcon(TypeDefinition);
 
-		public static ImageSource GetIcon(TypeDefinition type)
+		public static ImageSource GetIcon(TypeDef type)
 		{
 			TypeIcon typeIcon = GetTypeIcon(type);
 			AccessOverlayIcon overlayIcon = GetOverlayIcon(type);
@@ -118,7 +116,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			return Images.GetIcon(typeIcon, overlayIcon);
 		}
 
-		static TypeIcon GetTypeIcon(TypeDefinition type)
+		static TypeIcon GetTypeIcon(TypeDef type)
 		{
 			if (type.IsValueType) {
 				if (type.IsEnum)
@@ -137,7 +135,7 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			}
 		}
 
-		private static AccessOverlayIcon GetOverlayIcon(TypeDefinition type)
+		private static AccessOverlayIcon GetOverlayIcon(TypeDef type)
 		{
 			AccessOverlayIcon overlay;
 			switch (type.Attributes & TypeAttributes.VisibilityMask) {
@@ -165,16 +163,16 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			return overlay;
 		}
 
-		private static bool IsDelegate(TypeDefinition type)
+		private static bool IsDelegate(TypeDef type)
 		{
 			return type.BaseType != null && type.BaseType.FullName == typeof(MulticastDelegate).FullName;
 		}
 
-		private static bool IsStaticClass(TypeDefinition type)
+		private static bool IsStaticClass(TypeDef type)
 		{
 			return type.IsSealed && type.IsAbstract;
 		}
 
-		MemberReference IMemberTreeNode.Member => TypeDefinition;
+		IMemberRef IMemberTreeNode.Member => TypeDefinition;
 	}
 }
