@@ -761,16 +761,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					break;
 			}
 			LayoutKind defaultLayoutKind = (typeDefinition.IsValueType && !typeDefinition.IsEnum) ? LayoutKind.Sequential: LayoutKind.Auto;
-			if (layoutKind != defaultLayoutKind || charSet != CharSet.Ansi || typeDefinition.PackingSize != ushort.MaxValue || typeDefinition.ClassSize != uint.MaxValue) {
+			if (layoutKind != defaultLayoutKind || charSet != CharSet.Ansi ||
+				(typeDefinition.PackingSize != ushort.MaxValue && typeDefinition.PackingSize != 0) ||
+				(typeDefinition.ClassSize != uint.MaxValue && typeDefinition.ClassSize != 0)) {
 				DefaultUnresolvedAttribute structLayout = new DefaultUnresolvedAttribute(structLayoutAttributeTypeRef, new[] { layoutKindTypeRef });
 				structLayout.PositionalArguments.Add(CreateSimpleConstantValue(layoutKindTypeRef, (int)layoutKind));
 				if (charSet != CharSet.Ansi) {
 					structLayout.AddNamedFieldArgument("CharSet", CreateSimpleConstantValue(charSetTypeRef, (int)charSet));
 				}
-				if (typeDefinition.PackingSize != ushort.MaxValue) {
+				if (typeDefinition.PackingSize != ushort.MaxValue && typeDefinition.PackingSize != 0) {
 					structLayout.AddNamedFieldArgument("Pack", CreateSimpleConstantValue(KnownTypeReference.Int32, (int)typeDefinition.PackingSize));
 				}
-				if (typeDefinition.ClassSize != uint.MaxValue) {
+				if (typeDefinition.ClassSize != uint.MaxValue && typeDefinition.ClassSize != 0) {
 					structLayout.AddNamedFieldArgument("Size", CreateSimpleConstantValue(KnownTypeReference.Int32, (int)typeDefinition.ClassSize));
 				}
 				targetEntity.Attributes.Add(interningProvider.Intern(structLayout));
@@ -793,9 +795,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		void AddAttributes(FieldDef fieldDefinition, IUnresolvedEntity targetEntity)
 		{
 			// FieldOffsetAttribute
-			if (fieldDefinition.HasLayoutInfo) {
+			if (fieldDefinition.HasLayoutInfo && fieldDefinition.FieldOffset.HasValue) {
 				DefaultUnresolvedAttribute fieldOffset = new DefaultUnresolvedAttribute(fieldOffsetAttributeTypeRef, new[] { KnownTypeReference.Int32 });
-				fieldOffset.PositionalArguments.Add(CreateSimpleConstantValue(KnownTypeReference.Int32, fieldDefinition.FieldOffset));
+				fieldOffset.PositionalArguments.Add(CreateSimpleConstantValue(KnownTypeReference.Int32, (int)fieldDefinition.FieldOffset));
 				targetEntity.Attributes.Add(interningProvider.Intern(fieldOffset));
 			}
 
@@ -857,7 +859,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					attr.AddNamedFieldArgument("ArraySubType", CreateSimpleConstantValue(unmanagedTypeTypeRef, (int)fami.ElementType));
 			}
 			SafeArrayMarshalType sami = marshalInfo as SafeArrayMarshalType;
-			if (sami != null && sami.VariantType != VariantType.None) {
+			if (sami != null && sami.VariantType != VariantType.NotInitialized) {
 				attr.AddNamedFieldArgument("SafeArraySubType", CreateSimpleConstantValue(typeof(VarEnum).ToTypeReference(), (int)sami.VariantType));
 			}
 			ArrayMarshalType ami = marshalInfo as ArrayMarshalType;
@@ -873,8 +875,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (cmi != null) {
 				if (cmi.CustomMarshaler != null)
 					attr.AddNamedFieldArgument("MarshalType", CreateSimpleConstantValue(KnownTypeReference.String, cmi.CustomMarshaler.FullName));
-				if (!string.IsNullOrEmpty(cmi.Cookie))
-					attr.AddNamedFieldArgument("MarshalCookie", CreateSimpleConstantValue(KnownTypeReference.String, cmi.Cookie));
+				if (!UTF8String.IsNullOrEmpty(cmi.Cookie))
+					attr.AddNamedFieldArgument("MarshalCookie", CreateSimpleConstantValue(KnownTypeReference.String, cmi.Cookie.String));
 			}
 			FixedSysStringMarshalType fssmi = marshalInfo as FixedSysStringMarshalType;
 			if (fssmi != null) {
@@ -1603,7 +1605,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				AddAttributes(parameter.ParamDef, p);
 
 			if (parameter.HasParamDef && parameter.ParamDef.IsOptional) {
-				p.DefaultValue = CreateSimpleConstantValue(type, parameter.ParamDef.Constant.Value);
+				p.DefaultValue = CreateSimpleConstantValue(type, parameter.ParamDef.HasConstant ? parameter.ParamDef.Constant.Value : null);
 			}
 
 			if (parameter.HasParamDef && parameter.Type is ArraySigBase) {

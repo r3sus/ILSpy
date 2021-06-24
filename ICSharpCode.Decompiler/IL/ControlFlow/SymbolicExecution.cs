@@ -133,7 +133,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			} else if (inst.MatchLdLoc(out var loadedVariable)) {
 				if (stateVariables.Contains(loadedVariable))
 					return new SymbolicValue(SymbolicValueType.State);
-				else if (loadedVariable.Kind == VariableKind.Parameter && loadedVariable.Index == -2)
+				else if (loadedVariable.Kind == VariableKind.Parameter && loadedVariable.Index < 0)
 					return new SymbolicValue(SymbolicValueType.This);
 				else
 					return Failed;

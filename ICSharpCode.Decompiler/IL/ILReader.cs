@@ -175,7 +175,7 @@ namespace ICSharpCode.Decompiler.IL
 				Debug.Assert(p.Index < 0); // cecil bug occurs only for "this"
 				parameterType = new ParameterizedType(parameterType.GetDefinition(), parameterType.TypeArguments);
 			}
-			var ilVar = new ILVariable(VariableKind.Parameter, parameterType, p.MethodSigIndex);
+			var ilVar = new ILVariable(VariableKind.Parameter, parameterType, p.MethodSigIndex == -2 ? -1 : p.MethodSigIndex);
 			Debug.Assert(ilVar.StoreCount == 1); // count the initial store when the method is called with an argument
 			if (p.IsHiddenThisParameter)
 				ilVar.Name = "this";
@@ -1572,6 +1572,14 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			if (token is dnlib.DotNet.ITypeDefOrRef)
 				return new LdTypeToken(typeSystem.Resolve((dnlib.DotNet.ITypeDefOrRef)token));
+			if (token is dnlib.DotNet.MemberRef memberRef) {
+				if (memberRef.IsFieldRef) {
+					return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IField)token));
+				}
+				if (memberRef.IsMethodRef) {
+					return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IMethod)token));
+				}
+			}
 			if (token is dnlib.DotNet.IField)
 				return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IField)token));
 			if (token is dnlib.DotNet.IMethod)

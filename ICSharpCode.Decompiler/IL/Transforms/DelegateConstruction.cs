@@ -157,7 +157,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				DecompileRun = context.DecompileRun
 			};
 			function.RunTransforms(CSharpDecompiler.GetILTransforms().TakeWhile(t => !(t is DelegateConstruction)), nestedContext);
-			function.AcceptVisitor(new ReplaceDelegateTargetVisitor(target, function.Variables.SingleOrDefault(v => v.Index == -2 && v.Kind == VariableKind.Parameter)));
+			function.AcceptVisitor(new ReplaceDelegateTargetVisitor(target, function.Variables.SingleOrDefault(v => v.Index == -1 && v.Kind == VariableKind.Parameter)));
 			// handle nested lambdas
 			((IILTransform)new DelegateConstruction()).Run(function, nestedContext);
 			function.AddILRange(target.ILRange);

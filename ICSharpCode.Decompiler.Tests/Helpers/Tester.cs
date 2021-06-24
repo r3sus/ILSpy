@@ -113,7 +113,9 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		public static string Disassemble(string sourceFileName, string outputFile, AssemblerOptions asmOptions)
 		{
 			if (asmOptions.HasFlag(AssemblerOptions.UseOwnDisassembler)) {
-				using (ModuleDefMD module = ModuleDefMD.Load(sourceFileName))
+				var resolver = new AssemblyResolver();
+				resolver.DefaultModuleContext = new ModuleContext(resolver);
+				using (ModuleDefMD module = ModuleDefMD.Load(sourceFileName, resolver.DefaultModuleContext))
 				using (var writer = new StringWriter()) {
 					module.Name = Path.GetFileNameWithoutExtension(outputFile);
 					var output = new PlainTextOutput(writer);
@@ -345,7 +347,9 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			var emitResult = compilation.Emit(peStream);
 			peStream.Position = 0;
 
-			var moduleDefinition = ModuleDefMD.Load(peStream);
+			var resolver = new AssemblyResolver();
+			resolver.DefaultModuleContext = new ModuleContext(resolver);
+			var moduleDefinition = ModuleDefMD.Load(peStream, resolver.DefaultModuleContext);
 			var decompiler = new CSharpDecompiler(moduleDefinition, new DecompilerSettings());
 
 			return decompiler;
@@ -390,7 +394,9 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 
 		public static string DecompileCSharp(string assemblyFileName, DecompilerSettings settings = null)
 		{
-			using (var module = ModuleDefMD.Load(assemblyFileName)) {
+			var resolver = new AssemblyResolver();
+			resolver.DefaultModuleContext = new ModuleContext(resolver);
+			using (var module = ModuleDefMD.Load(assemblyFileName, resolver.DefaultModuleContext)) {
 				var typeSystem = new DecompilerTypeSystem(module);
 				CSharpDecompiler decompiler = new CSharpDecompiler(typeSystem, settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAtttributes());

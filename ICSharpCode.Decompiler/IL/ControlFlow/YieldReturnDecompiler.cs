@@ -796,7 +796,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 					fieldToVariableMap.Add(fieldDef, v);
 				}
 				if (v.StackType == StackType.Ref) {
-					Debug.Assert(v.Kind == VariableKind.Parameter && v.Index == -2); // this pointer
+					Debug.Assert(v.Kind == VariableKind.Parameter && v.Index < 0); // this pointer
 					inst.ReplaceWith(new LdLoc(v) { ILRange = inst.ILRange });
 				} else {
 					inst.ReplaceWith(new LdLoca(v) { ILRange = inst.ILRange });

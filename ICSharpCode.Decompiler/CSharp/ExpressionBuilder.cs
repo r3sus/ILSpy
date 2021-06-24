@@ -167,7 +167,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		internal ExpressionWithResolveResult ConvertVariable(ILVariable variable)
 		{
 			Expression expr;
-			if (variable.Kind == VariableKind.Parameter && variable.Index == -2)
+			if (variable.Kind == VariableKind.Parameter && variable.Index < 0)
 				expr = new ThisReferenceExpression();
 			else
 				expr = new IdentifierExpression(variable.Name);
