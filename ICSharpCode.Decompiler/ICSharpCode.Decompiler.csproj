@@ -20,14 +20,6 @@
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>ICSharpCode.Decompiler.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
-  
-  <!-- HACK: Disable package generation on Unix due to tooling issues. -->
-  <PropertyGroup Condition=" '$(OS)' == 'Windows_NT' ">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <IncludeSymbolsInPackage>true</IncludeSymbolsInPackage>
-    <NuspecFile>ICSharpCode.Decompiler.nuspec</NuspecFile>
-    <NuspecProperties>Configuration=$(Configuration)</NuspecProperties>
-  </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <DebugType>portable</DebugType>
@@ -572,8 +564,6 @@
     <Compile Include="Util\ReferenceComparer.cs" />
     <Compile Include="Util\TreeTraversal.cs" />
     <Compile Include="Util\UnionFind.cs" />
-    <None Include="ICSharpCode.Decompiler.nuspec" DependentUpon="ICSharpCode.Decompiler.nuspec.template" />
-    <None Include="ICSharpCode.Decompiler.nuspec.template" />
     <None Include="ICSharpCode.Decompiler.ruleset" />
     <None Include="ICSharpCode.Decompiler.snk" />
     <None Include="IL\ILOpCodes.tt">
@@ -604,13 +594,6 @@
   </ItemGroup>
 
   <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />
-
-  <Target Name="BeforeBuild">
-    <PropertyGroup>
-      <UpdateAssemblyInfo>powershell -NoProfile -ExecutionPolicy Bypass -File BuildTools/update-assemblyinfo.ps1 $(Configuration)</UpdateAssemblyInfo>
-    </PropertyGroup>
-    <Exec WorkingDirectory=".." Command="$(UpdateAssemblyInfo)" Timeout="60000" />
-  </Target>
 
   <!-- Workaround for EmbedSources support, see https://github.com/dotnet/roslyn/issues/19127 -->
   <Target Name="PopulateEmbeddedFiles" AfterTargets="BeforeCompile" BeforeTargets="CoreCompile">
