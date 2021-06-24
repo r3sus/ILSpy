@@ -61,14 +61,12 @@ namespace ICSharpCode.Decompiler
 
 		public static ModuleDef LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
 		{
-			var resolver = new AssemblyResolver();
-
-			resolver.DefaultModuleContext = new ModuleContext(resolver);
+			var resolver = new UniversalAssemblyResolver(mainAssemblyFileName, throwOnError);
 
 			//var modCreateOpts = new ModuleCreationOptions(resolver.DefaultModuleContext);
-			var module = ModuleDefMD.Load(mainAssemblyFileName, resolver.DefaultModuleContext);
+			var module = ModuleDefMD.Load(mainAssemblyFileName, new ModuleContext(resolver));
 
-			//resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
+			resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
 
 			return module;
 		}
