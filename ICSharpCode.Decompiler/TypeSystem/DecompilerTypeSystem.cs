@@ -30,7 +30,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Dictionary for NRefactory->Cecil lookup.
 		/// May only be accessed within lock(entityDict)
 		/// </summary>
-		Dictionary<IUnresolvedEntity, dnlib.DotNet.IMemberRef> entityDict = new Dictionary<IUnresolvedEntity, dnlib.DotNet.IMemberRef>();
+		Dictionary<IUnresolvedEntity, IMemberRef> entityDict = new Dictionary<IUnresolvedEntity, IMemberRef>();
 
 		Dictionary<dnlib.DotNet.IField, IField> fieldLookupCache = new Dictionary<dnlib.DotNet.IField, IField>();
 		Dictionary<PropertyDef, IProperty> propertyLookupCache = new Dictionary<PropertyDef, IProperty>();
@@ -74,7 +74,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				var asm = moduleDefinition.Context.AssemblyResolver.Resolve(asmRef, moduleDefinition);
 				if (asm != null) {
 					referencedAssemblies.Add(cecilLoader.LoadAssembly(asm));
-					foreach (var forwarder in asm.ManifestModule.ExportedTypes) {
+					for (int i = 0; i < asm.ManifestModule.ExportedTypes.Count; i++) {
+						var forwarder = asm.ManifestModule.ExportedTypes[i];
 						if (!forwarder.IsForwarder || !(forwarder.Scope is dnlib.DotNet.IAssembly forwarderRef)) continue;
 						assemblyReferenceQueue.Enqueue(forwarderRef);
 					}
@@ -154,30 +155,38 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		}
 
 		#region Resolve Type
-		public IType Resolve(ITypeDefOrRef typeReference, bool isFromSignature = false)
+		public IType Resolve(ITypeDefOrRef typeReference)
 		{
 			if (typeReference == null)
 				return SpecialType.UnknownType;
-			// We need to skip SentinelType and PinnedType.
-			// But PinnedType can be nested within modopt, so we'll also skip those.
-			var typeSig = typeReference.ToTypeSig();
-			while (typeSig is CModOptSig || typeSig is CModReqdSig) {
-				typeSig = typeSig.Next;
-				isFromSignature = true;
+			if (typeReference is TypeSpec spec) {
+				return Resolve(spec.TypeSig);
 			}
-			if (typeSig is SentinelSig || typeSig is PinnedSig) {
-				typeSig = typeSig.Next;
-				isFromSignature = true;
+			CorLibTypeSig corLibTypeSig = typeReference.Module?.CorLibTypes.GetCorLibTypeSig(typeReference);
+			if (corLibTypeSig != null)
+			{
+				return Resolve(corLibTypeSig);
 			}
+
 			ITypeReference typeRef;
 			lock (typeReferenceCecilLoader)
-				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeSig, isFromSignature: isFromSignature);
+				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeReference);
 			return typeRef.Resolve(context);
 		}
 
-		IType ResolveInSignature(TypeSig typeReference)
+		public IType Resolve(TypeSig typeSig)
 		{
-			return Resolve(typeReference.ToTypeDefOrRef(), isFromSignature: true);
+			if (typeSig == null)
+				return SpecialType.UnknownType;
+			typeSig = typeSig.RemovePinnedAndModifiers();
+			if (typeSig is SentinelSig) {
+				typeSig = typeSig.Next;
+			}
+
+			ITypeReference typeRef;
+			lock (typeReferenceCecilLoader)
+				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeSig);
+			return typeRef.Resolve(context);
 		}
 		#endregion
 
@@ -191,7 +200,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (!fieldLookupCache.TryGetValue(fieldReference, out field)) {
 					field = FindNonGenericField(fieldReference);
 					if (fieldReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
+						var typeArguments = git.GenericArguments.SelectArray(Resolve);
 						field = (IField)field.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
 					fieldLookupCache.Add(fieldReference, field);
@@ -251,16 +260,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
 						method = new VarArgInstanceMethod(
 							method,
-							methodReference.MethodSig.ParamsAfterSentinel is null ? new List<IType>() : methodReference.MethodSig.ParamsAfterSentinel.Select(ResolveInSignature)
+							methodReference.MethodSig.ParamsAfterSentinel is null ? new List<IType>() : methodReference.MethodSig.ParamsAfterSentinel.Select(Resolve)
 						);
 					} else if (methodReference is MethodSpec || methodReference.DeclaringType.ToTypeSig() is GenericInstSig) {
 						IReadOnlyList<IType> classTypeArguments = null;
 						IReadOnlyList<IType> methodTypeArguments = null;
 						if (methodReference is MethodSpec gim && gim.GenericInstMethodSig != null) {
-							methodTypeArguments = gim.GenericInstMethodSig.GenericArguments.SelectArray(ResolveInSignature);
+							methodTypeArguments = gim.GenericInstMethodSig.GenericArguments.SelectArray(Resolve);
 						}
 						if (methodReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-							classTypeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
+							classTypeArguments = git.GenericArguments.SelectArray(Resolve);
 						}
 						method = method.Specialize(new TypeParameterSubstitution(classTypeArguments, methodTypeArguments));
 					}
@@ -294,13 +303,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
 				parameterTypes = methodReference.MethodSig.Params
 					.TakeWhile(p => !p.IsSentinel)
-					.Select(p => ResolveInSignature(p))
+					.Select(Resolve)
 					.Concat(new[] { SpecialType.ArgList })
 					.ToArray();
 			} else {
-				parameterTypes = methodReference.MethodSig.Params.SelectArray(p => ResolveInSignature(p));
+				parameterTypes = methodReference.MethodSig.Params.SelectArray(Resolve);
 			}
-			var returnType = ResolveInSignature(methodReference.MethodSig.RetType);
+			var returnType = Resolve(methodReference.MethodSig.RetType);
 			foreach (var method in methods) {
 				if (method.TypeParameters.Count != methodReference.NumberOfGenericParameters)
 					continue;
@@ -347,7 +356,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var m = new DefaultUnresolvedMethod();
 			ITypeReference declaringTypeReference;
 			lock (typeReferenceCecilLoader) {
-				declaringTypeReference = typeReferenceCecilLoader.ReadTypeReference(methodReference.DeclaringType.ToTypeSig());
+				declaringTypeReference = typeReferenceCecilLoader.ReadTypeReference(methodReference.DeclaringType);
 				if (methodReference.Name == ".ctor" || methodReference.Name == ".cctor")
 					m.SymbolKind = SymbolKind.Constructor;
 				m.Name = methodReference.Name;
@@ -392,7 +401,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (!propertyLookupCache.TryGetValue(propertyReference, out property)) {
 					property = FindNonGenericProperty(propertyReference);
 					if (propertyReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
+						var typeArguments = git.GenericArguments.SelectArray(Resolve);
 						property = (IProperty)property.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
 					propertyLookupCache.Add(propertyReference, property);
@@ -408,8 +417,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return null;
 
 			var parameters = propertyReference.GetParameters().ToList();
-			var parameterTypes = parameters.SelectArray(p => ResolveInSignature(p.Type));
-			var returnType = Resolve(propertyReference.PropertySig.RetType.ToTypeDefOrRef());
+			var parameterTypes = parameters.SelectArray(p => Resolve(p.Type));
+			var returnType = Resolve(propertyReference.PropertySig.RetType);
 			foreach (IProperty property in typeDef.Properties) {
 				if (property.Name == propertyReference.Name
 				    && CompareTypes(property.ReturnType, returnType)
@@ -430,7 +439,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (!eventLookupCache.TryGetValue(eventReference, out ev)) {
 					ev = FindNonGenericEvent(eventReference);
 					if (eventReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(ResolveInSignature);
+						var typeArguments = git.GenericArguments.SelectArray(Resolve);
 						ev = (IEvent)ev.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
 					eventLookupCache.Add(eventReference, ev);

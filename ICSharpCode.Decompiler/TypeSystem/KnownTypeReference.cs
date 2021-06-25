@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -27,7 +27,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	{
 		// Note: DefaultResolvedTypeDefinition uses (KnownTypeCode)-1 as special value for "not yet calculated".
 		// The order of type codes at the beginning must correspond to those in System.TypeCode.
-		
+
 		/// <summary>
 		/// Not one of the known types.
 		/// </summary>
@@ -66,9 +66,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		DateTime,
 		/// <summary><c>string</c> (System.String)</summary>
 		String = 18,
-		
+
 		// String was the last element from System.TypeCode, now our additional known types start
-		
+
 		/// <summary><c>void</c> (System.Void)</summary>
 		Void,
 		/// <summary><c>System.Type</c></summary>
@@ -123,16 +123,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		INotifyCompletion,
 		/// <summary><c>System.Runtime.CompilerServices.ICriticalNotifyCompletion</c></summary>
 		ICriticalNotifyCompletion,
+		/// <summary><c>System.TypedReference</c></summary>
+		TypedReference,
 	}
-	
+
 	/// <summary>
 	/// Contains well-known type references.
 	/// </summary>
 	[Serializable]
 	public sealed class KnownTypeReference : ITypeReference
 	{
-		internal const int KnownTypeCodeCount = (int)KnownTypeCode.ICriticalNotifyCompletion + 1;
-		
+		internal const int KnownTypeCodeCount = (int)KnownTypeCode.TypedReference + 1;
+
 		static readonly KnownTypeReference[] knownTypeReferences = new KnownTypeReference[KnownTypeCodeCount] {
 			null, // None
 			new KnownTypeReference(KnownTypeCode.Object,   "System", "Object", baseType: KnownTypeCode.None),
@@ -181,8 +183,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			new KnownTypeReference(KnownTypeCode.IDisposable, "System", "IDisposable"),
 			new KnownTypeReference(KnownTypeCode.INotifyCompletion, "System.Runtime.CompilerServices", "INotifyCompletion"),
 			new KnownTypeReference(KnownTypeCode.ICriticalNotifyCompletion, "System.Runtime.CompilerServices", "ICriticalNotifyCompletion"),
+			new KnownTypeReference(KnownTypeCode.TypedReference, "System", "TypedReference", baseType: KnownTypeCode.ValueType),
 		};
-		
+
 		/// <summary>
 		/// Gets the known type reference for the specified type code.
 		/// Returns null for KnownTypeCode.None.
@@ -191,212 +194,212 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			return knownTypeReferences[(int)typeCode];
 		}
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>object</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Object = Get(KnownTypeCode.Object);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.DBNull</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference DBNull = Get(KnownTypeCode.DBNull);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>bool</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Boolean = Get(KnownTypeCode.Boolean);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>char</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Char = Get(KnownTypeCode.Char);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>sbyte</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference SByte = Get(KnownTypeCode.SByte);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>byte</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Byte = Get(KnownTypeCode.Byte);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>short</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Int16 = Get(KnownTypeCode.Int16);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>ushort</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference UInt16 = Get(KnownTypeCode.UInt16);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>int</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Int32 = Get(KnownTypeCode.Int32);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>uint</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference UInt32 = Get(KnownTypeCode.UInt32);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>long</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Int64 = Get(KnownTypeCode.Int64);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>ulong</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference UInt64 = Get(KnownTypeCode.UInt64);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>float</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Single = Get(KnownTypeCode.Single);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>double</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Double = Get(KnownTypeCode.Double);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>decimal</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Decimal = Get(KnownTypeCode.Decimal);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.DateTime</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference DateTime = Get(KnownTypeCode.DateTime);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>string</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference String = Get(KnownTypeCode.String);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>void</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Void = Get(KnownTypeCode.Void);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Type</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Type = Get(KnownTypeCode.Type);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Array</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Array = Get(KnownTypeCode.Array);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Attribute</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Attribute = Get(KnownTypeCode.Attribute);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.ValueType</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference ValueType = Get(KnownTypeCode.ValueType);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Enum</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Enum = Get(KnownTypeCode.Enum);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Delegate</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Delegate = Get(KnownTypeCode.Delegate);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.MulticastDelegate</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference MulticastDelegate = Get(KnownTypeCode.MulticastDelegate);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Exception</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Exception = Get(KnownTypeCode.Exception);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.IntPtr</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IntPtr = Get(KnownTypeCode.IntPtr);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.UIntPtr</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference UIntPtr = Get(KnownTypeCode.UIntPtr);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.IEnumerable</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IEnumerable = Get(KnownTypeCode.IEnumerable);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.IEnumerator</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IEnumerator = Get(KnownTypeCode.IEnumerator);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.IEnumerable{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IEnumerableOfT = Get(KnownTypeCode.IEnumerableOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.IEnumerator{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IEnumeratorOfT = Get(KnownTypeCode.IEnumeratorOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.ICollection</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference ICollection = Get(KnownTypeCode.ICollection);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.ICollection{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference ICollectionOfT = Get(KnownTypeCode.ICollectionOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.IList</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IList = Get(KnownTypeCode.IList);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.IList{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IListOfT = Get(KnownTypeCode.IListOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.IReadOnlyCollection{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IReadOnlyCollectionOfT = Get(KnownTypeCode.IReadOnlyCollectionOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Collections.Generic.IReadOnlyList{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference IReadOnlyListOfT = Get(KnownTypeCode.IReadOnlyListOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Threading.Tasks.Task</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference Task = Get(KnownTypeCode.Task);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Threading.Tasks.Task{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference TaskOfT = Get(KnownTypeCode.TaskOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.Nullable{T}</c> type.
 		/// </summary>
 		public static readonly KnownTypeReference NullableOfT = Get(KnownTypeCode.NullableOfT);
-		
+
 		/// <summary>
 		/// Gets a type reference pointing to the <c>System.IDisposable</c> type.
 		/// </summary>
@@ -412,12 +415,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		public static readonly KnownTypeReference ICriticalNotifyCompletion = Get(KnownTypeCode.ICriticalNotifyCompletion);
 
+		/// <summary>
+		/// Gets a type reference pointing to the <c>System.TypedReference</c> type.
+		/// </summary>
+		public static readonly KnownTypeReference TypedReference = Get(KnownTypeCode.TypedReference);
+
 		readonly KnownTypeCode knownTypeCode;
 		readonly string namespaceName;
 		readonly string name;
 		readonly int typeParameterCount;
 		internal readonly KnownTypeCode baseType;
-		
+
 		private KnownTypeReference(KnownTypeCode knownTypeCode, string namespaceName, string name, int typeParameterCount = 0, KnownTypeCode baseType = KnownTypeCode.Object)
 		{
 			this.knownTypeCode = knownTypeCode;
@@ -426,33 +434,33 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			this.typeParameterCount = typeParameterCount;
 			this.baseType = baseType;
 		}
-		
+
 		public KnownTypeCode KnownTypeCode {
 			get { return knownTypeCode; }
 		}
-		
+
 		public string Namespace {
 			get { return namespaceName; }
 		}
-		
+
 		public string Name {
 			get { return name; }
 		}
-		
+
 		public int TypeParameterCount {
 			get { return typeParameterCount; }
 		}
-		
+
 		public IType Resolve(ITypeResolveContext context)
 		{
 			return context.Compilation.FindType(knownTypeCode);
 		}
-		
+
 		public override string ToString()
 		{
 			return GetCSharpNameByTypeCode(knownTypeCode) ?? (this.Namespace + "." + this.Name);
 		}
-		
+
 		/// <summary>
 		/// Gets the C# primitive type name from the known type code.
 		/// Returns null if there is no primitive name for the specified type.

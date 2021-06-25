@@ -22,6 +22,7 @@ using System.Text;
 using System.Threading;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.Disassembler
 {
@@ -749,11 +750,5 @@ namespace ICSharpCode.Decompiler.Disassembler
 					return null;
 			}
 		}
-	}
-
-	enum ThreeState {
-		Unknown,
-		No,
-		Yes,
 	}
 }

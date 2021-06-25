@@ -17,14 +17,10 @@ namespace ICSharpCode.Decompiler
 			if (assembly == null)
 				throw new ArgumentNullException(nameof(assembly));
 
-			const string TargetFrameworkAttributeName = "System.Runtime.Versioning.TargetFrameworkAttribute";
-
-			if(assembly.TryGetOriginalTargetFrameworkAttribute(out var fw, out var version2, out var profile)) {
-				if(profile is null)
+			if (assembly.TryGetOriginalTargetFrameworkAttribute(out var fw, out var version2, out var profile)) {
+				if (profile is null)
 					return fw + ",Version=v" + version2;
-				else {
-					return fw + ",Version=v" + version2 + ",Profile=" + profile;
-				}
+				return fw + ",Version=v" + version2 + ",Profile=" + profile;
 			}
 
 			// Optionally try to detect target version through assembly path as a fallback (use case: reference assemblies)

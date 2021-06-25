@@ -332,6 +332,7 @@
     <Compile Include="Util\LongDict.cs" />
     <Compile Include="Util\ResourcesFile.cs" />
     <Compile Include="Util\ResXResourceWriter.cs" />
+    <Compile Include="Util\ThreeState.cs" />
     <Compile Include="Util\UnicodeNewline.cs" />
     <Compile Include="FlowAnalysis\ControlFlowNode.cs" />
     <Compile Include="FlowAnalysis\DataFlowVisitor.cs" />
@@ -525,7 +526,6 @@
     <Compile Include="TypeSystem\ITypeDefinition.cs" />
     <Compile Include="TypeSystem\ITypeParameter.cs" />
     <Compile Include="TypeSystem\ITypeReference.cs" />
-    <Compile Include="TypeSystem\IUnresolvedFile.cs" />
     <Compile Include="TypeSystem\IVariable.cs" />
     <Compile Include="TypeSystem\KnownTypeReference.cs" />
     <Compile Include="TypeSystem\NullableType.cs" />

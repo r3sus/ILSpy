@@ -1900,7 +1900,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				Arguments = { arg.Detach() }
 			}
 			.WithILInstruction(inst)
-				.WithRR(new TypeResolveResult(compilation.FindType(new TopLevelTypeName("System", "TypedReference"))));
+				.WithRR(new TypeResolveResult(compilation.FindType(KnownTypeCode.TypedReference)));
 		}
 
 		protected internal override TranslatedExpression VisitRefAnyType(RefAnyType inst, TranslationContext context)

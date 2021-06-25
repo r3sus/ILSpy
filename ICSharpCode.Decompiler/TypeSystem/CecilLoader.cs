@@ -274,16 +274,74 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// a type system type reference.</param>
 		/// <param name="typeAttributes">Attributes associated with the Cecil type reference.
 		/// This is used to support the 'dynamic' type.</param>
-		/// <param name="isFromSignature">Whether this TypeReference is from a context where
-		/// IsValueType is set correctly.</param>
-		public ITypeReference ReadTypeReference(TypeSig type, IHasCustomAttribute typeAttributes = null, bool isFromSignature = false)
+		public ITypeReference ReadTypeReference(TypeSig type, IHasCustomAttribute typeAttributes = null)
 		{
 			int dynamicTypeIndex = 0;
 			int tupleTypeIndex = 0;
-			return CreateType(type, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature);
+			return CreateType(type, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
 		}
 
-		ITypeReference CreateType(TypeSig type, IHasCustomAttribute typeAttributes, ref int dynamicTypeIndex, ref int tupleTypeIndex, bool isFromSignature)
+		/// <summary>
+		/// Reads a type reference.
+		/// </summary>
+		/// <param name="type">The Cecil type reference that should be converted into
+		/// a type system type reference.</param>
+		/// <param name="typeAttributes">Attributes associated with the Cecil type reference.
+		/// This is used to support the 'dynamic' type.</param>
+		public ITypeReference ReadTypeReference(ITypeDefOrRef type, IHasCustomAttribute typeAttributes = null, ThreeState isVt = ThreeState.Unknown)
+		{
+			int dynamicTypeIndex = 0;
+			int tupleTypeIndex = 0;
+			return CreateType(type, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isVt);
+		}
+
+		ITypeReference CreateType(ITypeDefOrRef trueType, IHasCustomAttribute typeAttributes, ref int dynamicTypeIndex, ref int tupleTypeIndex, ThreeState isVT)
+		{
+			if (trueType is TypeSpec spec) {
+				return CreateType(spec.TypeSig, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
+			}
+			CorLibTypeSig corLibTypeSig = trueType.Module?.CorLibTypes.GetCorLibTypeSig(trueType);
+			if (corLibTypeSig != null)
+			{
+				return CreateType(corLibTypeSig, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
+			}
+			if (trueType is TypeDef) {
+				return new TypeDefTokenTypeReference(trueType.MDToken);
+			}
+
+			// type.IsValueType is only reliable if we got this TypeReference from a signature,
+			// or if it's a TypeSpecification.
+			bool? isReferenceType;
+			if (isVT != ThreeState.Unknown)
+				isReferenceType = isVT == ThreeState.No;
+			else
+				isReferenceType = null;
+
+			if (trueType.DeclaringType != null) {
+				ITypeReference typeRef = CreateType(trueType.DeclaringType, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isVT);
+				int partTypeParameterCount;
+				string namepart = ReflectionHelper.SplitTypeParameterCountFromReflectionName(trueType.Name, out partTypeParameterCount);
+				namepart = interningProvider.Intern(namepart);
+				return interningProvider.Intern(new NestedTypeReference(typeRef, namepart, partTypeParameterCount, isReferenceType));
+			} else {
+				string ns = interningProvider.Intern(trueType.Namespace ?? string.Empty);
+				string name = trueType.Name;
+				if (name == null)
+					throw new InvalidOperationException("type.Name returned null. Type: " + trueType.ToString());
+
+				if (UseDynamicType && name == "Object" && ns == "System" && HasDynamicAttribute(typeAttributes, dynamicTypeIndex)) {
+					return SpecialType.Dynamic;
+				}
+				int typeParameterCount;
+				name = ReflectionHelper.SplitTypeParameterCountFromReflectionName(name, out typeParameterCount);
+				name = interningProvider.Intern(name);
+				return interningProvider.Intern(new GetClassTypeReference(
+					GetAssemblyReference(trueType.Scope), ns, name, typeParameterCount,
+					isReferenceType));
+			}
+		}
+
+		ITypeReference CreateType(TypeSig type, IHasCustomAttribute typeAttributes, ref int dynamicTypeIndex, ref int tupleTypeIndex)
 		{
 			if (type == null) {
 				return SpecialType.UnknownType;
@@ -322,14 +380,14 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					dynamicTypeIndex++;
 					return interningProvider.Intern(
 						new PointerTypeReference(
-							CreateType((type as PtrSig).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true)));
+							CreateType((type as PtrSig).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex)));
 				case ElementType.ByRef:
 					dynamicTypeIndex++;
 					return interningProvider.Intern(
 						new ByReferenceTypeReference(
 							CreateType(
 								(type as ByRefSig).Next,
-								typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true)));
+								typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex)));
 				case ElementType.Var:
 					return TypeParameterReference.Create(SymbolKind.TypeDefinition, (int)((GenericVar)type).Number);
 				case ElementType.MVar:
@@ -341,11 +399,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 						new ArrayTypeReference(
 							CreateType(
 								(type as ArraySigBase).Next,
-								typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true),
+								typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex),
 							(int)(type as ArraySigBase).Rank));
 				case ElementType.GenericInst:
 					GenericInstSig gType = (GenericInstSig)type;
-					ITypeReference baseType = CreateType(gType.GenericType, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true);
+					ITypeReference baseType = CreateType(gType.GenericType, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
 					if (UseTupleTypes && IsValueTuple(gType, out int tupleCardinality)) {
 						if (tupleCardinality > 1) {
 							var assemblyRef = GetAssemblyReference(gType.GenericType.Scope);
@@ -357,7 +415,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 								int normalArgCount = Math.Min(gType.GenericArguments.Count, TupleType.RestPosition - 1);
 								for (int i = 0; i < normalArgCount; i++) {
 									dynamicTypeIndex++;
-									elementTypeRefs[outPos++] = CreateType(gType.GenericArguments[i], typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true);
+									elementTypeRefs[outPos++] = CreateType(gType.GenericArguments[i], typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
 								}
 								if (gType.GenericArguments.Count == TupleType.RestPosition) {
 									gType = (GenericInstSig)gType.GenericArguments.Last();
@@ -382,7 +440,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					ITypeReference[] para = new ITypeReference[gType.GenericArguments.Count];
 					for (int i = 0; i < para.Length; ++i) {
 						dynamicTypeIndex++;
-						para[i] = CreateType(gType.GenericArguments[i], typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true);
+						para[i] = CreateType(gType.GenericArguments[i], typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
 					}
 					return interningProvider.Intern(new ParameterizedTypeReference(baseType, para));
 				case ElementType.I:
@@ -402,45 +460,25 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				case ElementType.CModReqd:
 				case ElementType.CModOpt:
 					// we don't store modopts/modreqs in the NR type system
-					return CreateType(((ModifierSig)type).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true);
+					return CreateType(((ModifierSig)type).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
 				case ElementType.Sentinel:
 					return SpecialType.ArgList;
 				case ElementType.Pinned:
-					return CreateType(((PinnedSig)type).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature: true);
+					return CreateType(((PinnedSig)type).Next, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex);
+				case ElementType.TypedByRef:
+					return KnownTypeReference.TypedReference;
 			}
 
 			// valuetype/class/typedbyreference
 			if (type is TypeDefOrRefSig typeDefOrRefSig) {
-				var trueType = typeDefOrRefSig.TypeDefOrRef;
-				if (trueType is TypeDef) {
-					return new TypeDefTokenTypeReference(trueType.MDToken);
-				}
-
-				// type.IsValueType is only reliable if we got this TypeReference from a signature,
-				// or if it's a TypeSpecification.
-				bool? isReferenceType = isFromSignature ? (bool?)!trueType.IsValueType : null;
-				if (trueType.DeclaringType != null) {
-					ITypeReference typeRef = CreateType(trueType.DeclaringType.ToTypeSig(), typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isFromSignature);
-					int partTypeParameterCount;
-					string namepart = ReflectionHelper.SplitTypeParameterCountFromReflectionName(trueType.Name, out partTypeParameterCount);
-					namepart = interningProvider.Intern(namepart);
-					return interningProvider.Intern(new NestedTypeReference(typeRef, namepart, partTypeParameterCount, isReferenceType));
-				} else {
-					string ns = interningProvider.Intern(trueType.Namespace ?? string.Empty);
-					string name = trueType.Name;
-					if (name == null)
-						throw new InvalidOperationException("type.Name returned null. Type: " + trueType.ToString());
-
-					if (UseDynamicType && name == "Object" && ns == "System" && HasDynamicAttribute(typeAttributes, dynamicTypeIndex)) {
-						return SpecialType.Dynamic;
-					}
-					int typeParameterCount;
-					name = ReflectionHelper.SplitTypeParameterCountFromReflectionName(name, out typeParameterCount);
-					name = interningProvider.Intern(name);
-					return interningProvider.Intern(new GetClassTypeReference(
-						GetAssemblyReference(trueType.Scope), ns, name, typeParameterCount,
-						isReferenceType));
-				}
+				ThreeState isVT;
+				if (typeDefOrRefSig is ClassSig)
+					isVT = ThreeState.No;
+				else if (typeDefOrRefSig is ValueTypeSig)
+					isVT = ThreeState.Yes;
+				else
+					isVT = ThreeState.Unknown;
+				return CreateType(typeDefOrRefSig.TypeDefOrRef, typeAttributes, ref dynamicTypeIndex, ref tupleTypeIndex, isVT);
 			}
 
 			throw new Exception("SOMETHING WENT HORRIBLY BAD");
@@ -911,7 +949,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (attribute == null)
 				throw new ArgumentNullException("attribute");
 			ICustomAttributeType ctor = attribute.Constructor;
-			ITypeReference attributeType = ReadTypeReference(attribute.AttributeType.ToTypeSig());
+			ITypeReference attributeType = ReadTypeReference(attribute.AttributeType);
 			IList<ITypeReference> ctorParameterTypes = EmptyList<ITypeReference>.Instance;
 			if (ctor.MethodSig.Params.Count > 0) {
 				ctorParameterTypes = new ITypeReference[ctor.MethodSig.Params.Count];
@@ -1027,11 +1065,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				}
 			} else {
 				if (typeDefinition.BaseType != null) {
-					baseTypes.Add(ReadTypeReference(typeDefinition.BaseType.ToTypeSig()));
+					baseTypes.Add(ReadTypeReference(typeDefinition.BaseType));
 				}
 				if (typeDefinition.HasInterfaces) {
 					foreach (var iface in typeDefinition.Interfaces) {
-						baseTypes.Add(ReadTypeReference(iface.Interface.ToTypeSig()));
+						baseTypes.Add(ReadTypeReference(iface.Interface));
 					}
 				}
 			}
@@ -1479,7 +1517,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				}
 			}
 
-			m.ReturnType = ReadTypeReference(method.ReturnType, typeAttributes: method.Parameters.ReturnParameter.ParamDef, isFromSignature: true);
+			m.ReturnType = ReadTypeReference(method.ReturnType, typeAttributes: method.Parameters.ReturnParameter.ParamDef);
 
 			if (HasAnyAttributes(method))
 				AddAttributes(method, m.Attributes, m.ReturnTypeAttributes);
@@ -1508,7 +1546,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				foreach (var or in method.Overrides) {
 					m.ExplicitInterfaceImplementations.Add(new DefaultMemberReference(
 						accessorOwner != null ? SymbolKind.Accessor : SymbolKind.Method,
-						ReadTypeReference(or.MethodDeclaration.DeclaringType.ToTypeSig()),
+						ReadTypeReference(or.MethodDeclaration.DeclaringType),
 						or.MethodDeclaration.Name, or.MethodDeclaration.NumberOfGenericParameters, m.Parameters.Select(p => p.Type).ToList()));
 				}
 			}
@@ -1587,7 +1625,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			if (parameter == null)
 				throw new ArgumentNullException("parameter");
-			var type = ReadTypeReference(parameter.Type, typeAttributes: parameter.ParamDef, isFromSignature: true);
+			var type = ReadTypeReference(parameter.Type, typeAttributes: parameter.ParamDef);
 			var p = new DefaultUnresolvedParameter(type, interningProvider.Intern(parameter.Name));
 
 			if (parameter.Type is ByRefSig) {
@@ -1672,7 +1710,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			f.Accessibility = GetAccessibility(field.Attributes);
 			f.IsReadOnly = field.IsInitOnly;
 			f.IsStatic = field.IsStatic;
-			f.ReturnType = ReadTypeReference(field.FieldType, typeAttributes: field, isFromSignature: true);
+			f.ReturnType = ReadTypeReference(field.FieldType, typeAttributes: field);
 			if (field.HasConstant) {
 				f.ConstantValue = CreateSimpleConstantValue(f.ReturnType, field.Constant.Value);
 			}
@@ -1732,7 +1770,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 			if (g.HasGenericParamConstraints) {
 				foreach (var constraint in g.GenericParamConstraints) {
-					tp.Constraints.Add(ReadTypeReference(constraint.Constraint.ToTypeSig()));
+					tp.Constraints.Add(ReadTypeReference(constraint.Constraint));
 				}
 			}
 		}
@@ -1815,7 +1853,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 			DefaultUnresolvedEvent e = new DefaultUnresolvedEvent(parentType, ev.Name);
 			TranslateModifiers(ev.AddMethod, e);
-			e.ReturnType = ReadTypeReference(ev.EventType.ToTypeSig(), typeAttributes: ev);
+			e.ReturnType = ReadTypeReference(ev.EventType, typeAttributes: ev);
 
 			e.AddAccessor    = ReadMethod(ev.AddMethod,    parentType, SymbolKind.Accessor, e);
 			e.RemoveAccessor = ReadMethod(ev.RemoveMethod, parentType, SymbolKind.Accessor, e);

@@ -15,8 +15,6 @@ namespace ICSharpCode.Decompiler
 		readonly List<string> directories = new List<string>();
 		readonly List<string> gac_paths = GetGacPaths();
 
-		private ModuleContext defaultContext;
-
 		/// <summary>
 		/// Detect whether we're in a Mono environment.
 		/// </summary>
@@ -73,7 +71,7 @@ namespace ICSharpCode.Decompiler
 
 		public AssemblyDef Resolve(IAssembly name, ModuleDef source)
 		{
-			return Resolve(name, defaultContext);
+			return Resolve(name, new ModuleContext());
 		}
 
 		public AssemblyDef Resolve(IAssembly name, ModuleContext parameters)

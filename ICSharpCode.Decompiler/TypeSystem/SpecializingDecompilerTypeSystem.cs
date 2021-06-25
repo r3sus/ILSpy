@@ -52,9 +52,14 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			get { return substitution; }
 		}
 
-		public IType Resolve(ITypeDefOrRef typeReference, bool isFromSignature)
+		public IType Resolve(ITypeDefOrRef typeReference)
 		{
-			return context.Resolve(typeReference, isFromSignature).AcceptVisitor(substitution);
+			return context.Resolve(typeReference).AcceptVisitor(substitution);
+		}
+
+		public IType Resolve(TypeSig typeReference)
+		{
+			return context.Resolve(typeReference).AcceptVisitor(substitution);
 		}
 
 		public IField Resolve(dnlib.DotNet.IField fieldReference)

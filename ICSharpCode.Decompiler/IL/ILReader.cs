@@ -79,7 +79,7 @@ namespace ICSharpCode.Decompiler.IL
 			this.currentStack = ImmutableStack<ILVariable>.Empty;
 			this.unionFind = new UnionFind<ILVariable>();
 			this.stackMismatchPairs = new List<(ILVariable, ILVariable)>();
-			this.methodReturnStackType = typeSystem.Resolve(Extensions.ToTypeDefOrRef(methodDef.ReturnType), isFromSignature: true).GetStackType();
+			this.methodReturnStackType = typeSystem.Resolve(methodDef.ReturnType).GetStackType();
 			InitParameterVariables();
 			this.localVariables = body.Variables.SelectArray(CreateILVariable);
 			if (body.InitLocals) {
@@ -131,7 +131,7 @@ namespace ICSharpCode.Decompiler.IL
 		ILVariable CreateILVariable(Local v)
 		{
 			VariableKind kind = IsPinned(v.Type) ? VariableKind.PinnedLocal : VariableKind.Local;
-			ILVariable ilVar = new ILVariable(kind, typeSystem.Resolve(Extensions.ToTypeDefOrRef(v.Type), isFromSignature: true), v.Index);
+			ILVariable ilVar = new ILVariable(kind, typeSystem.Resolve(v.Type), v.Index);
 			if (!UseDebugSymbols || v.Name == null) {
 				ilVar.Name = "V_" + v.Index;
 				ilVar.HasGeneratedName = true;
@@ -163,7 +163,7 @@ namespace ICSharpCode.Decompiler.IL
 						parameterType = new ByReferenceType(parameterType);
 					}
 				} else {
-					parameterType = typeSystem.Resolve(Extensions.ToTypeDefOrRef(p.Type), isFromSignature: true);
+					parameterType = typeSystem.Resolve(p.Type);
 				}
 			} else {
 				parameterType = method.Parameters[p.MethodSigIndex].Type;
@@ -1324,12 +1324,12 @@ namespace ICSharpCode.Decompiler.IL
 			var parameterTypes = new IType[signature.Params.Count];
 			var arguments = new ILInstruction[parameterTypes.Length];
 			for (int i = signature.Params.Count - 1; i >= 0; i--) {
-				parameterTypes[i] = typeSystem.Resolve(Extensions.ToTypeDefOrRef(signature.Params[i]), isFromSignature: true);
+				parameterTypes[i] = typeSystem.Resolve(signature.Params[i]);
 				arguments[i] = Pop(parameterTypes[i].GetStackType());
 			}
 			var call = new CallIndirect(
 				signature.CallingConvention,
-				typeSystem.Resolve(Extensions.ToTypeDefOrRef(signature.RetType), isFromSignature: true),
+				typeSystem.Resolve(signature.RetType),
 				parameterTypes.ToImmutableArray(),
 				arguments,
 				functionPointer
