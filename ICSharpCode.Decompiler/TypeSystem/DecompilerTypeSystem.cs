@@ -32,10 +32,21 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		Dictionary<IUnresolvedEntity, IMemberRef> entityDict = new Dictionary<IUnresolvedEntity, IMemberRef>();
 
-		Dictionary<dnlib.DotNet.IField, IField> fieldLookupCache = new Dictionary<dnlib.DotNet.IField, IField>();
-		Dictionary<PropertyDef, IProperty> propertyLookupCache = new Dictionary<PropertyDef, IProperty>();
-		Dictionary<dnlib.DotNet.IMethod, IMethod> methodLookupCache = new Dictionary<dnlib.DotNet.IMethod, IMethod>();
-		Dictionary<EventDef, IEvent> eventLookupCache = new Dictionary<EventDef, IEvent>();
+		private const SigComparerOptions cacheCompareOptions = SigComparerOptions.CompareDeclaringTypes |
+															   SigComparerOptions.CompareAssemblyVersion |
+															   SigComparerOptions.CompareAssemblyPublicKeyToken |
+															   SigComparerOptions.CompareAssemblyLocale |
+															   SigComparerOptions.CompareSentinelParams |
+															   SigComparerOptions.MscorlibIsNotSpecial |
+															   SigComparerOptions.TypeRefCanReferenceGlobalType |
+															   SigComparerOptions.PrivateScopeIsComparable |
+															   SigComparerOptions.DontCheckTypeEquivalence |
+															   // Type system ignores modifiers!
+															   SigComparerOptions.IgnoreModifiers;
+		Dictionary<dnlib.DotNet.IField, IField> fieldLookupCache = new Dictionary<dnlib.DotNet.IField, IField>(new FieldEqualityComparer(cacheCompareOptions));
+		Dictionary<PropertyDef, IProperty> propertyLookupCache = new Dictionary<PropertyDef, IProperty>(new PropertyEqualityComparer(cacheCompareOptions));
+		Dictionary<dnlib.DotNet.IMethod, IMethod> methodLookupCache = new Dictionary<dnlib.DotNet.IMethod, IMethod>(new MethodEqualityComparer(cacheCompareOptions));
+		Dictionary<EventDef, IEvent> eventLookupCache = new Dictionary<EventDef, IEvent>(new EventEqualityComparer(cacheCompareOptions));
 
 		public DecompilerTypeSystem(ModuleDef moduleDefinition) : this(moduleDefinition, new DecompilerSettings())
 		{
@@ -199,7 +210,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				IField field;
 				if (!fieldLookupCache.TryGetValue(fieldReference, out field)) {
 					field = FindNonGenericField(fieldReference);
-					if (fieldReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
+					if (fieldReference.DeclaringType is TypeSpec spec && spec.TypeSig is GenericInstSig git) {
 						var typeArguments = git.GenericArguments.SelectArray(Resolve);
 						field = (IField)field.Specialize(new TypeParameterSubstitution(typeArguments, null));
 					}
@@ -262,13 +273,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 							method,
 							methodReference.MethodSig.ParamsAfterSentinel is null ? new List<IType>() : methodReference.MethodSig.ParamsAfterSentinel.Select(Resolve)
 						);
-					} else if (methodReference is MethodSpec || methodReference.DeclaringType.ToTypeSig() is GenericInstSig) {
+					} else if (methodReference is MethodSpec || (methodReference.DeclaringType is TypeSpec spec && spec.TypeSig is GenericInstSig)) {
 						IReadOnlyList<IType> classTypeArguments = null;
 						IReadOnlyList<IType> methodTypeArguments = null;
 						if (methodReference is MethodSpec gim && gim.GenericInstMethodSig != null) {
 							methodTypeArguments = gim.GenericInstMethodSig.GenericArguments.SelectArray(Resolve);
 						}
-						if (methodReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
+						if (methodReference.DeclaringType is TypeSpec spec2 && spec2.TypeSig is GenericInstSig git) {
 							classTypeArguments = git.GenericArguments.SelectArray(Resolve);
 						}
 						method = method.Specialize(new TypeParameterSubstitution(classTypeArguments, methodTypeArguments));
@@ -302,10 +313,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			IType[] parameterTypes;
 			if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
 				parameterTypes = methodReference.MethodSig.Params
-					.TakeWhile(p => !p.IsSentinel)
-					.Select(Resolve)
-					.Concat(new[] { SpecialType.ArgList })
-					.ToArray();
+												.Select(Resolve)
+												.Concat(new[] { SpecialType.ArgList })
+												.ToArray();
 			} else {
 				parameterTypes = methodReference.MethodSig.Params.SelectArray(Resolve);
 			}
@@ -397,13 +407,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (propertyReference == null)
 				throw new ArgumentNullException(nameof(propertyReference));
 			lock (propertyLookupCache) {
-				IProperty property;
-				if (!propertyLookupCache.TryGetValue(propertyReference, out property)) {
+				if (!propertyLookupCache.TryGetValue(propertyReference, out IProperty property)) {
 					property = FindNonGenericProperty(propertyReference);
-					if (propertyReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(Resolve);
-						property = (IProperty)property.Specialize(new TypeParameterSubstitution(typeArguments, null));
-					}
 					propertyLookupCache.Add(propertyReference, property);
 				}
 				return property;
@@ -416,8 +421,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (typeDef == null)
 				return null;
 
-			var parameters = propertyReference.GetParameters().ToList();
-			var parameterTypes = parameters.SelectArray(p => Resolve(p.Type));
+			var parameterTypes = propertyReference.GetParameters().Where(x => x.IsNormalMethodParameter)
+												  .Select(p => Resolve(p.Type)).ToArray();
 			var returnType = Resolve(propertyReference.PropertySig.RetType);
 			foreach (IProperty property in typeDef.Properties) {
 				if (property.Name == propertyReference.Name
@@ -435,13 +440,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (eventReference == null)
 				throw new ArgumentNullException("propertyReference");
 			lock (eventLookupCache) {
-				IEvent ev;
-				if (!eventLookupCache.TryGetValue(eventReference, out ev)) {
+				if (!eventLookupCache.TryGetValue(eventReference, out IEvent ev)) {
 					ev = FindNonGenericEvent(eventReference);
-					if (eventReference.DeclaringType.ToTypeSig() is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(Resolve);
-						ev = (IEvent)ev.Specialize(new TypeParameterSubstitution(typeArguments, null));
-					}
 					eventLookupCache.Add(eventReference, ev);
 				}
 				return ev;

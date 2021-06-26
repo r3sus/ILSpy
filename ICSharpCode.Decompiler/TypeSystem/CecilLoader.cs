@@ -1501,7 +1501,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			DefaultUnresolvedMethod m = new DefaultUnresolvedMethod(parentType, method.Name);
 			m.SymbolKind = methodType;
 			m.AccessorOwner = accessorOwner;
-			m.HasBody = method.HasBody;
+			// Mimic cecil's behavior, this is ok because the decompiler uses
+			// the dnlib HasBody property when making the attempt to decompile a body.
+			// We don't use the dnlib HasBody here as it would cause unecessary
+			// allocations and wouldn't match what the codebase expects!
+			m.HasBody = !method.IsAbstract && !method.IsPinvokeImpl && !method.IsInternalCall && !method.IsNative &&
+						!method.IsRuntime && !method.IsUnmanaged;
 			if (method.HasGenericParameters) {
 				for (int i = 0; i < method.GenericParameters.Count; i++) {
 					if (method.GenericParameters[i].Number != i)
