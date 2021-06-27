@@ -33,7 +33,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	/// <c>IUnresolvedAttribute</c> implementation that loads the arguments from a binary blob.
 	/// </summary>
 	[Serializable]
-	public sealed class UnresolvedAttributeBlob : IUnresolvedAttribute, ISupportsInterning
+	public sealed class UnresolvedAttributeBlob : IUnresolvedAttribute
 	{
 		internal readonly ITypeReference attributeType;
 		internal readonly IList<ITypeReference> ctorParameterTypes;

@@ -958,11 +958,22 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				}
 				ctorParameterTypes = interningProvider.InternList(ctorParameterTypes);
 			}
-			//TODO: figure out a better way to do this
-			var data = attribute.IsRawBlob
-				? attribute.RawData
-				: CustomAttributeWriter.Write(new CustomAttributeSerializationHelper(), attribute);
-			return interningProvider.Intern(new UnresolvedAttributeBlob(attributeType, ctorParameterTypes, data));
+
+			IUnresolvedAttribute result;
+			if (attribute.IsRawBlob) {
+				result = new UnresolvedAttributeBlob(attributeType, ctorParameterTypes, attribute.RawData);
+			} else if (attribute.BlobOffset != 0 && currentModule is ModuleDefMD moduleDefMd) {
+				result = new UnresolvedAttributeBlob(attributeType, ctorParameterTypes,
+					moduleDefMd.BlobStream.CreateReader(attribute.BlobOffset).ReadRemainingBytes());
+			} else {
+				// terrribly inefficient :(
+				// should be solved when the type system gets simplified eventually
+				// to use dnlib more dirrectly like SRM in new versions
+				result = new UnresolvedAttributeBlob(attributeType, ctorParameterTypes,
+					CustomAttributeWriter.Write(new CustomAttributeSerializationHelper(), attribute));
+			}
+
+			return interningProvider.Intern(result);
 		}
 		#endregion
 

@@ -117,7 +117,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	}
 
 	[Serializable]
-	sealed class UnresolvedSecurityAttribute : IUnresolvedAttribute, ISupportsInterning
+	sealed class UnresolvedSecurityAttribute : IUnresolvedAttribute
 	{
 		readonly UnresolvedSecurityDeclarationBlob secDecl;
 		readonly int index;

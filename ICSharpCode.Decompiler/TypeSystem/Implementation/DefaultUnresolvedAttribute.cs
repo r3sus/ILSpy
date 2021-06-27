@@ -27,7 +27,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	/// Default implementation of <see cref="IUnresolvedAttribute"/>.
 	/// </summary>
 	[Serializable]
-	public sealed class DefaultUnresolvedAttribute : AbstractFreezable, IUnresolvedAttribute, IFreezable, ISupportsInterning
+	public sealed class DefaultUnresolvedAttribute : AbstractFreezable, IUnresolvedAttribute
 	{
 		ITypeReference attributeType;
 		IList<ITypeReference> constructorParameterTypes;
