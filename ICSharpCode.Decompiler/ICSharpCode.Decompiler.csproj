@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" />
 
@@ -248,7 +248,6 @@
     <Compile Include="CSharp\TranslatedExpression.cs" />
     <Compile Include="CSharp\CSharpDecompiler.cs" />
     <Compile Include="CSharp\ExpressionBuilder.cs" />
-    <Compile Include="CSharp\NRefactoryExtensions.cs" />
     <Compile Include="CSharp\StatementBuilder.cs" />
     <Compile Include="CSharp\Transforms\AddCheckedBlocks.cs" />
     <Compile Include="CSharp\Transforms\ConvertConstructorCallIntoInitializer.cs" />
@@ -445,8 +444,6 @@
     <Compile Include="TypeSystem\CecilLoader.cs" />
     <Compile Include="TypeSystem\ComHelper.cs" />
     <Compile Include="TypeSystem\DecompilerTypeSystem.cs" />
-    <Compile Include="TypeSystem\DomRegion.cs" />
-    <Compile Include="TypeSystem\Error.cs" />
     <Compile Include="TypeSystem\FullTypeName.cs" />
     <Compile Include="TypeSystem\IAmbience.cs" />
     <Compile Include="TypeSystem\IAssembly.cs" />

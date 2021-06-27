@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,8 +18,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.IL;
+using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.TypeSystem;
 
@@ -40,12 +42,12 @@ namespace ICSharpCode.Decompiler.CSharp
 	/// Currently unused; we'll probably use the LdToken ILInstruction as annotation instead when LdToken support gets reimplemented.
 	/// </summary>
 	public class LdTokenAnnotation {}
-	
+
 	/// <summary>
-	/// Used by <see cref="Transforms.DeclareVariables"/> and <see cref="Transforms.DelegateConstruction"/>.
+	/// Used by <see cref="Transforms.DeclareVariables"/> and <see cref="DelegateConstruction"/>.
 	/// </summary>
 	sealed class CapturedVariableAnnotation {}
-	
+
 	public static class AnnotationExtensions
 	{
 		internal static ExpressionWithILInstruction WithILInstruction(this Expression expression, ILInstruction instruction)
@@ -101,7 +103,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			expression.Expression.AddAnnotation(resolveResult);
 			return new TranslatedExpression(expression, resolveResult);
 		}
-		
+
 		/// <summary>
 		/// Retrieves the symbol associated with this AstNode, or null if no symbol is associated with the node.
 		/// </summary>
@@ -110,12 +112,12 @@ namespace ICSharpCode.Decompiler.CSharp
 			var rr = node.Annotation<ResolveResult>();
 			return rr != null ? rr.GetSymbol() : null;
 		}
-		
+
 		public static ResolveResult GetResolveResult(this AstNode node)
 		{
 			return node.Annotation<ResolveResult>() ?? ErrorResolveResult.UnknownError;
 		}
-		
+
 		public static ILVariable GetILVariable(this IdentifierExpression expr)
 		{
 			var rr = expr.Annotation<ResolveResult>() as ILVariableResolveResult;
@@ -124,7 +126,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			else
 				return null;
 		}
-		
+
 		public static ILVariable GetILVariable(this VariableInitializer vi)
 		{
 			var rr = vi.Annotation<ResolveResult>() as ILVariableResolveResult;
@@ -154,8 +156,24 @@ namespace ICSharpCode.Decompiler.CSharp
 			loop.AddAnnotation(new ILVariableResolveResult(v, v.Type));
 			return loop;
 		}
+
+		public static T CopyAnnotationsFrom<T>(this T node, AstNode other) where T : AstNode
+		{
+			foreach (object annotation in other.Annotations) {
+				node.AddAnnotation(annotation);
+			}
+			return node;
+		}
+
+		public static T CopyInstructionsFrom<T>(this T node, AstNode other) where T : AstNode
+		{
+			foreach (object annotation in other.Annotations.OfType<ILInstruction>()) {
+				node.AddAnnotation(annotation);
+			}
+			return node;
+		}
 	}
-	
+
 	public class ILVariableResolveResult : ResolveResult
 	{
 		public readonly ILVariable Variable;

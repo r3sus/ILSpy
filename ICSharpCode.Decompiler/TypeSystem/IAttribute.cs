@@ -28,16 +28,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	public interface IUnresolvedAttribute
 	{
 		/// <summary>
-		/// Gets the code region of this attribute.
-		/// </summary>
-		DomRegion Region { get; }
-		
-		/// <summary>
 		/// Resolves the attribute.
 		/// </summary>
 		IAttribute CreateResolvedAttribute(ITypeResolveContext context);
 	}
-	
+
 	/// <summary>
 	/// Represents an attribute.
 	/// </summary>
@@ -48,7 +43,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Gets the type of the attribute.
 		/// </summary>
 		IType AttributeType { get; }
-		
+
 		/// <summary>
 		/// Gets the constructor being used.
 		/// This property may return null if no matching constructor was found.

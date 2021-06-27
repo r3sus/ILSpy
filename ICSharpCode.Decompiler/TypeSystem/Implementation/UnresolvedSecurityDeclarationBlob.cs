@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -28,11 +28,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	{
 		static readonly ITypeReference securityActionTypeReference = typeof(System.Security.Permissions.SecurityAction).ToTypeReference();
 		static readonly ITypeReference permissionSetAttributeTypeReference = new GetClassTypeReference("System.Security.Permissions", "PermissionSetAttribute");
-		
+
 		readonly IConstantValue securityAction;
 		readonly byte[] blob;
 		readonly IList<IUnresolvedAttribute> unresolvedAttributes = new List<IUnresolvedAttribute>();
-		
+
 		public UnresolvedSecurityDeclarationBlob(int securityAction, byte[] blob)
 		{
 			BlobReader reader = new BlobReader(blob, null);
@@ -54,11 +54,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				unresolvedAttributes.Add(attr);
 			}
 		}
-		
+
 		public IList<IUnresolvedAttribute> UnresolvedAttributes {
 			get { return unresolvedAttributes; }
 		}
-		
+
 		public IList<IAttribute> Resolve(IAssembly currentAssembly)
 		{
 			// TODO: make this a per-assembly cache
@@ -66,7 +66,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 //				IList<IAttribute> result = (IList<IAttribute>)cache.GetShared(this);
 //				if (result != null)
 //					return result;
-			
+
 			ITypeResolveContext context = new SimpleTypeResolveContext(currentAssembly);
 			BlobReader reader = new BlobReader(blob, currentAssembly);
 			if (reader.ReadByte() != '.') {
@@ -89,24 +89,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return attributes;
 //				return (IList<IAttribute>)cache.GetOrAddShared(this, attributes);
 		}
-		
+
 		void ReadSecurityBlob(BlobReader reader, IAttribute[] attributes, ITypeResolveContext context, ResolveResult securityActionRR)
 		{
 			for (int i = 0; i < attributes.Length; i++) {
 				string attributeTypeName = reader.ReadSerString();
 				ITypeReference attributeTypeRef = ReflectionHelper.ParseReflectionName(attributeTypeName);
 				IType attributeType = attributeTypeRef.Resolve(context);
-				
+
 				reader.ReadCompressedUInt32(); // ??
 				// The specification seems to be incorrect here, so I'm using the logic from Cecil instead.
 				uint numNamed = reader.ReadCompressedUInt32();
-				
+
 				var namedArgs = new List<KeyValuePair<IMember, ResolveResult>>((int)numNamed);
 				for (uint j = 0; j < numNamed; j++) {
 					var namedArg = reader.ReadNamedArg(attributeType);
 					if (namedArg.Key != null)
 						namedArgs.Add(namedArg);
-					
+
 				}
 				attributes[i] = new DefaultAttribute(
 					attributeType,
@@ -115,34 +115,30 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 	}
-	
+
 	[Serializable]
 	sealed class UnresolvedSecurityAttribute : IUnresolvedAttribute, ISupportsInterning
 	{
 		readonly UnresolvedSecurityDeclarationBlob secDecl;
 		readonly int index;
-		
+
 		public UnresolvedSecurityAttribute(UnresolvedSecurityDeclarationBlob secDecl, int index)
 		{
 			Debug.Assert(secDecl != null);
 			this.secDecl = secDecl;
 			this.index = index;
 		}
-		
-		DomRegion IUnresolvedAttribute.Region {
-			get { return DomRegion.Empty; }
-		}
-		
+
 		IAttribute IUnresolvedAttribute.CreateResolvedAttribute(ITypeResolveContext context)
 		{
 			return secDecl.Resolve(context.CurrentAssembly)[index];
 		}
-		
+
 		int ISupportsInterning.GetHashCodeForInterning()
 		{
 			return index ^ secDecl.GetHashCode();
 		}
-		
+
 		bool ISupportsInterning.EqualsForInterning(ISupportsInterning other)
 		{
 			UnresolvedSecurityAttribute attr = other as UnresolvedSecurityAttribute;

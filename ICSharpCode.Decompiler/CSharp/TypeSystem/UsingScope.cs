@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -33,33 +33,32 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 	public class UsingScope : AbstractFreezable
 	{
 		readonly UsingScope parent;
-		DomRegion region;
 		string shortName = "";
 		IList<TypeOrNamespaceReference> usings;
 		IList<KeyValuePair<string, TypeOrNamespaceReference>> usingAliases;
 		IList<string> externAliases;
-		
+
 		protected override void FreezeInternal()
 		{
 			usings = FreezableHelper.FreezeList(usings);
 			usingAliases = FreezableHelper.FreezeList(usingAliases);
 			externAliases = FreezableHelper.FreezeList(externAliases);
-			
+
 			// In current model (no child scopes), it makes sense to freeze the parent as well
 			// to ensure the whole lookup chain is immutable.
 			if (parent != null)
 				parent.Freeze();
-			
+
 			base.FreezeInternal();
 		}
-		
+
 		/// <summary>
 		/// Creates a new root using scope.
 		/// </summary>
 		public UsingScope()
 		{
 		}
-		
+
 		/// <summary>
 		/// Creates a new nested using scope.
 		/// </summary>
@@ -74,25 +73,17 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 			this.parent = parent;
 			this.shortName = shortName;
 		}
-		
+
 		public UsingScope Parent {
 			get { return parent; }
 		}
-		
-		public DomRegion Region {
-			get { return region; }
-			set {
-				FreezableHelper.ThrowIfFrozen(this);
-				region = value;
-			}
-		}
-		
+
 		public string ShortNamespaceName {
 			get {
 				return shortName;
 			}
 		}
-		
+
 		public string NamespaceName {
 			get {
 				if (parent != null)
@@ -107,7 +98,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 //				namespaceName = value;
 //			}
 		}
-		
+
 		public IList<TypeOrNamespaceReference> Usings {
 			get {
 				if (usings == null)
@@ -115,7 +106,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				return usings;
 			}
 		}
-		
+
 		public IList<KeyValuePair<string, TypeOrNamespaceReference>> UsingAliases {
 			get {
 				if (usingAliases == null)
@@ -123,7 +114,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				return usingAliases;
 			}
 		}
-		
+
 		public IList<string> ExternAliases {
 			get {
 				if (externAliases == null)
@@ -131,7 +122,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				return externAliases;
 			}
 		}
-		
+
 //		public IList<UsingScope> ChildScopes {
 //			get {
 //				if (childScopes == null)
@@ -139,7 +130,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 //				return childScopes;
 //			}
 //		}
-		
+
 		/// <summary>
 		/// Gets whether this using scope has an alias (either using or extern)
 		/// with the specified name.
@@ -154,7 +145,7 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 			}
 			return externAliases != null && externAliases.Contains(identifier);
 		}
-		
+
 		/// <summary>
 		/// Resolves the namespace represented by this using scope.
 		/// </summary>
