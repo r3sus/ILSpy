@@ -354,6 +354,16 @@ namespace ICSharpCode.Decompiler.CSharp
 				attrSection.AttributeTarget = "assembly";
 				syntaxTree.AddChild(attrSection, SyntaxTree.MemberRole);
 			}
+			foreach (var a in typeSystem.Compilation.MainAssembly.ModuleAttributes) {
+				decompileRun.Namespaces.Add(a.AttributeType.Namespace);
+				decompileRun.Namespaces.AddRange(a.PositionalArguments.Select(pa => pa.Type.Namespace));
+				decompileRun.Namespaces.AddRange(a.PositionalArguments.OfType<TypeOfResolveResult>().Select(pa => pa.ReferencedType.Namespace));
+				decompileRun.Namespaces.AddRange(a.NamedArguments.Select(na => na.Value.Type.Namespace));
+				var astBuilder = CreateAstBuilder(decompilationContext);
+				var attrSection = new AttributeSection(astBuilder.ConvertAttribute(a));
+				attrSection.AttributeTarget = "module";
+				syntaxTree.AddChild(attrSection, SyntaxTree.MemberRole);
+			}
 		}
 
 		void DoDecompileTypes(IEnumerable<TypeDef> types, DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)
@@ -838,10 +848,12 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			if (definitions == null)
 				throw new ArgumentNullException(nameof(definitions));
-			ITypeDefinition parentTypeDef = null;
 			syntaxTree = new SyntaxTree();
 			var decompileRun = new DecompileRun(settings) { CancellationToken = CancellationToken };
 			CollectNamespacesForDecompilation(definitions, decompileRun.Namespaces, new HashSet<IMemberRef>());
+
+			bool first = true;
+			ITypeDefinition parentTypeDef = null;
 			foreach (var def in definitions) {
 				if (def == null)
 					throw new ArgumentException("definitions contains null element");
@@ -851,14 +863,22 @@ namespace ICSharpCode.Decompiler.CSharp
 						if (typeDef == null)
 							throw new InvalidOperationException("Could not find type definition in NR type system");
 						syntaxTree.Members.Add(DoDecompile(typeDef, decompileRun, new SimpleTypeResolveContext(typeDef)));
-						parentTypeDef = typeDef.DeclaringTypeDefinition;
+						if (first) {
+							parentTypeDef = typeDef.DeclaringTypeDefinition;
+						} else if (parentTypeDef != null) {
+							parentTypeDef = FindCommonDeclaringTypeDefinition(parentTypeDef, typeDef.DeclaringTypeDefinition);
+						}
 						break;
 					case MethodDef methodDefinition:
 						Decompiler.TypeSystem.IMethod method = typeSystem.Resolve(methodDefinition);
 						if (method == null)
 							throw new InvalidOperationException("Could not find method definition in NR type system");
 						syntaxTree.Members.Add(DoDecompile(methodDefinition, method, decompileRun, new SimpleTypeResolveContext(method)));
-						parentTypeDef = method.DeclaringTypeDefinition;
+						if (first) {
+							parentTypeDef = method.DeclaringTypeDefinition;
+						} else if (parentTypeDef != null) {
+							parentTypeDef = FindCommonDeclaringTypeDefinition(parentTypeDef, method.DeclaringTypeDefinition);
+						}
 						break;
 					case FieldDef fieldDefinition:
 						Decompiler.TypeSystem.IField field = typeSystem.Resolve(fieldDefinition);
@@ -872,21 +892,39 @@ namespace ICSharpCode.Decompiler.CSharp
 						if (property == null)
 							throw new InvalidOperationException("Could not find property definition in NR type system");
 						syntaxTree.Members.Add(DoDecompile(propertyDefinition, property, decompileRun, new SimpleTypeResolveContext(property)));
-						parentTypeDef = property.DeclaringTypeDefinition;
+						if (first) {
+							parentTypeDef = property.DeclaringTypeDefinition;
+						} else if (parentTypeDef != null) {
+							parentTypeDef = FindCommonDeclaringTypeDefinition(parentTypeDef, property.DeclaringTypeDefinition);
+						}
 						break;
 					case EventDef eventDefinition:
 						IEvent ev = typeSystem.Resolve(eventDefinition);
 						if (ev == null)
 							throw new InvalidOperationException("Could not find event definition in NR type system");
 						syntaxTree.Members.Add(DoDecompile(eventDefinition, ev, decompileRun, new SimpleTypeResolveContext(ev)));
-						parentTypeDef = ev.DeclaringTypeDefinition;
+						if (first) {
+							parentTypeDef = ev.DeclaringTypeDefinition;
+						} else if (parentTypeDef != null) {
+							parentTypeDef = FindCommonDeclaringTypeDefinition(parentTypeDef, ev.DeclaringTypeDefinition);
+						}
 						break;
 					default:
 						throw new NotSupportedException(def.GetType().Name);
 				}
+				first = false;
 			}
 			RunTransforms(syntaxTree, decompileRun, parentTypeDef != null ? new SimpleTypeResolveContext(parentTypeDef) : new SimpleTypeResolveContext(typeSystem.MainAssembly));
 			return syntaxTree;
+		}
+
+		ITypeDefinition FindCommonDeclaringTypeDefinition(ITypeDefinition a, ITypeDefinition b)
+		{
+			if (a == null || b == null)
+				return null;
+			var declaringTypes = a.GetDeclaringTypeDefinitions();
+			var set = new HashSet<ITypeDefinition>(b.GetDeclaringTypeDefinitions());
+			return declaringTypes.FirstOrDefault(set.Contains);
 		}
 
 		/// <summary>
@@ -1319,8 +1357,8 @@ namespace ICSharpCode.Decompiler.CSharp
 				long initValue = (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, field.ConstantValue, false);
 				enumDec.Initializer = typeSystemAstBuilder.ConvertConstantValue(decompilationContext.CurrentTypeDefinition.EnumUnderlyingType, field.ConstantValue);
 				if (enumDec.Initializer is PrimitiveExpression primitive
-					&& (decompilationContext.CurrentTypeDefinition.Attributes.Any(a => a.AttributeType.FullName == "System.FlagsAttribute")
-						|| (initValue > 9 && ((initValue & (initValue - 1)) == 0 || (initValue & (initValue + 1)) == 0))))
+					&& initValue >= 0 & (decompilationContext.CurrentTypeDefinition.Attributes.Any(a => a.AttributeType.FullName == "System.FlagsAttribute")
+										 || (initValue > 9 && (unchecked(initValue & (initValue - 1)) == 0 || unchecked(initValue & (initValue + 1)) == 0))))
 				{
 					primitive.SetValue(initValue, $"0x{initValue:X}");
 				}

@@ -1952,12 +1952,17 @@ namespace ICSharpCode.Decompiler.CSharp
 				case BlockKind.CallInlineAssign:
 					return TranslateSetterCallAssignment(block);
 				case BlockKind.CallWithNamedArgs:
-					return WrapInRef(
-						new CallBuilder(this, typeSystem, settings).CallWithNamedArgs(block),
-						((CallInstruction)block.FinalInstruction).Method.ReturnType);
+					return TranslateCallWithNamedArgs(block);
 				default:
 					return ErrorExpression("Unknown block type: " + block.Kind);
 			}
+		}
+
+		private TranslatedExpression TranslateCallWithNamedArgs(Block block)
+		{
+			return WrapInRef(
+				new CallBuilder(this, typeSystem, settings).CallWithNamedArgs(block),
+				((CallInstruction)block.FinalInstruction).Method.ReturnType);
 		}
 
 		private TranslatedExpression TranslateSetterCallAssignment(Block block)
@@ -1991,6 +1996,10 @@ namespace ICSharpCode.Decompiler.CSharp
 					expr = new ObjectCreateExpression(ConvertType(defaultVal.Type))
 						.WithILInstruction(defaultVal)
 						.WithRR(new TypeResolveResult(defaultVal.Type));
+					break;
+				case Block callWithNamedArgs when callWithNamedArgs.Kind == BlockKind.CallWithNamedArgs:
+					expr = TranslateCallWithNamedArgs(callWithNamedArgs);
+					initObjRR = new InitializedObjectResolveResult(expr.Type);
 					break;
 				default:
 					throw new ArgumentException("given Block is invalid!");
