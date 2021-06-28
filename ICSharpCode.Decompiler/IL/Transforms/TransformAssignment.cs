@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2015 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -60,9 +60,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// stloc l(stobj (..., value))
 		/// </code>
 		/// e.g. used for inline assignment to instance field
-		/// 
+		///
 		/// -or-
-		/// 
+		///
 		/// <code>
 		/// stloc s(value)
 		/// stobj (..., ldloc s)
@@ -71,9 +71,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// stloc s(stobj (..., value))
 		/// </code>
 		/// e.g. used for inline assignment to static field
-		/// 
+		///
 		/// -or-
-		/// 
+		///
 		/// <code>
 		/// stloc s(value)
 		/// call set_Property(..., ldloc s)
@@ -218,7 +218,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// <summary>
 		/// Transform compound assignments where the return value is not being used,
 		/// or where there's an inlined assignment within the setter call.
-		/// 
+		///
 		/// Patterns handled:
 		/// 1.
 		///   callvirt set_Property(ldloc S_1, binary.op(callvirt get_Property(ldloc S_1), value))
@@ -298,9 +298,21 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					return false;
 				context.Step($"Compound assignment (dynamic binary)", compoundStore);
 				newInst = new DynamicCompoundAssign(dynamicBinaryOp.Operation, dynamicBinaryOp.BinderFlags, dynamicBinaryOp.Left, dynamicBinaryOp.LeftArgumentInfo, dynamicBinaryOp.Right, dynamicBinaryOp.RightArgumentInfo);
+			} else if (setterValue is Call concatCall && UserDefinedCompoundAssign.IsStringConcat(concatCall.Method)) {
+				// setterValue is a string.Concat() invocation
+				if (concatCall.Arguments.Count != 2)
+					return false; // for now we only support binary compound assignments
+				if (!targetType.IsKnownType(KnownTypeCode.String))
+					return false;
+				if (!IsMatchingCompoundLoad(concatCall.Arguments[0], compoundStore, forbiddenVariable: storeInSetter?.Variable))
+					return false;
+				context.Step($"Compound assignment (string concatenation)", compoundStore);
+				newInst = new UserDefinedCompoundAssign(concatCall.Method, CompoundAssignmentType.EvaluatesToNewValue,
+					concatCall.Arguments[0], concatCall.Arguments[1]);
 			} else {
 				return false;
 			}
+			newInst.AddILRange(setterValue.ILRange);
 			if (storeInSetter != null) {
 				storeInSetter.Value = newInst;
 				newInst = storeInSetter;
@@ -309,7 +321,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			compoundStore.ReplaceWith(newInst);
 			return true;
 		}
-		
+
 		/// <code>
 		/// stloc s(value)
 		/// stloc l(ldloc s)
@@ -493,9 +505,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		///   where target is pure and does not use 'l', and the 'stloc l' does not truncate
 		/// -->
 		/// stloc l(compound.op.old(ldobj(target), ldc.i4 1))
-		/// 
+		///
 		///  -or-
-		/// 
+		///
 		/// call set_Prop(args..., binary.add(stloc l(call get_Prop(args...)), ldc.i4 1))
 		///   where args.. are pure and do not use 'l', and the 'stloc l' does not truncate
 		/// -->
@@ -503,7 +515,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// </code>
 		/// <remarks>
 		/// This pattern is used for post-increment by legacy csc.
-		/// 
+		///
 		/// Even though this transform operates only on a single expression, it's not an expression transform
 		/// as the result value of the expression changes (this is OK only for statements in a block).
 		/// </remarks>
@@ -603,7 +615,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return true;
 		}
-		
+
 		static bool IsSameMember(IMember a, IMember b)
 		{
 			if (a == null || b == null)

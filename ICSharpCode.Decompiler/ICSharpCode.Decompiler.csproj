@@ -227,10 +227,8 @@
     <Compile Include="CSharp\Transforms\RemoveCLSCompliantAttribute.cs" />
     <Compile Include="CSharp\TranslationContext.cs" />
     <Compile Include="CSharp\TypeSystem\AliasNamespaceReference.cs" />
-    <Compile Include="CSharp\TypeSystem\AttributeTypeReference.cs" />
     <Compile Include="CSharp\TypeSystem\CSharpTypeResolveContext.cs" />
     <Compile Include="CSharp\TypeSystem\MemberTypeOrNamespaceReference.cs" />
-    <Compile Include="CSharp\TypeSystem\MethodTypeParameterWithInheritedConstraints.cs" />
     <Compile Include="CSharp\TypeSystem\ResolvedUsingScope.cs" />
     <Compile Include="CSharp\TypeSystem\SimpleTypeOrNamespaceReference.cs" />
     <Compile Include="CSharp\TypeSystem\TypeOrNamespaceReference.cs" />

@@ -456,6 +456,18 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
+		public bool IsByRefLike {
+			get {
+				foreach (IAttribute attribute in Attributes) {
+					if (attribute.AttributeType.Name == "IsByRefLikeAttribute" &&
+						attribute.AttributeType.Namespace == "System.Runtime.CompilerServices")
+						return true;
+				}
+
+				return false;
+			}
+		}
+
 		public int TypeParameterCount {
 			get { return parts[0].TypeParameters.Count; }
 		}

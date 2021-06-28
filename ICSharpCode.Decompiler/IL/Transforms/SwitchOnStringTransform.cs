@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -38,7 +38,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return;
 
 			BlockContainer body = (BlockContainer)function.Body;
-			var hashtableInitializers = ScanHashtableInitializerBlocks(body.EntryPoint); 
+			var hashtableInitializers = ScanHashtableInitializerBlocks(body.EntryPoint);
 
 			HashSet<BlockContainer> changedContainers = new HashSet<BlockContainer>();
 
@@ -169,21 +169,28 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			values.Add((firstBlockValue, firstBlock));
 
 			bool extraLoad = false;
+			bool keepAssignmentBefore = false;
 			if (instructions[i - 1].MatchStLoc(switchValueVar, out switchValue)) {
 				// stloc switchValueVar(switchValue)
 				// if (call op_Equality(ldloc switchValueVar, ldstr value)) br firstBlock
-			} else if (instructions[i - 1] is StLoc stloc && stloc.Value.MatchLdLoc(switchValueVar)) {
-				// in case of optimized legacy code there are two stlocs:
-				// stloc otherSwitchValueVar(ldloc switchValue)
-				// stloc switchValueVar(ldloc otherSwitchValueVar)
-				// if (call op_Equality(ldloc otherSwitchValueVar, ldstr value)) br firstBlock
-				var otherSwitchValueVar = switchValueVar;
-				switchValueVar = stloc.Variable;
-				if (i >= 2 && instructions[i - 2].MatchStLoc(otherSwitchValueVar, out switchValue)
-					&& otherSwitchValueVar.IsSingleDefinition && otherSwitchValueVar.LoadCount == 2) {
-					extraLoad = true;
+			} else if (instructions[i - 1] is StLoc stloc) {
+				if (stloc.Value.MatchLdLoc(switchValueVar)) {
+					// in case of optimized legacy code there are two stlocs:
+					// stloc otherSwitchValueVar(ldloc switchValue)
+					// stloc switchValueVar(ldloc otherSwitchValueVar)
+					// if (call op_Equality(ldloc otherSwitchValueVar, ldstr value)) br firstBlock
+					var otherSwitchValueVar = switchValueVar;
+					switchValueVar = stloc.Variable;
+					if (i >= 2 && instructions[i - 2].MatchStLoc(otherSwitchValueVar, out switchValue)
+							   && otherSwitchValueVar.IsSingleDefinition && otherSwitchValueVar.LoadCount == 2) {
+						extraLoad = true;
+					} else {
+						switchValue = new LdLoc(otherSwitchValueVar);
+					}
 				} else {
-					switchValue = new LdLoc(otherSwitchValueVar);
+					// Variable before the start of the switch is not related to the switch.
+					keepAssignmentBefore = true;
+					switchValue = new LdLoc(switchValueVar);
 				}
 			} else {
 				switchValue = new LdLoc(switchValueVar);
@@ -202,7 +209,6 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (values.Count < 3)
 				return false;
 			// if the switchValueVar is used in other places as well, do not eliminate the store.
-			bool keepAssignmentBefore = false;
 			if (switchValueVar.LoadCount > values.Count) {
 				keepAssignmentBefore = true;
 				switchValue = new LdLoc(switchValueVar);
@@ -288,7 +294,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (values.Count != switchValueVarCopy.LoadCount)
 				return false;
 
-			// switch contains case null: 
+			// switch contains case null:
 			if (currentCaseBlock != defaultOrNullBlock) {
 				values.Add((null, new Branch(defaultOrNullBlock)));
 			}
@@ -688,7 +694,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				target.MatchUnbox(out var arg, out var unboxType) && arg.MatchLdLoc(switchVariable2) && ldobjType.IsKnownType(KnownTypeCode.Int32) && unboxType.Equals(ldobjType)))
 				return false;
 			var sections = new List<SwitchSection>(switchInst.Sections);
-			// switch contains case null: 
+			// switch contains case null:
 			if (!(nullCaseBlockBranch is Leave) && nullCaseBlock != defaultBlock) {
 				if (!AddNullSection(sections, stringValues, nullCaseBlock)) {
 					return false;

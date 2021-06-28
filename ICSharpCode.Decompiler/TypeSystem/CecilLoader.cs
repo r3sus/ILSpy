@@ -864,8 +864,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region Property Attributes
-		void AddAttributes(PropertyDef propertyDefinition, IUnresolvedEntity targetEntity)
+		static readonly ITypeReference indexerNameAttributeTypeRef = typeof(IndexerNameAttribute).ToTypeReference();
+
+		void AddAttributes(PropertyDef propertyDefinition, IUnresolvedProperty targetEntity)
 		{
+			if (targetEntity.IsIndexer && targetEntity.Name != "Item" && !targetEntity.IsExplicitInterfaceImplementation) {
+				DefaultUnresolvedAttribute indexerAttribute =
+					new DefaultUnresolvedAttribute(indexerNameAttributeTypeRef, new[] { KnownTypeReference.String });
+				indexerAttribute.PositionalArguments.Add(CreateSimpleConstantValue(KnownTypeReference.String, targetEntity.Name));
+				targetEntity.Attributes.Add(interningProvider.Intern(indexerAttribute));
+			}
+
 			if (propertyDefinition.HasCustomAttributes) {
 				AddCustomAttributes(propertyDefinition.CustomAttributes, targetEntity.Attributes);
 			}

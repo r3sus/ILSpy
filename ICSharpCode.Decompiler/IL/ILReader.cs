@@ -1149,34 +1149,60 @@ namespace ICSharpCode.Decompiler.IL
 
 		private ILInstruction Ldarg(int v)
 		{
-			return new LdLoc(parameterVariables[v]);
+			if (v >= 0 && v < parameterVariables.Length) {
+				return new LdLoc(parameterVariables[v]);
+			} else {
+				return new InvalidExpression($"ldarg {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction Ldarga(int v)
 		{
-			return new LdLoca(parameterVariables[v]);
+			if (v >= 0 && v < parameterVariables.Length) {
+				return new LdLoca(parameterVariables[v]);
+			} else {
+				return new InvalidExpression($"ldarga {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction Starg(int v)
 		{
-			return new StLoc(parameterVariables[v], Pop(parameterVariables[v].StackType));
+			if (v >= 0 && v < parameterVariables.Length) {
+				return new StLoc(parameterVariables[v], Pop(parameterVariables[v].StackType));
+			} else {
+				Pop();
+				return new InvalidExpression($"starg {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction Ldloc(int v)
 		{
-			return new LdLoc(localVariables[v]);
+			if (v >= 0 && v < localVariables.Length) {
+				return new LdLoc(localVariables[v]);
+			} else {
+				return new InvalidExpression($"ldloc {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction Ldloca(int v)
 		{
-			return new LdLoca(localVariables[v]);
+			if (v >= 0 && v < localVariables.Length) {
+				return new LdLoca(localVariables[v]);
+			} else {
+				return new InvalidExpression($"ldloca {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction Stloc(int v)
 		{
-			return new StLoc(localVariables[v], Pop(localVariables[v].StackType)) {
-				ILStackWasEmpty = currentStack.IsEmpty
-			};
+			if (v >= 0 && v < localVariables.Length) {
+				return new StLoc(localVariables[v], Pop(localVariables[v].StackType)) {
+					ILStackWasEmpty = currentStack.IsEmpty
+				};
+			} else {
+				Pop();
+				return new InvalidExpression($"stloc {v} (out-of-bounds)");
+			}
 		}
 
 		private ILInstruction LdElem(IType type)

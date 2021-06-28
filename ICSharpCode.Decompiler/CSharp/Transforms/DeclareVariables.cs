@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -48,7 +48,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			/// </summary>
 			internal int level;
 			internal AstNode nextNode;
-			
+
 			/// <summary>Go up one level</summary>
 			internal InsertionPoint Up()
 			{
@@ -57,7 +57,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					nextNode = nextNode.Parent
 				};
 			}
-			
+
 			internal InsertionPoint UpTo(int targetLevel)
 			{
 				InsertionPoint result = this;
@@ -68,7 +68,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				return result;
 			}
 		}
-		
+
 		[DebuggerDisplay("VariableToDeclare(Name={Name})")]
 		class VariableToDeclare
 		{
@@ -80,16 +80,16 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			/// Whether the variable needs to be default-initialized.
 			/// </summary>
 			public bool DefaultInitialization;
-			
+
 			/// <summary>
 			/// Integer value that can be used to compare to VariableToDeclare instances
 			/// to determine which variable was used first in the source code.
-			/// 
+			///
 			/// The variable with the lower SourceOrder value has the insertion point
 			/// that comes first in the source code.
 			/// </summary>
 			public int SourceOrder;
-			
+
 			/// <summary>
 			/// The insertion point, i.e. the node before which the variable declaration should be inserted.
 			/// </summary>
@@ -112,7 +112,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				this.SourceOrder = sourceOrder;
 			}
 		}
-		
+
 		readonly Dictionary<ILVariable, VariableToDeclare> variableDict = new Dictionary<ILVariable, VariableToDeclare>();
 		TransformContext context;
 
@@ -217,7 +217,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		/// <summary>
 		/// Finds insertion points for all variables used within `node`
 		/// and adds them to the variableDict.
-		/// 
+		///
 		/// `level` == nesting depth of `node` within root node.
 		/// </summary>
 		/// <remarks>
@@ -279,7 +279,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					return true;
 			}
 		}
-		
+
 		/// <summary>
 		/// Finds an insertion point in a common parent instruction.
 		/// </summary>
@@ -298,17 +298,17 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			return oldPoint;
 		}
 		#endregion
-		
+
 		/// <summary>
 		/// Some variable declarations in C# are illegal (colliding),
 		/// even though the variable live ranges are not overlapping.
-		/// 
+		///
 		/// Multiple declarations in same block:
 		/// <code>
 		/// int i = 1; use(1);
 		/// int i = 2; use(2);
 		/// </code>
-		/// 
+		///
 		/// "Hiding" declaration in nested block:
 		/// <code>
 		/// int i = 1; use(1);
@@ -316,7 +316,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		///   int i = 2; use(2);
 		/// }
 		/// </code>
-		/// 
+		///
 		/// Nested blocks are illegal even if the parent block
 		/// declares the variable later:
 		/// <code>
@@ -325,7 +325,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		/// }
 		/// int i = 2; use(i);
 		/// </code>
-		/// 
+		///
 		/// ResolveCollisions() detects all these cases, and combines the variable declarations
 		/// to a single declaration that is usable for the combined scopes.
 		/// </summary>
@@ -379,21 +379,23 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 						// the old v.InsertionPoint or the old prev.InsertionPoint already collided with x.
 					}
 				}
-				
+
 				multiDict.Add(v.Name, v);
 			}
 		}
 
 		bool IsMatchingAssignment(VariableToDeclare v, out AssignmentExpression assignment)
 		{
-			assignment = v.InsertionPoint.nextNode as AssignmentExpression ?? (v.InsertionPoint.nextNode as ExpressionStatement)?.Expression as AssignmentExpression;
-			Expression expectedExpr = new IdentifierExpression(v.Name);
-			if (v.Type.Kind == TypeKind.ByReference) {
-				expectedExpr = new DirectionExpression(FieldDirection.Ref, expectedExpr);
+			assignment = v.InsertionPoint.nextNode as AssignmentExpression;
+			if (assignment == null) {
+				assignment = (v.InsertionPoint.nextNode as ExpressionStatement)?.Expression as AssignmentExpression;
+				if (assignment == null)
+					return false;
 			}
-			if (assignment != null && assignment.Operator == AssignmentOperatorType.Assign && assignment.Left.IsMatch(expectedExpr))
-				return true;
-			return false;
+			return assignment.Operator == AssignmentOperatorType.Assign
+				   && assignment.Left is IdentifierExpression identExpr
+				   && identExpr.Identifier == v.Name
+				   && identExpr.TypeArguments.Count == 0;
 		}
 
 		void InsertVariableDeclarations(TransformContext context)

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -42,8 +42,6 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (!(inst is CallInstruction call
 				&& call.Method.FullNameIs("System.Linq.Expressions.Expression", "Lambda")
 				&& call.Arguments.Count == 2))
-				return false;
-			if (call.Parent is CallInstruction parentCall && parentCall.Method.FullNameIs("System.Linq.Expressions.Expression", "Quote"))
 				return false;
 			if (!(IsEmptyParameterList(call.Arguments[1]) || (call.Arguments[1] is Block block && block.Kind == BlockKind.ArrayInitializer)))
 				return false;
@@ -125,12 +123,15 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (MightBeExpressionTree(instruction, statement)) {
 				var (lambda, type) = ConvertLambda((CallInstruction)instruction);
 				if (lambda != null) {
+					SetExpressionTreeFlag((ILFunction)lambda, (CallInstruction)instruction);
 					context.Step("Convert Expression Tree", instruction);
 					instruction.ReplaceWith(lambda);
 					return true;
 				}
 				return false;
 			}
+			if (instruction is Block block && block.Kind == BlockKind.ControlFlow)
+				return false;  // don't look into nested blocks
 			foreach (var child in instruction.Children) {
 				if (TryConvertExpressionTree(child, statement))
 					return true;
@@ -150,14 +151,11 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var parameterVariablesList = new List<ILVariable>();
 			if (!ReadParameters(instruction.Arguments[1], parameterList, parameterVariablesList, new SimpleTypeResolveContext(context.Function.Method)))
 				return (null, SpecialType.UnknownType);
-			bool isQuotedLambda = instruction.Parent is CallInstruction call && call.Method.FullName == "System.Linq.Expressions.Expression.Quote";
 			var container = new BlockContainer();
 			var functionType = instruction.Method.ReturnType.TypeArguments[0];
-			var function = new ILFunction(functionType.GetDelegateInvokeMethod()?.ReturnType, parameterList, container);
-			if (isQuotedLambda || lambdaStack.Count == 0)
-				function.DelegateType = instruction.Method.ReturnType;
-			else
-				function.DelegateType = functionType;
+			var returnType = functionType.GetDelegateInvokeMethod()?.ReturnType;
+			var function = new ILFunction(returnType, parameterList, container);
+			function.DelegateType = functionType;
 			function.Variables.AddRange(parameterVariablesList);
 			lambdaStack.Push(function);
 			var (bodyInstruction, type) = ConvertInstruction(instruction.Arguments[0]);
@@ -167,6 +165,29 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			container.ExpectedResultType = bodyInstruction.ResultType;
 			container.Blocks.Add(new Block() { Instructions = { new Leave(container, bodyInstruction) } });
 			return (function, function.DelegateType);
+		}
+
+		(ILInstruction, IType) ConvertQuote(CallInstruction invocation)
+		{
+			if (invocation.Arguments.Count != 1)
+				return (null, SpecialType.UnknownType);
+			var argument = invocation.Arguments.Single();
+			if (argument is ILFunction function) {
+				return (function, function.DelegateType);
+			} else {
+				var converted = ConvertInstruction(argument);
+
+				if (converted.Item1 is ILFunction lambda && argument is CallInstruction call) {
+					SetExpressionTreeFlag(lambda, call);
+				}
+
+				return converted;
+			}
+		}
+
+		void SetExpressionTreeFlag(ILFunction lambda, CallInstruction call)
+		{
+			lambda.DelegateType = call.Method.ReturnType;
 		}
 
 		bool ReadParameters(ILInstruction initializer, IList<IParameter> parameters, IList<ILVariable> parameterVariables, ITypeResolveContext resolveContext)
@@ -292,10 +313,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 							case "Property":
 								return ConvertProperty(invocation);
 							case "Quote":
-								if (invocation.Arguments.Count == 1)
-									return ConvertInstruction(invocation.Arguments.Single());
-								else
-									return (null, SpecialType.UnknownType);
+								return ConvertQuote(invocation);
 							case "RightShift":
 								return ConvertBinaryNumericOperator(invocation, BinaryNumericOperator.ShiftRight);
 							case "Subtract":

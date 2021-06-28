@@ -56,10 +56,11 @@ namespace ICSharpCode.Decompiler.IL
 		void CreateContainerStructure()
 		{
 			List<TryCatch> tryCatchList = new List<TryCatch>();
+			int codeSize = body.GetCodeSize();
 			foreach (var eh in body.ExceptionHandlers) {
-				var tryRange = new Interval((int)eh.TryStart.Offset, eh.TryEnd != null ? (int)eh.TryEnd.Offset : body.GetCodeSize());
+				var tryRange = new Interval((int)eh.TryStart.Offset, eh.TryEnd != null ? (int)eh.TryEnd.Offset : codeSize);
 				var handlerBlock = new BlockContainer();
-				handlerBlock.ILRange = new Interval((int)eh.HandlerStart.Offset, eh.HandlerEnd != null ? (int)eh.HandlerEnd.Offset : body.GetCodeSize());
+				handlerBlock.ILRange = new Interval((int)eh.HandlerStart.Offset, eh.HandlerEnd != null ? (int)eh.HandlerEnd.Offset : codeSize);
 				handlerBlock.Blocks.Add(new Block());
 				handlerContainers.Add(handlerBlock.ILRange.Start, handlerBlock);
 
@@ -161,7 +162,7 @@ namespace ICSharpCode.Decompiler.IL
 				else if (!CreateExtendedBlocks && inst.HasFlag(InstructionFlags.MayBranch))
 					FinalizeCurrentBlock(inst.ILRange.End, fallthrough: true);
 			}
-			FinalizeCurrentBlock(body.GetCodeSize(), fallthrough: false);
+			FinalizeCurrentBlock(mainContainer.ILRange.End, fallthrough: false);
 			containerStack.Clear();
 			ConnectBranches(mainContainer, cancellationToken);
 		}

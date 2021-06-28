@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -74,7 +74,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			// Because this transform runs at the beginning of the block transforms,
 			// we know that `block` is still a (non-extended) basic block.
-			
+
 			// Previous-to-last instruction might have conditional control flow,
 			// usually an IfInstruction with a branch:
 			if (block.Instructions.SecondToLastOrDefault() is IfInstruction ifInst)
@@ -88,7 +88,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// </summary>
 		private void HandleIfInstruction(Block block, IfInstruction ifInst)
 		{
-			while (InlineTrueBranch(ifInst) || InlineExitBranch(block)) {
+			while (InlineTrueBranch(block, ifInst) || InlineExitBranch(block)) {
 				PickBetterBlockExit(block, ifInst);
 				MergeCommonBranches(block, ifInst);
 				SwapEmptyThen(ifInst);
@@ -102,28 +102,42 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		///   if (...) br trueBlock;
 		/// ->
 		///   if (...) { trueBlock... }
-		/// 
+		///
 		/// Only inlines branches that are strictly dominated by this block (incoming edge count == 1)
 		/// </summary>
-		private bool InlineTrueBranch(IfInstruction ifInst)
+		private bool InlineTrueBranch(Block block, IfInstruction ifInst)
 		{
-			if (!CanInline(ifInst.TrueInst))
+			if (!CanInline(ifInst.TrueInst)) {
+				if (block.Instructions.SecondToLastOrDefault() == ifInst && ifInst.FalseInst.MatchNop()) {
+					var exitInst = block.Instructions.Last();
+					if (DetectExitPoints.CompatibleExitInstruction(ifInst.TrueInst, exitInst)) {
+						// if (...) exitInst; exitInst;
+						context.Step("Use empty block as then-branch", ifInst.TrueInst);
+						ifInst.TrueInst = new Nop() { ILRange = ifInst.TrueInst.ILRange };
+						// false, because we didn't inline a real block
+						// this will cause HandleIfInstruction() to attempt to inline the exitInst.
+						return false;
+					}
+				}
 				return false;
+			}
 
 			context.Step("Inline block as then-branch", ifInst.TrueInst);
 			// The targetBlock was already processed, and is ready to embed
 			var targetBlock = ((Branch)ifInst.TrueInst).TargetBlock;
+			targetBlock.AddRef();  // Peformance: avoid temporarily disconnecting targetBlock
 			targetBlock.Remove();
 			ifInst.TrueInst = targetBlock;
+			targetBlock.ReleaseRef();
 
 			return true;
 		}
-		
+
 		/// <summary>
 		///   ...; br nextBlock;
 		/// ->
 		///   ...; { nextBlock... }
-		/// 
+		///
 		/// Only inlines branches that are strictly dominated by this block (incoming edge count == 1)
 		/// </summary>
 		private bool InlineExitBranch(Block block)
@@ -163,7 +177,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 		/// <summary>
 		/// Looks for common exits in the inlined then and else branches of an if instruction
-		/// and performs inversions and simplifications to merge them provided they don't 
+		/// and performs inversions and simplifications to merge them provided they don't
 		/// isolate a higher priority block exit
 		/// </summary>
 		private void MergeCommonBranches(Block block, IfInstruction ifInst)
@@ -179,7 +193,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			var elseExits = new List<ILInstruction>();
 			int falseInstIndex = block.Instructions.IndexOf(ifInst) + 1;
 			AddExits(block, falseInstIndex, elseExits);
-			
+
 			var commonExits = elseExits.Where(e1 => thenExits.Any(e2 => DetectExitPoints.CompatibleExitInstruction(e1, e2)));
 
 			// find the common exit with the highest block exit priority
@@ -188,7 +202,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				if (commonExit == null || CompareBlockExitPriority(exit, commonExit) > 0)
 					commonExit = exit;
 			}
-			
+
 			if (commonExit == null)
 				return;
 
@@ -198,14 +212,14 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			var blockExit = block.Instructions.Last();
 			if (CompareBlockExitPriority(blockExit, commonExit, true) > 0 && !WillShortCircuit(block, ifInst, commonExit))
 				return;
-			
+
 			// could improve performance by directly implementing the || short-circuit when WillShortCircuit
 			// currently the same general sequence of transformations introduces both operators
 
 			context.StepStartGroup("Merge common branches "+commonExit, ifInst);
 			ProduceExit(ifInst.TrueInst, 0, commonExit);
 			ProduceExit(block, falseInstIndex, commonExit);
-			
+
 			// if (...) { ...; blockExit; } ...; blockExit;
 			// -> if (...) { ...; blockExit; } else { ... } blockExit;
 			if (ifInst != block.Instructions.SecondToLastOrDefault()) {
@@ -213,7 +227,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				Debug.Assert(IsEmpty(ifInst.FalseInst));
 				ifInst.FalseInst = ExtractBlock(block, block.Instructions.IndexOf(ifInst) + 1, block.Instructions.Count - 1);
 			}
-			
+
 			// if (...) { ...; goto blockExit; } blockExit;
 			// -> if (...) { ... } blockExit;
 			// OR
@@ -227,7 +241,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			context.StepEndGroup();
 		}
-		
+
 		/// <summary>
 		/// Finds all exits which could be brought to the block root via inversion
 		/// </summary>
@@ -295,7 +309,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 		/// <summary>
 		/// Anticipates the introduction of an || operator when merging ifInst and elseExit
-		/// 
+		///
 		///   if (cond) commonExit;
 		///   if (cond2) commonExit;
 		///   ...;
@@ -320,8 +334,8 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			while (elseIfInst.Parent != block) {
 				elseIfInst = elseIfInst.Parent;
 			}
-			
-			return block.Instructions.IndexOf(elseIfInst) == block.Instructions.IndexOf(ifInst) + 1 
+
+			return block.Instructions.IndexOf(elseIfInst) == block.Instructions.IndexOf(ifInst) + 1
 			       && ThenInstIsSingleExit(elseIfInst);
 		}
 
@@ -332,24 +346,24 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// ->
 		///   if (!cond) { else...; exit }
 		///   then...;
-		/// 
+		///
 		/// Assumes ifInst does not have an else block
 		/// </summary>
 		private void InvertIf(Block block, IfInstruction ifInst)
 		{
 			Debug.Assert(ifInst.Parent == block);
-			
+
 			//assert then block terminates
 			var trueExitInst = GetExit(ifInst.TrueInst);
 			var exitInst = GetExit(block);
 			context.Step("Negate if for desired branch "+trueExitInst, ifInst);
-			
+
 			//if the then block terminates, else blocks are redundant, and should not exist
 			Debug.Assert(IsEmpty(ifInst.FalseInst));
 
 			//save a copy
 			var thenInst = ifInst.TrueInst;
-			
+
 			if (ifInst != block.Instructions.SecondToLastOrDefault()) {
 				// extract "else...; exit".
 				// Note that this will only extract instructions that were previously inlined from another block
@@ -395,8 +409,8 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// </summary>
 		private void IntroduceShortCircuit(IfInstruction ifInst)
 		{
-			if (IsEmpty(ifInst.FalseInst) 
-					&& ifInst.TrueInst is Block trueBlock 
+			if (IsEmpty(ifInst.FalseInst)
+					&& ifInst.TrueInst is Block trueBlock
 					&& trueBlock.Instructions.Count == 1
 					&& trueBlock.FinalInstruction is Nop
 					&& trueBlock.Instructions[0].MatchIfInstruction(out var nestedCondition, out var nestedTrueInst)) {
@@ -418,42 +432,44 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			context.Step("Swap then-branch with else-branch to match IL order", ifInst);
 			var oldTrue = ifInst.TrueInst;
+			oldTrue.AddRef(); // Peformance: avoid temporarily disconnecting oldTrue
 			ifInst.TrueInst = ifInst.FalseInst;
 			ifInst.FalseInst = oldTrue;
+			oldTrue.ReleaseRef();
 			ifInst.Condition = Comp.LogicNot(ifInst.Condition);
 		}
 
 		/// <summary>
-		/// Compares the current block exit, and the exit of ifInst.ThenInst 
+		/// Compares the current block exit, and the exit of ifInst.ThenInst
 		/// and inverts if necessary to pick the better exit
-		/// 
+		///
 		/// Does nothing when ifInst has an else block (because inverting wouldn't affect the block exit)
 		/// </summary>
 		private void PickBetterBlockExit(Block block, IfInstruction ifInst)
 		{
 			var exitInst = GetExit(block);
-			if (IsEmpty(ifInst.FalseInst) 
+			if (IsEmpty(ifInst.FalseInst)
 			      && TryGetExit(ifInst.TrueInst, out var trueExitInst)
 			      && CompareBlockExitPriority(trueExitInst, exitInst) > 0)
 				InvertIf(block, ifInst);
 		}
-		
+
 		/// <summary>
 		/// Compares two exit instructions for block exit priority
 		/// A higher priority exit should be kept as the last instruction in a block
 		/// even if it prevents the merging of a two compatible lower priority exits
-		/// 
+		///
 		/// leave from try containers must always be the final instruction, or a goto will be inserted
 		/// loops will endeavour to leave at least one continue branch as the last instruction in the block
-		/// 
+		///
 		/// The priority is:
 		///   leave > branch > other-keyword > continue > return > break
-		/// 
+		///
 		/// non-keyword leave instructions are ordered with the outer container having higher priority
-		/// 
+		///
 		/// if the exits have equal priority, and the <c>strongly</c> flag is not provided
 		/// then the exits are sorted by IL order (target block for branches)
-		/// 
+		///
 		/// break has higher priority than other keywords in a switch block (for aesthetic reasons)
 		/// </summary>
 		/// <returns>{-1, 0, 1} if exit1 has {lower, equal, higher} priority an exit2</returns>
@@ -465,7 +481,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			if (isKeyword1 != isKeyword2)
 				return isKeyword1 ? -1 : 1;
 
-			
+
 			if (isKeyword1) {
 				//for keywords
 				if (currentContainer.Kind == ContainerKind.Switch) {
@@ -551,7 +567,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				exitInst = inst;
 				return true;
 			}
-			
+
 			exitInst = null;
 			return false;
 		}
@@ -572,7 +588,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// <summary>
 		/// Returns true if inst is Nop or a Block with no instructions.
 		/// </summary>
-		private static bool IsEmpty(ILInstruction inst) => 
+		private static bool IsEmpty(ILInstruction inst) =>
 			inst is Nop || inst is Block block && block.Instructions.Count == 0 && block.FinalInstruction is Nop;
 
 		/// <summary>
@@ -587,14 +603,9 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			// continue blocks have exactly 2 incoming edges
 			if (currentContainer.EntryPoint.IncomingEdgeCount == 2) {
-				try {
-					var forIncrement = HighLevelLoopTransform.GetIncrementBlock(currentContainer, currentContainer.EntryPoint);
-					if (forIncrement != null)
-						return forIncrement;
-				} catch (InvalidOperationException) {
-					// multiple potential increment blocks. Can get this because we don't check that the while loop
-					// has a condition first, as we don't need to do too much of HighLevelLoopTransform's job.
-				}
+				var forIncrement = HighLevelLoopTransform.GetIncrementBlock(currentContainer, currentContainer.EntryPoint);
+				if (forIncrement != null)
+					return forIncrement;
 			}
 
 			return currentContainer.EntryPoint;

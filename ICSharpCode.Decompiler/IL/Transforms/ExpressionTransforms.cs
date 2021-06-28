@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014-2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -105,7 +105,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					inst.Kind = ComparisonKind.Equality;
 				}
 			}
-			
+
 			var rightWithoutConv = inst.Right.UnwrapConv(ConversionKind.SignExtend).UnwrapConv(ConversionKind.ZeroExtend);
 			if (rightWithoutConv.MatchLdcI4(0)
 			    && inst.Sign == Sign.Unsigned
@@ -145,7 +145,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				}
 			}
 		}
-		
+
 		protected internal override void VisitConv(Conv inst)
 		{
 			inst.Argument.AcceptVisitor(this);
@@ -233,7 +233,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				arg.AcceptVisitor(this);
 			}
 		}
-		
+
 		protected internal override void VisitCall(Call inst)
 		{
 			var expr = EarlyExpressionTransforms.HandleCall(inst, context);
@@ -262,7 +262,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			base.VisitNewObj(inst);
 		}
-		
+
 		bool TransformDecimalCtorToConstant(NewObj inst, out LdcDecimal result)
 		{
 			IType t = inst.Method.DeclaringType;
@@ -477,8 +477,21 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 						inst.Right = lhs;
 					}
 					break;
+				case BinaryNumericOperator.BitAnd:
+					if (IsBoolean(inst.Left) && IsBoolean(inst.Right) && SemanticHelper.IsPure(inst.Right.Flags))
+					{
+						context.Step("Replace bit.and with logic.and", inst);
+						var expr = IfInstruction.LogicAnd(inst.Left, inst.Right);
+						inst.ReplaceWith(expr);
+						expr.AcceptVisitor(this);
+					}
+					break;
 			}
 		}
+
+		private static bool IsBoolean(ILInstruction inst) =>
+			inst is Comp c && c.ResultType == StackType.I4 ||
+			inst.InferType().IsKnownType(KnownTypeCode.Boolean);
 
 		protected internal override void VisitTryCatchHandler(TryCatchHandler inst)
 		{

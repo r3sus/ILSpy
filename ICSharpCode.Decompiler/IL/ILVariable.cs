@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -80,7 +80,7 @@ namespace ICSharpCode.Decompiler.IL
 		}
 
 		public readonly StackType StackType;
-		
+
 		IType type;
 		public IType Type {
 			get {
@@ -92,12 +92,12 @@ namespace ICSharpCode.Decompiler.IL
 				type = value;
 			}
 		}
-		
+
 		/// <summary>
 		/// The index of the local variable or parameter (depending on Kind)
 		/// </summary>
 		public readonly int Index;
-		
+
 		public string Name { get; set; }
 
 		public bool HasGeneratedName { get; set; }
@@ -109,11 +109,11 @@ namespace ICSharpCode.Decompiler.IL
 		/// This property is set automatically when the variable is added to the <c>ILFunction.Variables</c> collection.
 		/// </remarks>
 		public ILFunction Function { get; internal set; }
-		
+
 		/// <summary>
 		/// Gets the block container in which this variable is captured.
 		/// For captured variables declared inside the loop, the capture scope is the BlockContainer of the loop.
-		/// For captured variables declared outside of the loop, the capture scope is the BlockContainer of the parent. 
+		/// For captured variables declared outside of the loop, the capture scope is the BlockContainer of the parent.
 		/// </summary>
 		/// <remarks>
 		/// This property returns null for variables that are not captured.
@@ -146,11 +146,11 @@ namespace ICSharpCode.Decompiler.IL
 		/// This list is automatically updated when adding/removing ldloc instructions from the ILAst.
 		/// </remarks>
 		public IReadOnlyList<LdLoc> LoadInstructions => loadInstructions;
-		
+
 		/// <summary>
 		/// Number of store instructions referencing this variable,
 		/// plus 1 if HasInitialValue.
-		/// 
+		///
 		/// Stores are:
 		/// <list type="item">
 		/// <item>stloc</item>
@@ -168,7 +168,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		/// <summary>
 		/// List of store instructions referencing this variable.
-		/// 
+		///
 		/// Stores are:
 		/// <list type="item">
 		/// <item>stloc</item>
@@ -225,11 +225,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 
 		bool hasInitialValue;
-		
+
 		/// <summary>
 		/// Gets/Sets whether the variable has an initial value.
 		/// This is always <c>true</c> for parameters (incl. <c>this</c>).
-		/// 
+		///
 		/// Normal variables have an initial value if the function uses ".locals init"
 		/// and that initialization is not a dead store.
 		/// </summary>
@@ -244,7 +244,17 @@ namespace ICSharpCode.Decompiler.IL
 				hasInitialValue = value;
 			}
 		}
-		
+
+		/// <summary>
+		/// Gets whether the variable is in SSA form:
+		/// There is exactly 1 store, and every load sees the value from that store.
+		/// </summary>
+		/// <remarks>
+		/// Note: the single store is not necessary a store instruction, it might also
+		/// be the use of the implicit initial value.
+		/// For example: for parameters, IsSingleDefinition will only return true if
+		/// the parameter is never assigned to within the function.
+		/// </remarks>
 		public bool IsSingleDefinition {
 			get {
 				return StoreCount == 1 && AddressCount == 0;
@@ -256,7 +266,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// Set when the variable is from a 'yield return' or 'async' state machine.
 		/// </summary>
 		public IField StateMachineField;
-		
+
 		public ILVariable(VariableKind kind, IType type, int index)
 		{
 			if (type == null)
@@ -268,7 +278,7 @@ namespace ICSharpCode.Decompiler.IL
 			if (kind == VariableKind.Parameter)
 				this.HasInitialValue = true;
 		}
-		
+
 		public ILVariable(VariableKind kind, IType type, StackType stackType, int index)
 		{
 			if (type == null)
@@ -280,12 +290,12 @@ namespace ICSharpCode.Decompiler.IL
 			if (kind == VariableKind.Parameter)
 				this.HasInitialValue = true;
 		}
-		
+
 		public override string ToString()
 		{
 			return Name;
 		}
-		
+
 		internal void WriteDefinitionTo(ITextOutput output)
 		{
 			switch (Kind) {
@@ -337,12 +347,12 @@ namespace ICSharpCode.Decompiler.IL
 				output.Write(" from state-machine");
 			}
 		}
-		
+
 		internal void WriteTo(ITextOutput output)
 		{
 			output.WriteReference(this.Name, this, isLocal: true);
 		}
-		
+
 		/// <summary>
 		/// Gets whether this variable occurs within the specified instruction.
 		/// </summary>

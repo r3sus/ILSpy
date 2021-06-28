@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2016 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -63,7 +63,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// Gets whether the instruction checks for overflow.
 		/// </summary>
 		public readonly bool CheckForOverflow;
-		
+
 		/// <summary>
 		/// For integer operations that depend on the sign, specifies whether the operation
 		/// is signed or unsigned.
@@ -98,7 +98,7 @@ namespace ICSharpCode.Decompiler.IL
 			Debug.Assert(compoundAssignmentType == CompoundAssignmentType.EvaluatesToNewValue || (Operator == BinaryNumericOperator.Add || Operator == BinaryNumericOperator.Sub));
 			Debug.Assert(IsValidCompoundAssignmentTarget(Target));
 		}
-		
+
 		/// <summary>
 		/// Gets whether the specific binary instruction is compatible with a compound operation on the specified type.
 		/// </summary>
@@ -160,7 +160,7 @@ namespace ICSharpCode.Decompiler.IL
 				flags |= InstructionFlags.MayThrow;
 			return flags;
 		}
-		
+
 		public override InstructionFlags DirectFlags {
 			get {
 				var flags = InstructionFlags.SideEffect;
@@ -169,7 +169,7 @@ namespace ICSharpCode.Decompiler.IL
 				return flags;
 			}
 		}
-		
+
 		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
 		{
 			ILRange.WriteTo(output, options);
@@ -196,15 +196,20 @@ namespace ICSharpCode.Decompiler.IL
 	public partial class UserDefinedCompoundAssign : CompoundAssignmentInstruction
 	{
 		public readonly IMethod Method;
-		public bool IsLifted => false; // TODO: implement ILi
+		public bool IsLifted => false; // TODO: implement lifted user-defined compound assignments
 
 		public UserDefinedCompoundAssign(IMethod method, CompoundAssignmentType compoundAssignmentType, ILInstruction target, ILInstruction value)
 			: base(OpCode.UserDefinedCompoundAssign, compoundAssignmentType, target, value)
 		{
 			this.Method = method;
-			Debug.Assert(Method.IsOperator);
+			Debug.Assert(Method.IsOperator || IsStringConcat(method));
 			Debug.Assert(compoundAssignmentType == CompoundAssignmentType.EvaluatesToNewValue || (Method.Name == "op_Increment" || Method.Name == "op_Decrement"));
 			Debug.Assert(IsValidCompoundAssignmentTarget(Target));
+		}
+
+		public static bool IsStringConcat(IMethod method)
+		{
+			return method.Name == "Concat" && method.IsStatic && method.DeclaringType.IsKnownType(KnownTypeCode.String);
 		}
 
 		public override StackType ResultType => Method.ReturnType.GetStackType();
@@ -213,7 +218,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			ILRange.WriteTo(output, options);
 			output.Write(OpCode);
-			
+
 			if (CompoundAssignmentType == CompoundAssignmentType.EvaluatesToNewValue)
 				output.Write(".new");
 			else
@@ -293,5 +298,3 @@ namespace ICSharpCode.Decompiler.IL
 		}
 	}
 }
-
-

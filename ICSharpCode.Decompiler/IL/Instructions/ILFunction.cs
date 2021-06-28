@@ -30,6 +30,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		public readonly IMethod Method;
 		public readonly dnlib.DotNet.MethodDef CecilMethod;
+		public readonly int CodeSize;
 		public readonly ILVariableCollection Variables;
 
 		/// <summary>
@@ -77,6 +78,7 @@ namespace ICSharpCode.Decompiler.IL
 			this.Body = body;
 			this.Method = method;
 			this.CecilMethod = cecilMethod;
+			this.CodeSize = cecilMethod?.Body?.GetCodeSize() ?? 0;
 			this.ReturnType = Method?.ReturnType;
 			this.Parameters = Method?.Parameters;
 			this.Variables = new ILVariableCollection(this);
@@ -101,7 +103,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		void CloneVariables()
 		{
-			throw new NotImplementedException();
+			throw new NotSupportedException("ILFunction.CloneVariables is currently not supported!");
 		}
 
 		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
@@ -163,7 +165,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			var usedILRanges = new List<LongInterval>();
 			MarkUsedILRanges(body);
-			return new LongSet(new LongInterval(0, CecilMethod.Body.GetCodeSize())).ExceptWith(new LongSet(usedILRanges));
+			return new LongSet(new LongInterval(0, CodeSize)).ExceptWith(new LongSet(usedILRanges));
 
 			void MarkUsedILRanges(ILInstruction inst)
 			{

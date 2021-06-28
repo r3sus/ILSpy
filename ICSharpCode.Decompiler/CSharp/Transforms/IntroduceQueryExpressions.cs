@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -60,7 +60,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				}
 			}
 		}
-		
+
 		bool IsDegenerateQuery(QueryExpression query)
 		{
 			if (query == null)
@@ -68,7 +68,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			var lastClause = query.Clauses.LastOrDefault();
 			return !(lastClause is QuerySelectClause || lastClause is QueryGroupClause);
 		}
-		
+
 		void DecompileQueries(AstNode node)
 		{
 			QueryExpression query = DecompileQuery(node as InvocationExpression);
@@ -78,13 +78,13 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				DecompileQueries(child);
 			}
 		}
-		
+
 		QueryExpression DecompileQuery(InvocationExpression invocation)
 		{
 			if (invocation == null)
 				return null;
 			MemberReferenceExpression mre = invocation.Target as MemberReferenceExpression;
-			if (mre == null)
+			if (mre == null || IsNullConditional(mre.Target))
 				return null;
 			switch (mre.MemberName) {
 				case "Select":
@@ -135,6 +135,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 						Expression collectionSelector;
 						if (!MatchSimpleLambda(invocation.Arguments.ElementAt(0), out parameterName, out collectionSelector))
 							return null;
+						if (IsNullConditional(collectionSelector))
+							return null;
 						LambdaExpression lambda = invocation.Arguments.ElementAt(1) as LambdaExpression;
 						if (lambda != null && lambda.Parameters.Count == 2 && lambda.Body is Expression) {
 							ParameterDeclaration p1 = lambda.Parameters.ElementAt(0);
@@ -183,7 +185,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 											Expression = orderExpression.Detach(),
 											Direction = (mre.MemberName == "ThenBy" ? QueryOrderingDirection.None : QueryOrderingDirection.Descending)
 										});
-									
+
 									tmp = (InvocationExpression)mre.Target;
 									mre = (MemberReferenceExpression)tmp.Target;
 									MatchSimpleLambda(tmp.Arguments.Single(), out parameterName, out orderExpression);
@@ -194,7 +196,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 										Expression = orderExpression.Detach(),
 										Direction = (mre.MemberName == "OrderBy" ? QueryOrderingDirection.None : QueryOrderingDirection.Descending)
 									});
-								
+
 								QueryExpression query = new QueryExpression();
 								query.Clauses.Add(new QueryFromClause { Identifier = parameterName, Expression = mre.Target.Detach() });
 								query.Clauses.Add(orderClause);
@@ -210,6 +212,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 							return null;
 						Expression source1 = mre.Target;
 						Expression source2 = invocation.Arguments.ElementAt(0);
+						if (IsNullConditional(source2))
+							return null;
 						string elementName1, elementName2;
 						Expression key1, key2;
 						if (!MatchSimpleLambda(invocation.Arguments.ElementAt(1), out elementName1, out key1))
@@ -243,6 +247,11 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 		}
 
+		bool IsNullConditional(Expression target)
+		{
+			return target is UnaryOperatorExpression uoe && uoe.Operator == UnaryOperatorType.NullConditional;
+		}
+
 		/// <summary>
 		/// This fixes #437: Decompilation of query expression loses material parentheses
 		/// We wrap the expression in parentheses if:
@@ -272,7 +281,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				return false;
 			if (parameterName != expectedParameterName)
 				return false;
-			
+
 			if (mre.MemberName == "OrderBy" || mre.MemberName == "OrderByDescending")
 				return true;
 			else if (mre.MemberName == "ThenBy" || mre.MemberName == "ThenByDescending")
@@ -280,7 +289,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			else
 				return false;
 		}
-		
+
 		/// <summary>Matches simple lambdas of the form "a => b"</summary>
 		bool MatchSimpleLambda(Expression expr, out string parameterName, out Expression body)
 		{
