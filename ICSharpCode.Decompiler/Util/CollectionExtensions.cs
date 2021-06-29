@@ -17,6 +17,25 @@ namespace ICSharpCode.Decompiler.Util
 			return input1.Zip(input2, (a, b) => (a, b));
 		}
 
+		public static IEnumerable<(A, B)> ZipLongest<A, B>(this IEnumerable<A> input1, IEnumerable<B> input2)
+		{
+			using (var it1 = input1.GetEnumerator()) {
+				using (var it2 = input2.GetEnumerator()) {
+					bool hasElements1 = true;
+					bool hasElements2 = true;
+					while (true) {
+						if (hasElements1)
+							hasElements1 = it1.MoveNext();
+						if (hasElements2)
+							hasElements2 = it2.MoveNext();
+						if (!(hasElements1 || hasElements2))
+							break;
+						yield return ((hasElements1 ? it1.Current : default), (hasElements2 ? it2.Current : default));
+					}
+				}
+			}
+		}
+
 		public static IEnumerable<T> Slice<T>(this IReadOnlyList<T> input, int offset, int length)
 		{
 			for (int i = offset; i < offset + length; i++) {
@@ -40,6 +59,11 @@ namespace ICSharpCode.Decompiler.Util
 		public static IEnumerable<T> SkipLast<T>(this IReadOnlyCollection<T> input, int count)
 		{
 			return input.Take(input.Count - count);
+		}
+
+		public static IEnumerable<T> TakeLast<T>(this IReadOnlyCollection<T> input, int count)
+		{
+			return input.Skip(input.Count - count);
 		}
 
 		public static T PopOrDefault<T>(this Stack<T> stack)
@@ -100,28 +124,17 @@ namespace ICSharpCode.Decompiler.Util
 			return result;
 		}
 
-		public static U[] SelectReadOnlyArray<T, U>(this IReadOnlyCollection<T> collection, Func<T, U> func)
-		{
-			U[] result = new U[collection.Count];
-			int index = 0;
-			foreach (T item in (IEnumerable<T>)collection)
-			{
-				result[index++] = func(item);
-			}
-			return result;
-		}
-
-
 		/// <summary>
 		/// Equivalent to <code>collection.Select(func).ToArray()</code>, but more efficient as it makes
 		/// use of the input collection's known size.
 		/// </summary>
-		public static U[] SelectArray<T, U>(this IReadOnlyCollection<T> collection, Func<T, U> func)
+		public static U[] SelectReadOnlyArray<T, U>(this IReadOnlyCollection<T> collection, Func<T, U> func)
 		{
 			U[] result = new U[collection.Count];
 			int index = 0;
-			foreach (var element in collection) {
-				result[index++] = func(element);
+			foreach (T item in collection)
+			{
+				result[index++] = func(item);
 			}
 			return result;
 		}
@@ -170,8 +183,17 @@ namespace ICSharpCode.Decompiler.Util
 		public static IEnumerable<U> SelectWithIndex<T, U>(this IEnumerable<T> source, Func<int, T, U> func)
 		{
 			int index = 0;
-			foreach	(var element in source)
+			foreach (var element in source)
 				yield return func(index++, element);
+		}
+
+		public static IEnumerable<(int, T)> WithIndex<T>(this ICollection<T> source)
+		{
+			int index = 0;
+			foreach (var item in source) {
+				yield return (index, item);
+				index++;
+			}
 		}
 
 		/// <summary>

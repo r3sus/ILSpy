@@ -37,7 +37,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public ICompilation Compilation { get; }
 		internal readonly ModuleDef metadata;
 		readonly TypeSystemOptions options;
-		internal readonly TypeProvider TypeProvider;
 
 		readonly MetadataNamespace rootNamespace;
 		readonly MetadataTypeDefinition[] typeDefs;
@@ -50,9 +49,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			this.Compilation = compilation;
 			this.PEFile = peFile;
-			this.metadata = peFile.Metadata;
+			this.metadata = peFile.Module;
 			this.options = options;
-			this.TypeProvider = new TypeProvider(this);
 
 			// assembly metadata
 			if (metadata.Assembly != null) {
@@ -153,7 +151,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (metadata.Assembly != null) {
 				var list = new List<string>();
 				foreach (var attr in metadata.Assembly.CustomAttributes) {
-					if (attr.IsKnownAttribute(metadata, KnownAttribute.InternalsVisibleTo)) {
+					if (attr.IsKnownAttribute(KnownAttribute.InternalsVisibleTo)) {
 						if (attr.ConstructorArguments.Count == 1) {
 							if (attr.ConstructorArguments[0].Value is UTF8String s) {
 								list.Add(s);
@@ -283,18 +281,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			IType ty;
 			switch (typeRefDefSpec.MDToken.Table) {
 				case Table.TypeDef:
-					ty = TypeProvider.GetTypeFromDefinition(metadata, (TypeDef)typeRefDefSpec, 0);
+					ty =((TypeDef)typeRefDefSpec).DecodeSignature(this, new GenericContext());
 					break;
 				case Table.TypeRef:
-					ty = TypeProvider.GetTypeFromReference(metadata, (TypeRef)typeRefDefSpec, 0);
+					ty = ((TypeRef)typeRefDefSpec).DecodeSignature(this, new GenericContext());
 					break;
 				case Table.TypeSpec:
 					if (typeRefDefSpec is TypeSpec) {
 						var typeSpec = ((TypeSpec)typeRefDefSpec);
-						ty = typeSpec.DecodeSignature(TypeProvider, context);
+						ty = typeSpec.DecodeSignature(this, context);
 					} else {
 						var typeSpec = ((TypeSig)typeRefDefSpec);
-						ty = typeSpec.DecodeSignature(TypeProvider, context);
+						ty = typeSpec.DecodeSignature(this, context);
 					}
 					break;
 				case Table.ExportedType:
@@ -351,7 +349,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		IMethod ResolveMethodSpecification(MethodSpec methodSpec, GenericContext context, bool expandVarArgs)
 		{
-			var methodTypeArgs = methodSpec.DecodeSignature(TypeProvider, context)
+			var methodTypeArgs = methodSpec.DecodeSignature(this, context)
 										   .SelectReadOnlyArray(IntroduceTupleTypes);
 			IMethod method;
 			if (methodSpec.Method.MDToken.Table == Table.Method) {
@@ -404,16 +402,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					// Determine the expected parameters from the signature:
 					ImmutableArray<IType> parameterTypes;
 					if (memberRef.CallingConvention == CallingConvention.VarArg) {
-						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(TypeProvider, vaRAgCtx))
+						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 							.Concat(new[] { SpecialType.ArgList })
 							.ToImmutableArray();
 					} else {
-						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(TypeProvider, vaRAgCtx))
+						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 												  .ToImmutableArray();
 					}
 					// Search for the matching method:
 					method = null;
-					var returnType = memberRef.MethodSig.RetType.DecodeSignature(TypeProvider, vaRAgCtx);
+					var returnType = memberRef.MethodSig.RetType.DecodeSignature(this, vaRAgCtx);
 					foreach (var m in methods) {
 						if (m.TypeParameters.Count != ((dnlib.DotNet.IMethod)memberRef).NumberOfGenericParameters)
 							continue;
@@ -426,7 +424,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					method = null;
 				}
 				if (method == null) {
-					var param = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(TypeProvider, vaRAgCtx))
+					var param = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 										 .ToList();
 					method = CreateFakeMethod(declaringType, name, !memberRef.HasThis, declaringType,
 						((dnlib.DotNet.IMethod)memberRef).NumberOfGenericParameters, param);
@@ -437,7 +435,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 			if (expandVarArgs && memberRef.CallingConvention == CallingConvention.VarArg) {
 				method = new VarArgInstanceMethod(method, memberRef.MethodSig.ParamsAfterSentinel is null ? new List<IType>() :
-					memberRef.MethodSig.ParamsAfterSentinel.Select(x => x.DecodeSignature(TypeProvider, vaRAgCtx)));
+					memberRef.MethodSig.ParamsAfterSentinel.Select(x => x.DecodeSignature(this, vaRAgCtx)));
 			}
 			return method;
 		}
@@ -555,7 +553,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var declaringTypeDefinition = declaringType.GetDefinition();
 			string name = memberRef.Name;
 			// field signature is for the definition, not the generic instance
-			var signature = memberRef.FieldSig.Type.DecodeSignature(TypeProvider,
+			var signature = memberRef.FieldSig.Type.DecodeSignature(this,
 				new GenericContext(declaringTypeDefinition?.TypeParameters));
 			// 'f' in the predicate is also the definition, even if declaringType is a ParameterizedType
 			var field = declaringType.GetFields(f => f.Name == name && CompareTypes(f.ReturnType, signature),
@@ -618,7 +616,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		IType ResolveForwardedType(ExportedType forwarder)
 		{
 			IModule module = ResolveModule(forwarder);
-			var typeName = forwarder.GetFullTypeName(metadata);
+			var typeName = forwarder.GetFullTypeName();
 			if (module == null)
 				return new UnknownType(typeName);
 			using (var busyLock = BusyManager.Enter(this)) {

@@ -74,7 +74,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return $"{propertyHandle.MDToken.Raw:X8} {DeclaringType?.ReflectionName}.{Name}";
 		}
 
-		public dnlib.DotNet.IMDTokenProvider MetadataToken => propertyHandle;
+		public IMDTokenProvider MetadataToken => propertyHandle;
 		public string Name => name;
 
 		public bool CanGet => getter != null;
@@ -98,7 +98,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var gCtx = new GenericContext(DeclaringType.TypeParameters);
 				foreach (Parameter par in propertyHandle.GetParameters()) {
 					if (par.IsNormalMethodParameter) {
-						var deco = par.Type.DecodeSignature(module.TypeProvider, gCtx);
+						var deco = par.Type.DecodeSignature(module, gCtx);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
 							par.ParamDef, module.metadata, module.TypeSystemOptions);
@@ -114,7 +114,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var returnType = LazyInit.VolatileRead(ref this.returnType);
 				if (returnType != null)
 					return returnType;
-				var deocded = propertyHandle.PropertySig.RetType.DecodeSignature(module.TypeProvider,
+				var deocded = propertyHandle.PropertySig.RetType.DecodeSignature(module,
 					new GenericContext(DeclaringType.TypeParameters));
 				var ret = ApplyAttributeTypeVisitor.ApplyAttributesToType(deocded,
 					module.Compilation, propertyHandle, module.metadata, module.TypeSystemOptions);

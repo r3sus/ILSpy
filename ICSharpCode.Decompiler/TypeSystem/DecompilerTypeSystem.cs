@@ -109,7 +109,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				throw new ArgumentNullException(nameof(mainModule));
 			// Load referenced assemblies and type-forwarder references.
 			// This is necessary to make .NET Core/PCL binaries work better.
-			var moduleDefinition = mainModule.Metadata;
+			var moduleDefinition = mainModule.Module;
 			// Load referenced assemblies and type-forwarder references.
 			// This is necessary to make .NET Core/PCL binaries work better.
 			var referencedAssemblies = new List<PEFile>();

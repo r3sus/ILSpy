@@ -54,19 +54,14 @@ namespace ICSharpCode.ILSpy.TreeNodes.Analyzer
 		private IEnumerable<AnalyzerTreeNode> FindReferencesInType(TypeDef type)
 		{
 			AnalyzerTreeNode newNode = null;
-			try {
-				if (!TypesHierarchyHelpers.IsBaseType(analyzedMethod.DeclaringType, type, resolveTypeArguments: false))
-					yield break;
+			if (!TypesHierarchyHelpers.IsBaseType(analyzedMethod.DeclaringType, type, resolveTypeArguments: false))
+				yield break;
 
-				foreach (MethodDef method in type.Methods) {
-					if (TypesHierarchyHelpers.IsBaseMethod(analyzedMethod, method)) {
-						bool hidesParent = !method.IsVirtual ^ method.IsNewSlot;
-						newNode = new AnalyzedMethodTreeNode(method, hidesParent ? "(hides) " : "");
-					}
+			foreach (MethodDef method in type.Methods) {
+				if (TypesHierarchyHelpers.IsBaseMethod(analyzedMethod, method)) {
+					bool hidesParent = !method.IsVirtual ^ method.IsNewSlot;
+					newNode = new AnalyzedMethodTreeNode(method, hidesParent ? "(hides) " : "");
 				}
-			}
-			catch (ReferenceResolvingException) {
-				// ignore this type definition. maybe add a notification about such cases.
 			}
 
 			if (newNode != null) {

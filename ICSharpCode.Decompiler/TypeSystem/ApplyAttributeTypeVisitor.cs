@@ -50,7 +50,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (attributes != null) {
 				foreach (var attr in attributes.CustomAttributes) {
 					var attrType = attr.AttributeType;
-					if (useDynamicType && attrType.IsKnownType(metadata, KnownAttribute.Dynamic)) {
+					if (useDynamicType && attrType.IsKnownType(KnownAttribute.Dynamic)) {
 						hasDynamicAttribute = true;
 						if (attr.ConstructorArguments.Count == 1) {
 							var arg = attr.ConstructorArguments[0];
@@ -59,7 +59,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 								dynamicAttributeData = values.SelectArray(v => (bool)v.Value);
 							}
 						}
-					} else if (useTupleTypes && attrType.IsKnownType(metadata, KnownAttribute.TupleElementNames)) {
+					} else if (useTupleTypes && attrType.IsKnownType(KnownAttribute.TupleElementNames)) {
 						if (attr.ConstructorArguments.Count == 1) {
 							var arg = attr.ConstructorArguments[0];
 							if (arg.Value is IList<CAArgument> values && values.All(v => v.Value is UTF8String || v.Value == null)) {

@@ -167,7 +167,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		private IType DecodeTypeAndVolatileFlag()
 		{
 			var metadata = module.metadata;
-			var ty = handle.FieldType.DecodeSignature(module.TypeProvider, new GenericContext(DeclaringType?.TypeParameters));
+			var ty = handle.FieldType.DecodeSignature(module, new GenericContext(DeclaringType?.TypeParameters));
 			if (ty is ModifiedType mod && mod.Modifier.Name == "IsVolatile" && mod.Modifier.Namespace == "System.Runtime.CompilerServices") {
 				Volatile.Write(ref this.isVolatile, true);
 				ty = mod.ElementType;
@@ -199,7 +199,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var metadata = module.metadata;
 				if (IsDecimalConstant) {
 					foreach (var attribute in handle.CustomAttributes) {
-						if (attribute.IsKnownAttribute(metadata, KnownAttribute.DecimalConstant)) {
+						if (attribute.IsKnownAttribute(KnownAttribute.DecimalConstant)) {
 							val = TryDecodeDecimalConstantAttribute(attribute);
 						}
 					}

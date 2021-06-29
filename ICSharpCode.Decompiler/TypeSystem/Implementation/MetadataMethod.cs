@@ -160,7 +160,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				List<IParameter> param = new List<IParameter>();
 				foreach (Parameter par in handle.Parameters) {
 					if (par.IsNormalMethodParameter) {
-						var deco = par.Type.DecodeSignature(module.TypeProvider, genericContext);
+						var deco = par.Type.DecodeSignature(module, genericContext);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
 							par.ParamDef, module.metadata, module.TypeSystemOptions);
@@ -183,7 +183,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return returnType;
 
 				var genericContext = new GenericContext(DeclaringType.TypeParameters, this.TypeParameters);
-				var sig = handle.ReturnType.DecodeSignature(module.TypeProvider, genericContext);
+				var sig = handle.ReturnType.DecodeSignature(module, genericContext);
 
 				var retType = ApplyAttributeTypeVisitor.ApplyAttributesToType(sig,
 					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.TypeSystemOptions);

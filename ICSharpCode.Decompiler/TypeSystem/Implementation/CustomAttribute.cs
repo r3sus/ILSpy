@@ -37,7 +37,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		// lazy-loaded:
 		CustomAttributeValue<IType> value;
 		bool valueDecoded;
-		bool hasDecodeErrors;
 
 		internal CustomAttribute(MetadataModule module, IMethod attrCtor, dnlib.DotNet.CustomAttribute handle)
 		{
@@ -97,10 +96,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		CustomAttributeTypedArgument<IType> Convert(CAArgument argument)
 		{
-			var convertedType = argument.Type.DecodeSignature(module.TypeProvider, new GenericContext());
+			var convertedType = argument.Type.DecodeSignature(module, new GenericContext());
 			if (argument.Value is TypeSig ts) {
 				return new CustomAttributeTypedArgument<IType>(convertedType,
-					ts.DecodeSignature(module.TypeProvider, new GenericContext()));
+					ts.DecodeSignature(module, new GenericContext()));
 			}
 			if (argument.Value is IList<CAArgument> list) {
 				List<CustomAttributeTypedArgument<IType>> converted = new List<CustomAttributeTypedArgument<IType>>();

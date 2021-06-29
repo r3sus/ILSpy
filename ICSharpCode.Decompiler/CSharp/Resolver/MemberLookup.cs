@@ -47,13 +47,13 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		#endregion
 
 		readonly ITypeDefinition currentTypeDefinition;
-		readonly IModule currentAssembly;
+		readonly IModule currentModule;
 		readonly bool isInEnumMemberInitializer;
 
-		public MemberLookup(ITypeDefinition currentTypeDefinition, IModule currentAssembly, bool isInEnumMemberInitializer = false)
+		public MemberLookup(ITypeDefinition currentTypeDefinition, IModule currentModule, bool isInEnumMemberInitializer = false)
 		{
 			this.currentTypeDefinition = currentTypeDefinition;
-			this.currentAssembly = currentAssembly;
+			this.currentModule = currentModule;
 			this.isInEnumMemberInitializer = isInEnumMemberInitializer;
 		}
 
@@ -126,9 +126,9 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 
-		bool IsInternalAccessible(IModule assembly)
+		bool IsInternalAccessible(IModule module)
 		{
-			return assembly != null && currentAssembly != null && assembly.InternalsVisibleTo(currentAssembly);
+			return module != null && currentModule != null && module.InternalsVisibleTo(currentModule);
 		}
 
 		bool IsProtectedAccessible(bool allowProtectedAccess, IEntity entity)

@@ -276,7 +276,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public IEnumerable<IAttribute> GetAttributes()
 		{
 			var b = new AttributeListBuilder(module);
-			var metadata = module.metadata;
 
 			// SerializableAttribute
 			if ((handle.Attributes & TypeAttributes.Serializable) != 0)
@@ -341,9 +340,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				string defaultMemberName = LazyInit.VolatileRead(ref this.defaultMemberName);
 				if (defaultMemberName != null)
 					return defaultMemberName;
-				var metadata = module.metadata;
 				foreach (var a in handle.CustomAttributes) {
-					if (!a.IsKnownAttribute(metadata, KnownAttribute.DefaultMember))
+					if (!a.IsKnownAttribute(KnownAttribute.DefaultMember))
 						continue;
 					if (a.ConstructorArguments.Count == 1 && a.ConstructorArguments[0].Value is UTF8String name) {
 						defaultMemberName = name;
@@ -390,10 +388,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get {
 				if (DeclaringType != null)
 					return DeclaringType.FullName + "." + Name;
-				else if (!string.IsNullOrEmpty(this.Namespace))
+				if (!string.IsNullOrEmpty(this.Namespace))
 					return this.Namespace + "." + Name;
-				else
-					return Name;
+				return Name;
 			}
 		}
 

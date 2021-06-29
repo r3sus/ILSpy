@@ -198,12 +198,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var securityActionType = module.Compilation.FindType(new TopLevelTypeName("System.Security.Permissions", "SecurityAction"));
 			var securityAction = new CustomAttributeTypedArgument<IType>(securityActionType, (int)secDecl.Action);
 
-			var reader = new BlobReader(secDecl.GetBlob(), null);
-			if (reader.ReadByte() == '.') {
+			if (secDecl.GetBlob()[0] == '.') {
 				// binary attribute
-				uint attributeCount = reader.ReadCompressedUInt32();
-				for (int i = 0; i < attributeCount; i++) {
-					Add(ReadBinarySecurityAttribute(secDecl.SecurityAttributes[i], securityAction));
+				foreach (var secAttr in secDecl.SecurityAttributes) {
+					Add(ReadBinarySecurityAttribute(secAttr, securityAction));
 				}
 			} else {
 				// for backward compatibility with .NET 1.0: XML-encoded attribute
@@ -215,7 +213,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		private IAttribute ReadBinarySecurityAttribute(SecurityAttribute secDecl, CustomAttributeTypedArgument<IType> securityAction)
 		{
-			var attributeType =secDecl.AttributeType.DecodeSignature(module.TypeProvider, new GenericContext());
+			var attributeType =secDecl.AttributeType.DecodeSignature(module, new GenericContext());
 
 			List<CustomAttributeNamedArgument<IType>> named = new List<CustomAttributeNamedArgument<IType>>();
 			foreach (CANamedArgument namedArgument in secDecl.NamedArguments) {
@@ -224,7 +222,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					namedArgument.IsField
 						? CustomAttributeNamedArgumentKind.Field
 						: CustomAttributeNamedArgumentKind.Property,
-					namedArgument.Type.DecodeSignature(module.TypeProvider, new GenericContext()), converted));
+					converted.Type, converted.Value));
 			}
 
 			return new DefaultAttribute(
@@ -235,10 +233,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		CustomAttributeTypedArgument<IType> Convert(CAArgument argument)
 		{
-			var convertedType = argument.Type.DecodeSignature(module.TypeProvider, new GenericContext());
+			var convertedType = argument.Type.DecodeSignature(module, new GenericContext());
 			if (argument.Value is TypeSig ts) {
 				return new CustomAttributeTypedArgument<IType>(convertedType,
-					ts.DecodeSignature(module.TypeProvider, new GenericContext()));
+					ts.DecodeSignature(module, new GenericContext()));
 			}
 			if (argument.Value is IList<CAArgument> list) {
 				List<CustomAttributeTypedArgument<IType>> converted = new List<CustomAttributeTypedArgument<IType>>();

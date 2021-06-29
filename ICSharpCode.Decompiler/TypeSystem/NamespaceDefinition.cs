@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Threading;
 using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler
 {
-	sealed class NamespaceDefinition
+	internal sealed class NamespaceDefinition
 	{
 		internal readonly string FullName;
 		internal readonly string Name;
 		internal readonly List<NamespaceDefinition> Children = new List<NamespaceDefinition>();
 		internal readonly List<TypeDef> Types = new List<TypeDef>();
 
-		public NamespaceDefinition(string fullName, string name)
+		private NamespaceDefinition(string fullName, string name)
 		{
 			this.FullName = fullName;
 			this.Name = name;

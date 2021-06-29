@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using dnlib.DotNet;
@@ -10,40 +9,40 @@ namespace ICSharpCode.Decompiler.TypeSystem
 {
 	internal static class SignatureExtensions
 	{
-		internal static IType DecodeSignature(this TypeSpec spec, TypeProvider provider, GenericContext context)
+		internal static IType DecodeSignature(this TypeSpec spec, MetadataModule module, GenericContext context)
 		{
-			return spec?.TypeSig.DecodeSignature(provider, context);
+			return spec?.TypeSig.DecodeSignature(module, context);
 		}
 
-		internal static IType DecodeSignature(this TypeSig sig, TypeProvider provider, GenericContext context)
+		internal static IType DecodeSignature(this TypeSig sig, MetadataModule module, GenericContext context)
 		{
 			if (sig is null)
 				return null;
 
 			switch (sig) {
 				case CorLibTypeSig corLibTypeSig:
-					return provider.Compilation.FindType(corLibTypeSig.ElementType.ToKnownTypeCode());
+					return module.Compilation.FindType(corLibTypeSig.ElementType.ToKnownTypeCode());
 				case GenericMVar mVar:
 					return context.GetMethodTypeParameter((int)mVar.Number);
 				case GenericVar tVar:
 					return context.GetClassTypeParameter((int)tVar.Number);
 				case FnPtrSig _:
-					return provider.Compilation.FindType(KnownTypeCode.IntPtr);
+					return module.Compilation.FindType(KnownTypeCode.IntPtr);
 				case GenericInstSig instSig:
-					return new ParameterizedType(instSig.GenericType.DecodeSignature(provider, context),
-						instSig.GenericArguments.Select(x => x.DecodeSignature(provider, context)));
+					return new ParameterizedType(instSig.GenericType.DecodeSignature(module, context),
+						instSig.GenericArguments.Select(x => x.DecodeSignature(module, context)));
 				case ByRefSig byRefSig:
-					return new ByReferenceType(byRefSig.Next.DecodeSignature(provider, context));
+					return new ByReferenceType(byRefSig.Next.DecodeSignature(module, context));
 				case PinnedSig pinnedSig:
-					return new PinnedType(pinnedSig.Next.DecodeSignature(provider, context));
+					return new PinnedType(pinnedSig.Next.DecodeSignature(module, context));
 				case CModOptSig cModOptSig:
-					return new ModifiedType(cModOptSig.Next.DecodeSignature(provider, context), cModOptSig.Modifier.DecodeSignature(provider, context), false);
+					return new ModifiedType(cModOptSig.Next.DecodeSignature(module, context), cModOptSig.Modifier.DecodeSignature(module, context), false);
 				case CModReqdSig cModReqdSig:
-					return new ModifiedType(cModReqdSig.Next.DecodeSignature(provider, context), cModReqdSig.Modifier.DecodeSignature(provider, context), true);
+					return new ModifiedType(cModReqdSig.Next.DecodeSignature(module, context), cModReqdSig.Modifier.DecodeSignature(module, context), true);
 				case PtrSig ptrSig:
-					return new PointerType(ptrSig.Next.DecodeSignature(provider, context));
+					return new PointerType(ptrSig.Next.DecodeSignature(module, context));
 				case ArraySigBase arraySigBase:
-					return new ArrayType(provider.Compilation, arraySigBase.Next.DecodeSignature(provider, context), (int)arraySigBase.Rank);
+					return new ArrayType(module.Compilation, arraySigBase.Next.DecodeSignature(module, context), (int)arraySigBase.Rank);
 				case ClassOrValueTypeSig classOrValueTypeSig:
 					ThreeState isVT = ThreeState.Unknown;
 					if (classOrValueTypeSig is ClassSig)
@@ -51,27 +50,27 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					else if (classOrValueTypeSig is ValueTypeSig)
 						isVT = ThreeState.Yes;
 
-					return classOrValueTypeSig.TypeDefOrRef.DecodeSignature(provider, context, isVT);
+					return classOrValueTypeSig.TypeDefOrRef.DecodeSignature(module, context, isVT);
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
 		}
 
-		internal static IType DecodeSignature(this ITypeDefOrRef typeDefOrRef, TypeProvider provider, GenericContext context, ThreeState isVT = ThreeState.Unknown)
+		internal static IType DecodeSignature(this ITypeDefOrRef typeDefOrRef, MetadataModule module, GenericContext context, ThreeState isVT = ThreeState.Unknown)
 		{
 			if (typeDefOrRef is null)
 				return null;
 
 			if (typeDefOrRef is TypeSpec spec) {
-				return spec.DecodeSignature(provider, context);
+				return spec.DecodeSignature(module, context);
 			}
 			CorLibTypeSig corLibTypeSig = typeDefOrRef.Module?.CorLibTypes.GetCorLibTypeSig(typeDefOrRef);
 			if (corLibTypeSig != null) {
-				return corLibTypeSig.DecodeSignature(provider, context);
+				return corLibTypeSig.DecodeSignature(module, context);
 			}
 
 			if (typeDefOrRef is TypeDef def) {
-				var resolved = provider.Module.GetDefinition(def);
+				var resolved = module.GetDefinition(def);
 				return resolved;
 			} else {
 				bool? isReferenceType;
@@ -81,18 +80,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					isReferenceType = null;
 				var gctr = new GetClassTypeReference(typeDefOrRef.GetFullTypeName(),
 					new DefaultAssemblyReference(typeDefOrRef.Scope.ScopeName), isReferenceType);
-				return gctr.Resolve(provider.Module != null
-					? new SimpleTypeResolveContext(provider.Module)
-					: new SimpleTypeResolveContext(provider.Compilation));
+				return gctr.Resolve(new SimpleTypeResolveContext(module));
 			}
 		}
 
-		internal static ImmutableArray<IType> DecodeSignature(this MethodSpec spec, TypeProvider provider, GenericContext context)
+		internal static ImmutableArray<IType> DecodeSignature(this MethodSpec spec, MetadataModule module, GenericContext context)
 		{
 			if (spec is null || spec.GenericInstMethodSig is null)
 				return ImmutableArray<IType>.Empty;
 
-			return spec.GenericInstMethodSig.GenericArguments.Select(sig => sig.DecodeSignature(provider, context))
+			return spec.GenericInstMethodSig.GenericArguments.Select(sig => sig.DecodeSignature(module, context))
 					   .ToImmutableArray();
 		}
 	}

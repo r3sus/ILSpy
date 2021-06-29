@@ -29,36 +29,6 @@ namespace ICSharpCode.Decompiler
 	/// </summary>
 	public static class CecilExtensions
 	{
-		#region GetPushDelta / GetPopDelta
-		public static int GetPushDelta(this Instruction instruction)
-		{
-			instruction.CalculateStackUsage(out int push, out int _);
-			return push;
-		}
-
-		public static int? GetPopDelta(this Instruction instruction, MethodDef methodDef)
-		{
-			instruction.CalculateStackUsage(methodDef.HasReturnType, out int _, out int pops);
-			return pops;
-		}
-
-		/// <summary>
-		/// checks if the given TypeReference is one of the following types:
-		/// [sbyte, short, int, long, IntPtr]
-		/// </summary>
-		public static bool IsSignedIntegralType(this TypeSig type)
-		{
-			if (type == null)
-				return false;
-			return type.ElementType == ElementType.I1 ||
-				   type.ElementType == ElementType.I2 ||
-				   type.ElementType == ElementType.I4 ||
-				   type.ElementType == ElementType.I8 ||
-				   type.ElementType == ElementType.I;
-		}
-
-		#endregion
-
 		/// <summary>
 		/// Gets the (exclusive) end offset of this instruction.
 		/// </summary>
@@ -70,11 +40,6 @@ namespace ICSharpCode.Decompiler
 		}
 
 		public static string OffsetToString(int offset)
-		{
-			return string.Format("IL_{0:x4}", offset);
-		}
-
-		public static string OffsetToString(long offset)
 		{
 			return string.Format("IL_{0:x4}", offset);
 		}
@@ -110,15 +75,7 @@ namespace ICSharpCode.Decompiler
 				return null;
 		}
 
-		public static FieldDef ResolveFieldWithinSameModule(this MemberRef field)
-		{
-			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
-				return field.ResolveField();
-			else
-				return null;
-		}
-
-		public static FieldDef ResolveFieldWithinSameModule(this dnlib.DotNet.IField field)
+		public static FieldDef ResolveFieldWithinSameModule(this IField field)
 		{
 			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
 				return field is FieldDef ? (FieldDef)field : ((MemberRef)field).ResolveField();
@@ -126,7 +83,7 @@ namespace ICSharpCode.Decompiler
 				return null;
 		}
 
-		public static MethodDef ResolveMethodWithinSameModule(this dnlib.DotNet.IMethod method)
+		public static MethodDef ResolveMethodWithinSameModule(this IMethod method)
 		{
 			if (method is MethodSpec)
 				method = ((MethodSpec)method).Method;
@@ -136,7 +93,7 @@ namespace ICSharpCode.Decompiler
 				return null;
 		}
 
-		public static MethodDef Resolve(this dnlib.DotNet.IMethod method)
+		public static MethodDef Resolve(this IMethod method)
 		{
 			if (method is MethodSpec)
 				method = ((MethodSpec)method).Method;
@@ -146,7 +103,7 @@ namespace ICSharpCode.Decompiler
 				return (MethodDef)method;
 		}
 
-		public static FieldDef Resolve(this dnlib.DotNet.IField field)
+		public static FieldDef Resolve(this IField field)
 		{
 			if (field is MemberRef)
 				return ((MemberRef)field).ResolveField();
@@ -154,12 +111,12 @@ namespace ICSharpCode.Decompiler
 				return (FieldDef)field;
 		}
 
-		public static TypeDef Resolve(this dnlib.DotNet.IType type)
+		public static TypeDef Resolve(this IType type)
 		{
 			return type == null ? null : type.GetScopeTypeDefOrRef().ResolveTypeDef();
 		}
 
-		public static ITypeDefOrRef GetScopeTypeDefOrRef(this dnlib.DotNet.IType type) {
+		public static ITypeDefOrRef GetScopeTypeDefOrRef(this IType type) {
 			var t = type.GetScopeType();
 			if (t is ITypeDefOrRef tdr)
 				return tdr;
@@ -168,7 +125,7 @@ namespace ICSharpCode.Decompiler
 			return null;
 		}
 
-		public static dnlib.DotNet.IType GetScopeType(this dnlib.DotNet.IType type) {
+		public static IType GetScopeType(this IType type) {
 			if (type is TypeDef td)
 				return td;
 			if (type is TypeRef tr)
@@ -324,7 +281,7 @@ namespace ICSharpCode.Decompiler
 			return new TypeSystem.FullTypeName(typeDef.ReflectionFullName);
 		}
 
-		public static TypeSystem.FullTypeName GetFullTypeName(this ITypeDefOrRef typeDef)
+		public static TypeSystem.FullTypeName GetFullTypeName(this IType typeDef)
 		{
 			return new TypeSystem.FullTypeName(typeDef.ReflectionFullName);
 		}
@@ -450,6 +407,69 @@ namespace ICSharpCode.Decompiler
 				return ((IFullName)scope).Name;
 			else
 				return scope.ScopeName;	// Shouldn't be reached
+		}
+
+		internal static bool HasKnownAttribute(this CustomAttributeCollection customAttributes, ModuleDef metadata, TypeSystem.KnownAttribute type)
+		{
+			foreach (var customAttribute in customAttributes) {
+				if (customAttribute.IsKnownAttribute(type))
+					return true;
+			}
+			return false;
+		}
+
+		internal static bool IsKnownAttribute(this CustomAttribute attr, TypeSystem.KnownAttribute attrType)
+		{
+			return attr.AttributeType.IsKnownType(attrType);
+		}
+
+		internal static bool IsKnownType(this ITypeDefOrRef handle, TypeSystem.KnownAttribute knownType)
+		{
+			return handle.GetFullTypeName() == TypeSystem.KnownAttributes.GetTypeName(knownType);
+		}
+
+		public static TypeSystem.KnownTypeCode ToKnownTypeCode(this ElementType typeCode)
+		{
+			switch (typeCode) {
+				case ElementType.Boolean:
+					return TypeSystem.KnownTypeCode.Boolean;
+				case ElementType.U1:
+					return TypeSystem.KnownTypeCode.Byte;
+				case ElementType.I1:
+					return TypeSystem.KnownTypeCode.SByte;
+				case ElementType.Char:
+					return TypeSystem.KnownTypeCode.Char;
+				case ElementType.I2:
+					return TypeSystem.KnownTypeCode.Int16;
+				case ElementType.U2:
+					return TypeSystem.KnownTypeCode.UInt16;
+				case ElementType.I4:
+					return TypeSystem.KnownTypeCode.Int32;
+				case ElementType.U4:
+					return TypeSystem.KnownTypeCode.UInt32;
+				case ElementType.I8:
+					return TypeSystem.KnownTypeCode.Int64;
+				case ElementType.U8:
+					return TypeSystem.KnownTypeCode.UInt64;
+				case ElementType.R4:
+					return TypeSystem.KnownTypeCode.Single;
+				case ElementType.R8:
+					return TypeSystem.KnownTypeCode.Double;
+				case ElementType.I:
+					return TypeSystem.KnownTypeCode.IntPtr;
+				case ElementType.U:
+					return TypeSystem.KnownTypeCode.UIntPtr;
+				case ElementType.Object:
+					return TypeSystem.KnownTypeCode.Object;
+				case ElementType.String:
+					return TypeSystem.KnownTypeCode.String;
+				case ElementType.TypedByRef:
+					return TypeSystem.KnownTypeCode.TypedReference;
+				case ElementType.Void:
+					return TypeSystem.KnownTypeCode.Void;
+				default:
+					return TypeSystem.KnownTypeCode.None;
+			}
 		}
 	}
 }

@@ -80,7 +80,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 			public FindRequiredImports(TransformContext context)
 			{
-				this.currentNamespace = context.DecompiledTypeDefinition?.Namespace ?? string.Empty;
+				this.currentNamespace = context.CurrentTypeDefinition?.Namespace ?? string.Empty;
 			}
 
 			bool IsParentOfCurrentNamespace(string ns)
@@ -125,12 +125,12 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			public FullyQualifyAmbiguousTypeNamesVisitor(TransformContext context, UsingScope usingScope)
 			{
 				this.context = new Stack<CSharpTypeResolveContext>();
-				if (!string.IsNullOrEmpty(context.DecompiledTypeDefinition?.Namespace)) {
-					foreach (string ns in context.DecompiledTypeDefinition.Namespace.Split('.')) {
+				if (!string.IsNullOrEmpty(context.CurrentTypeDefinition?.Namespace)) {
+					foreach (string ns in context.CurrentTypeDefinition.Namespace.Split('.')) {
 						usingScope = new UsingScope(usingScope, ns);
 					}
 				}
-				var currentContext = new CSharpTypeResolveContext(context.TypeSystem.MainModule, usingScope.Resolve(context.TypeSystem), context.DecompiledTypeDefinition);
+				var currentContext = new CSharpTypeResolveContext(context.TypeSystem.MainModule, usingScope.Resolve(context.TypeSystem), context.CurrentTypeDefinition);
 				this.context.Push(currentContext);
 				this.astBuilder = CreateAstBuilder(currentContext);
 			}

@@ -348,7 +348,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				acrr.SizeArguments.Count == 1 &&
 				acrr.SizeArguments[0].IsCompileTimeConstant &&
 				acrr.SizeArguments[0].ConstantValue is int length) {
-				var expandedParameters = expectedParameters.Take(expectedParameters.Count - 1).ToList();
+				var expandedParameters = new List<IParameter>(expectedParameters);
 				var expandedArguments = new List<TranslatedExpression>(arguments);
 				if (length > 0) {
 					var arrayElements = ((ArrayCreateExpression)arg.Expression).Initializer.Elements.ToArray();
@@ -501,7 +501,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				return true;
 			// always use unspecialized member, otherwise type inference fails
 			method = (IMethod)method.MemberDefinition;
-			typeInference.InferTypeArguments(method.TypeParameters, arguments, method.Parameters.SelectArray(p => p.Type),
+			typeInference.InferTypeArguments(method.TypeParameters, arguments, method.Parameters.SelectReadOnlyArray(p => p.Type),
 				out bool success);
 			return success;
 		}
@@ -836,7 +836,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			};
 			bool needsCast = false;
 			ResolveResult result = null;
-			var or = new OverloadResolution(resolver.Compilation, method.Parameters.SelectArray(p => new TypeResolveResult(p.Type)));
+			var or = new OverloadResolution(resolver.Compilation, method.Parameters.SelectReadOnlyArray(p => new TypeResolveResult(p.Type)));
 			if (!requireTarget) {
 				result = resolver.ResolveSimpleName(method.Name, method.TypeArguments, isInvocationTarget: false);
 				if (result is MethodGroupResolveResult mgrr) {
