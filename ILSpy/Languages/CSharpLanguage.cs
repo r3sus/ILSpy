@@ -137,7 +137,7 @@ namespace ICSharpCode.ILSpy
 			CSharpDecompiler decompiler = CreateDecompiler(method.Module, options);
 			if (method.IsConstructor && !method.DeclaringType.IsValueType) {
 				List<dnlib.DotNet.IMemberDef> members = CollectFieldsAndCtors(method.DeclaringType, method.IsStatic);
-				decompiler.AstTransforms.Add(new SelectCtorTransform(decompiler.TypeSystem.Resolve(method)));
+				decompiler.AstTransforms.Add(new SelectCtorTransform(decompiler.TypeSystem.MainModule.ResolveMethod(method, new GenericContext())));
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(members), decompiler.TypeSystem);
 			} else {
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(method), decompiler.TypeSystem);
@@ -212,7 +212,7 @@ namespace ICSharpCode.ILSpy
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(field), decompiler.TypeSystem);
 			} else {
 				List<dnlib.DotNet.IMemberDef> members = CollectFieldsAndCtors(field.DeclaringType, field.IsStatic);
-				decompiler.AstTransforms.Add(new SelectFieldTransform(decompiler.TypeSystem.Resolve(field)));
+				decompiler.AstTransforms.Add(new SelectFieldTransform((IField)decompiler.TypeSystem.MainModule.ResolveEntity(field)));
 				WriteCode(output, options.DecompilerSettings, decompiler.Decompile(members), decompiler.TypeSystem);
 			}
 		}
@@ -518,34 +518,35 @@ namespace ICSharpCode.ILSpy
 
 		public override string GetTooltip(IMemberRef member)
 		{
-			var decompilerTypeSystem = new DecompilerTypeSystem(member.Module);
+			var decompilerTypeSystem = new DecompilerTypeSystem(new PEFile(member.Module));
+			var gCtx = new GenericContext();
 			ISymbol symbol;
 			switch (member) {
 				case dnlib.DotNet.MemberRef memberRef:
 					if (memberRef.IsFieldRef) {
-						symbol = decompilerTypeSystem.Resolve((dnlib.DotNet.IField)memberRef);
+						symbol = decompilerTypeSystem.MainModule.ResolveEntity((dnlib.DotNet.IField)memberRef, gCtx);
 					}
 					else if (memberRef.IsMethodRef) {
-						symbol = decompilerTypeSystem.Resolve((dnlib.DotNet.IMethod)memberRef);
+						symbol = decompilerTypeSystem.MainModule.ResolveMethod((dnlib.DotNet.IMethod)memberRef, gCtx);
 					} else {
 						throw new InvalidOperationException();
 					}
 					if (symbol == null) return base.GetTooltip(member);
 					break;
 				case dnlib.DotNet.IMethod mr:
-					symbol = decompilerTypeSystem.Resolve(mr);
+					symbol = decompilerTypeSystem.MainModule.ResolveMethod(mr, gCtx);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
 				case PropertyDef pr:
-					symbol = decompilerTypeSystem.Resolve(pr);
+					symbol = decompilerTypeSystem.MainModule.ResolveEntity(pr, gCtx);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
 				case EventDef er:
-					symbol = decompilerTypeSystem.Resolve(er);
+					symbol = decompilerTypeSystem.MainModule.ResolveEntity(er, gCtx);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
 				case dnlib.DotNet.IField fr:
-					symbol = decompilerTypeSystem.Resolve(fr);
+					symbol = decompilerTypeSystem.MainModule.ResolveEntity(fr, gCtx);
 					if (symbol == null) return base.GetTooltip(member);
 					break;
 				default:

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -30,7 +30,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 	///  * the usual form looks at an if-else, and runs within the ExpressionTransforms.
 	///  * the NullableLiftingBlockTransform handles the cases where Roslyn generates
 	///    two 'ret' statements for the null/non-null cases of a lifted operator.
-	/// 
+	///
 	/// The transform handles the following languages constructs:
 	///  * lifted conversions
 	///  * lifted unary and binary operators
@@ -435,7 +435,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// Lift a C# comparison.
 		/// This method cannot be used for (in)equality comparisons where both sides are nullable
 		/// (these special cases are handled in LiftCSharpEqualityComparison instead).
-		/// 
+		///
 		/// The output instructions should evaluate to <c>false</c> when any of the <c>nullableVars</c> is <c>null</c>
 		///   (except for newComparisonKind==Inequality, where this case should evaluate to <c>true</c> instead).
 		/// Otherwise, the output instruction should evaluate to the same value as the input instruction.
@@ -523,7 +523,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		#region LiftNormal / DoLift
 		/// <summary>
 		/// Performs nullable lifting.
-		/// 
+		///
 		/// Produces a lifted instruction with semantics equivalent to:
 		///   (v1 != null && ... && vn != null) ? trueInst : falseInst,
 		/// where the v1,...,vn are the <c>this.nullableVars</c>.
@@ -542,7 +542,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			bool isNullCoalescingWithNonNullableFallback = false;
 			if (!MatchNullableCtor(trueInst, out var utype, out var exprToLift)) {
 				isNullCoalescingWithNonNullableFallback = true;
-				utype = context.TypeSystem.Compilation.FindType(trueInst.ResultType.ToKnownTypeCode());
+				utype = context.TypeSystem.FindType(trueInst.ResultType.ToKnownTypeCode());
 				exprToLift = trueInst;
 				if (nullableVars.Count == 1 && exprToLift.MatchLdLoc(nullableVars[0])) {
 					// v.HasValue ? ldloc v : fallback
@@ -637,14 +637,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// Recursive function that lifts the specified instruction.
 		/// The input instruction is expected to a subexpression of the trueInst
 		/// (so that all nullableVars are guaranteed non-null within this expression).
-		/// 
+		///
 		/// Creates a new lifted instruction without modifying the input instruction.
 		/// On success, returns (new lifted instruction, bitset).
 		/// If lifting fails, returns (null, null).
-		/// 
+		///
 		/// The returned bitset specifies which nullableVars were considered "relevant" for this instruction.
 		/// bitSet[i] == true means nullableVars[i] was relevant.
-		/// 
+		///
 		/// The new lifted instruction will have equivalent semantics to the input instruction
 		/// if all relevant variables are non-null [except that the result will be wrapped in a Nullable{T} struct].
 		/// If any relevant variable is null, the new instruction is guaranteed to evaluate to <c>null</c>
@@ -779,7 +779,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		{
 			if (underlyingType == SpecialType.UnknownType)
 				return inst;
-			var nullable = context.TypeSystem.Compilation.FindType(KnownTypeCode.NullableOfT).GetDefinition();
+			var nullable = context.TypeSystem.FindType(KnownTypeCode.NullableOfT).GetDefinition();
 			var ctor = nullable?.Methods.FirstOrDefault(m => m.IsConstructor && m.Parameters.Count == 1);
 			if (ctor != null) {
 				ctor = ctor.Specialize(new TypeParameterSubstitution(new[] { underlyingType }, null));

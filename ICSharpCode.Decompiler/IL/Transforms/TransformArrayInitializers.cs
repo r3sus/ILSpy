@@ -326,7 +326,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			IMember member;
 			if (!call.Arguments[1].MatchLdMemberToken(out member))
 				return false;
-			field = context.TypeSystem.GetCecil(member) as dnlib.DotNet.IField;
+			field = member.MetadataToken as dnlib.DotNet.IField;
 			if (field == null)
 				return false;
 			return true;

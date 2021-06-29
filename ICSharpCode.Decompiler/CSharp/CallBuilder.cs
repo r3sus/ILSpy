@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -113,7 +113,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			int firstParamIndex = (method.IsStatic || callOpCode == OpCode.NewObj) ? 0 : 1;
 			Debug.Assert(firstParamIndex == 0 || argumentToParameterMap == null
 				|| argumentToParameterMap[0] == -1);
-			
+
 			// Translate arguments to the expected parameter types
 			var arguments = new List<TranslatedExpression>(method.Parameters.Count);
 			string[] argumentNames = null;
@@ -242,8 +242,9 @@ namespace ICSharpCode.Decompiler.CSharp
 						// HACK : convert this.Dispose() to ((IDisposable)this).Dispose(), if Dispose is an explicitly implemented interface method.
 						// settings.AlwaysCastTargetsOfExplicitInterfaceImplementationCalls == true is used in Windows Forms' InitializeComponent methods.
 						if (method.IsExplicitInterfaceImplementation && (target.Expression is ThisReferenceExpression || settings.AlwaysCastTargetsOfExplicitInterfaceImplementationCalls)) {
-							var castExpression = new CastExpression(expressionBuilder.ConvertType(method.ImplementedInterfaceMembers[0].DeclaringType), target.Expression);
-							methodName = method.ImplementedInterfaceMembers[0].Name;
+							var interfaceMember = method.ExplicitlyImplementedInterfaceMembers.First();
+							var castExpression = new CastExpression(expressionBuilder.ConvertType(interfaceMember.DeclaringType), target.Expression);
+							methodName = interfaceMember.Name;
 							targetExpr = new MemberReferenceExpression(castExpression, methodName);
 							typeArgumentList = ((MemberReferenceExpression)targetExpr).TypeArguments;
 						}
@@ -251,7 +252,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						targetExpr = new IdentifierExpression(methodName);
 						typeArgumentList = ((IdentifierExpression)targetExpr).TypeArguments;
 					}
-					
+
 					if ((transform & CallTransformation.RequireTypeArguments) != 0 && (!settings.AnonymousTypes || !method.TypeArguments.Any(a => a.ContainsAnonymousType())))
 						typeArgumentList.AddRange(method.TypeArguments.Select(expressionBuilder.ConvertType));
 					var argumentExpressions = GetArgumentExpressions(arguments, argumentNames);
@@ -610,7 +611,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			out IParameterizedMember foundMember)
 		{
 			foundMember = null;
-			var lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentAssembly);
+			var lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentModule);
 			var or = new OverloadResolution(resolver.Compilation,
 				arguments.SelectArray(a => a.ResolveResult),
 				argumentNames: argumentNames,
@@ -673,7 +674,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					return false;
 				foundMember = result.Member;
 			} else {
-				var lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentAssembly);
+				var lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentModule);
 				if (method.AccessorOwner.SymbolKind == SymbolKind.Indexer) {
 					var or = new OverloadResolution(resolver.Compilation,
 						arguments.SelectArray(a => a.ResolveResult),
@@ -737,7 +738,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					break;
 				}
 			}
-			
+
 			var rr = new MemberResolveResult(target.ResolveResult, foundMember);
 
 			if (isSetter) {
@@ -847,7 +848,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			MemberLookup lookup = null;
 			if (requireTarget) {
-				lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentAssembly);
+				lookup = new MemberLookup(resolver.CurrentTypeDefinition, resolver.CurrentTypeDefinition.ParentModule);
 				var rr = lookup.Lookup(target.ResolveResult, method.Name, method.TypeArguments, false) ;
 				needsCast = true;
 				result = rr;

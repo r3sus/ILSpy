@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
@@ -61,9 +63,12 @@ namespace ICSharpCode.Decompiler.Documentation
 				AppendTypeName(b, member.DeclaringType, false);
 				b.Append('.');
 			}
-			if (member.IsExplicitInterfaceImplementation && member.Name.IndexOf('.') < 0 && member.ImplementedInterfaceMembers.Count == 1) {
-				AppendTypeName(b, member.ImplementedInterfaceMembers[0].DeclaringType, true);
-				b.Append('#');
+			if (member.IsExplicitInterfaceImplementation && member.Name.IndexOf('.') < 0) {
+				var arr = member.ExplicitlyImplementedInterfaceMembers.ToImmutableArray();
+				if (arr.Length == 1) {
+					AppendTypeName(b, arr[0].DeclaringType, true);
+					b.Append('#');
+				}
 			}
 			b.Append(member.Name.Replace('.', '#'));
 			IMethod method = member as IMethod;
@@ -88,7 +93,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			return b.ToString();
 		}
 		#endregion
-		
+
 		#region GetTypeName
 		public static string GetTypeName(IType type)
 		{
@@ -98,7 +103,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			AppendTypeName(b, type, false);
 			return b.ToString();
 		}
-		
+
 		static void AppendTypeName(StringBuilder b, IType type, bool explicitInterfaceImpl)
 		{
 			switch (type.Kind) {
@@ -155,7 +160,7 @@ namespace ICSharpCode.Decompiler.Documentation
 					break;
 			}
 		}
-		
+
 		static void AppendTypeParameters(StringBuilder b, IType type, int outerTypeParameterCount, bool explicitInterfaceImpl)
 		{
 			int tpc = type.TypeParameterCount - outerTypeParameterCount;
@@ -177,7 +182,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			}
 		}
 		#endregion
-		
+
 		#region ParseMemberName
 		/// <summary>
 		/// Parse the ID string into a member reference.
@@ -218,7 +223,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			return new IdStringMemberReference(typeReference, typeChar, memberIdString);
 		}
 		#endregion
-		
+
 		#region ParseTypeName
 		/// <summary>
 		/// Parse the ID string type name into a type reference.
@@ -250,7 +255,7 @@ namespace ICSharpCode.Decompiler.Documentation
 				throw new ReflectionNameParseException(pos, "Expected end of type name");
 			return r;
 		}
-		
+
 		static bool IsIDStringSpecialCharacter(char c)
 		{
 			switch (c) {
@@ -270,7 +275,7 @@ namespace ICSharpCode.Decompiler.Documentation
 					return false;
 			}
 		}
-		
+
 		static ITypeReference ParseTypeName(string typeName, ref int pos)
 		{
 			string reflectionTypeName = typeName;
@@ -333,7 +338,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			}
 			return result;
 		}
-		
+
 		static string ReadTypeName(string typeName, ref int pos, bool allowDottedName, out int typeParameterCount, List<ITypeReference> typeArguments)
 		{
 			int startPos = pos;
@@ -366,7 +371,7 @@ namespace ICSharpCode.Decompiler.Documentation
 			return shortTypeName;
 		}
 		#endregion
-		
+
 		#region FindEntity
 		/// <summary>
 		/// Finds the entity in the given type resolve context.

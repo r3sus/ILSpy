@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -48,7 +48,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			this.settings = settings;
 			this.cancellationToken = cancellationToken;
 		}
-		
+
 		public Statement Convert(ILInstruction inst)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
@@ -65,7 +65,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			return new ExpressionStatement(exprBuilder.Translate(inst));
 		}
-		
+
 		protected internal override Statement VisitNop(Nop inst)
 		{
 			var stmt = new EmptyStatement();
@@ -74,7 +74,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			return stmt;
 		}
-		
+
 		protected internal override Statement VisitIfInstruction(IfInstruction inst)
 		{
 			var condition = exprBuilder.TranslateCondition(inst.Condition);
@@ -230,14 +230,14 @@ namespace ICSharpCode.Decompiler.CSharp
 				}
 			}
 		}
-		
+
 		/// <summary>Target block that a 'continue;' statement would jump to</summary>
 		Block continueTarget;
 		/// <summary>Number of ContinueStatements that were created for the current continueTarget</summary>
 		int continueCount;
 		/// <summary>Maps blocks to cases.</summary>
 		Dictionary<Block, ConstantResolveResult> caseLabelMapping;
-		
+
 		protected internal override Statement VisitBranch(Branch inst)
 		{
 			if (inst.TargetBlock == continueTarget) {
@@ -251,12 +251,12 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			return new GotoStatement(inst.TargetLabel);
 		}
-		
+
 		/// <summary>Target container that a 'break;' statement would break out of</summary>
 		BlockContainer breakTarget;
 		/// <summary>Dictionary from BlockContainer to label name for 'goto of_container';</summary>
 		readonly Dictionary<BlockContainer, string> endContainerLabels = new Dictionary<BlockContainer, string>();
-		
+
 		protected internal override Statement VisitLeave(Leave inst)
 		{
 			if (inst.TargetContainer == breakTarget)
@@ -282,7 +282,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			return new ThrowStatement(exprBuilder.Translate(inst.Argument));
 		}
-		
+
 		protected internal override Statement VisitRethrow(Rethrow inst)
 		{
 			return new ThrowStatement();
@@ -290,7 +290,7 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		protected internal override Statement VisitYieldReturn(YieldReturn inst)
 		{
-			var elementType = currentFunction.ReturnType.GetElementTypeFromIEnumerable(typeSystem.Compilation, true, out var isGeneric);
+			var elementType = currentFunction.ReturnType.GetElementTypeFromIEnumerable(typeSystem, true, out var isGeneric);
 			return new YieldReturnStatement {
 				Expression = exprBuilder.Translate(inst.Value, typeHint: elementType).ConvertTo(elementType, exprBuilder)
 			};
@@ -306,7 +306,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			tryCatch.TryBlock = tryBlockConverted as BlockStatement ?? new BlockStatement { tryBlockConverted };
 			return tryCatch;
 		}
-		
+
 		protected internal override Statement VisitTryCatch(TryCatch inst)
 		{
 			var tryCatch = new TryCatchStatement();
@@ -330,14 +330,14 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			return tryCatch;
 		}
-		
+
 		protected internal override Statement VisitTryFinally(TryFinally inst)
 		{
 			var tryCatch = MakeTryCatch(inst.TryBlock);
 			tryCatch.FinallyBlock = ConvertAsBlock(inst.FinallyBlock);
 			return tryCatch;
 		}
-		
+
 		protected internal override Statement VisitTryFault(TryFault inst)
 		{
 			var tryCatch = new TryCatchStatement();
@@ -497,7 +497,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			// Convert the modified body to C# AST:
 			var whileLoop = (WhileStatement)ConvertAsBlock(container).First();
 			BlockStatement foreachBody = (BlockStatement)whileLoop.EmbeddedStatement.Detach();
-	
+
 			// Remove the first statement, as it is the foreachVariable = enumerator.Current; statement.
 			Statement firstStatement = foreachBody.Statements.First();
 			if (firstStatement is LabelStatement) {
@@ -766,7 +766,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				return blockStmt;
 			}
 		}
-		
+
 		Statement ConvertLoop(BlockContainer container)
 		{
 			ILInstruction condition;

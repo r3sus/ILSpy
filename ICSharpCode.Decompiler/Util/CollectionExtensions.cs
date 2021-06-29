@@ -41,21 +41,21 @@ namespace ICSharpCode.Decompiler.Util
 		{
 			return input.Take(input.Count - count);
 		}
-		
+
 		public static T PopOrDefault<T>(this Stack<T> stack)
 		{
 			if (stack.Count == 0)
 				return default(T);
 			return stack.Pop();
 		}
-		
+
 		public static T PeekOrDefault<T>(this Stack<T> stack)
 		{
 			if (stack.Count == 0)
 				return default(T);
 			return stack.Peek();
 		}
-		
+
 		public static int MaxOrDefault<T>(this IEnumerable<T> input, Func<T, int> selector, int defaultValue = 0)
 		{
 			int max = defaultValue;
@@ -85,7 +85,7 @@ namespace ICSharpCode.Decompiler.Util
 			foreach (T item in input)
 				collection.Add(item);
 		}
-		
+
 		/// <summary>
 		/// Equivalent to <code>collection.Select(func).ToArray()</code>, but more efficient as it makes
 		/// use of the input collection's known size.
@@ -99,6 +99,18 @@ namespace ICSharpCode.Decompiler.Util
 			}
 			return result;
 		}
+
+		public static U[] SelectReadOnlyArray<T, U>(this IReadOnlyCollection<T> collection, Func<T, U> func)
+		{
+			U[] result = new U[collection.Count];
+			int index = 0;
+			foreach (T item in (IEnumerable<T>)collection)
+			{
+				result[index++] = func(item);
+			}
+			return result;
+		}
+
 
 		/// <summary>
 		/// Equivalent to <code>collection.Select(func).ToArray()</code>, but more efficient as it makes
@@ -161,7 +173,7 @@ namespace ICSharpCode.Decompiler.Util
 			foreach	(var element in source)
 				yield return func(index++, element);
 		}
-		
+
 		/// <summary>
 		/// The merge step of merge sort.
 		/// </summary>

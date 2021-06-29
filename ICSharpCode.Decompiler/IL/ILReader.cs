@@ -24,29 +24,44 @@ using System.Diagnostics;
 using System.Collections;
 using System.Threading;
 using dnlib.DotNet.Emit;
-using dnlib.DotNet.Pdb;
 using ICSharpCode.Decompiler.TypeSystem;
+using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
 using Extensions = dnlib.DotNet.Extensions;
 
 namespace ICSharpCode.Decompiler.IL
 {
+	/// <summary>
+	/// Reads IL bytecodes and converts them into ILAst instructions.
+	/// </summary>
+	/// <remarks>
+	/// Instances of this class are not thread-safe. Use separate instances to decompile multiple members in parallel.
+	/// </remarks>
 	public class ILReader
 	{
 		readonly ICompilation compilation;
-		readonly IDecompilerTypeSystem typeSystem;
+		readonly MetadataModule module;
+		readonly dnlib.DotNet.ModuleDef metadata;
 
 		public bool UseDebugSymbols { get; set; }
 		public List<string> Warnings { get; } = new List<string>();
 
-		public ILReader(IDecompilerTypeSystem typeSystem)
+		/// <summary>
+		/// Creates a new ILReader instance.
+		/// </summary>
+		/// <param name="module">
+		/// The module used to resolve metadata tokens in the type system.
+		/// </param>
+		public ILReader(MetadataModule module)
 		{
-			if (typeSystem == null)
-				throw new ArgumentNullException(nameof(typeSystem));
-			this.typeSystem = typeSystem;
-			this.compilation = typeSystem.Compilation;
+			if (module == null)
+				throw new ArgumentNullException(nameof(module));
+			this.module = module;
+			this.compilation = module.Compilation;
+			this.metadata = module.metadata;
 		}
 
+		GenericContext genericContext;
 		IMethod method;
 		CilBody body;
 		dnlib.DotNet.MethodDef methodDef;
@@ -67,19 +82,27 @@ namespace ICSharpCode.Decompiler.IL
 		List<(ILVariable, ILVariable)> stackMismatchPairs;
 		IEnumerable<ILVariable> stackVariables;
 
-		void Init(dnlib.DotNet.MethodDef methodDef, CilBody body, IMethod method)
+		void Init(dnlib.DotNet.MethodDef methodDef, GenericContext genericContext)
 		{
-			if (body == null)
-				throw new ArgumentNullException(nameof(body));
+			if (methodDef == null)
+				throw new ArgumentNullException(nameof(methodDef));
 			this.methodDef = methodDef;
-			this.body = body;
-			this.method = method;
+			this.method = module.GetDefinition(methodDef);
+			if (genericContext.ClassTypeParameters == null && genericContext.MethodTypeParameters == null) {
+				// no generic context specified: use the method's own type parameters
+				genericContext = new GenericContext(method);
+			} else {
+				// generic context specified, so specialize the method for it:
+				this.method = this.method.Specialize(genericContext.ToSubstitution());
+			}
+			this.genericContext = genericContext;
+			this.body = methodDef.Body;
 			this.currentInstruction = null;
 			this.nextInstructionIndex = 0;
 			this.currentStack = ImmutableStack<ILVariable>.Empty;
 			this.unionFind = new UnionFind<ILVariable>();
 			this.stackMismatchPairs = new List<(ILVariable, ILVariable)>();
-			this.methodReturnStackType = typeSystem.Resolve(methodDef.ReturnType).GetStackType();
+			this.methodReturnStackType = method.ReturnType.GetStackType();
 			InitParameterVariables();
 			this.localVariables = body.Variables.SelectArray(CreateILVariable);
 			if (body.InitLocals) {
@@ -102,19 +125,19 @@ namespace ICSharpCode.Decompiler.IL
 		IType ReadAndDecodeTypeReference()
 		{
 			var typeReference = (dnlib.DotNet.ITypeDefOrRef)currentInstruction.Operand;
-			return typeSystem.Resolve(typeReference);
+			return module.ResolveType(typeReference, genericContext);
 		}
 
 		IMethod ReadAndDecodeMethodReference()
 		{
 			var methodReference = (dnlib.DotNet.IMethod)currentInstruction.Operand;
-			return typeSystem.Resolve(methodReference);
+			return module.ResolveMethod(methodReference, genericContext);
 		}
 
 		IField ReadAndDecodeFieldReference()
 		{
 			var fieldReference = (dnlib.DotNet.IField)currentInstruction.Operand;
-			return typeSystem.Resolve(fieldReference);
+			return (IField)module.ResolveEntity(fieldReference, genericContext);
 		}
 
 		void InitParameterVariables()
@@ -131,7 +154,12 @@ namespace ICSharpCode.Decompiler.IL
 		ILVariable CreateILVariable(Local v)
 		{
 			VariableKind kind = IsPinned(v.Type) ? VariableKind.PinnedLocal : VariableKind.Local;
-			ILVariable ilVar = new ILVariable(kind, typeSystem.Resolve(v.Type), v.Index);
+
+			IType localType = module.ResolveType(v.Type, genericContext);
+			if (kind == VariableKind.PinnedLocal && localType is PinnedType pinnedType)
+				localType = pinnedType.ElementType;
+
+			ILVariable ilVar = new ILVariable(kind, localType, v.Index);
 			if (!UseDebugSymbols || v.Name == null) {
 				ilVar.Name = "V_" + v.Index;
 				ilVar.HasGeneratedName = true;
@@ -156,14 +184,14 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			IType parameterType;
 			if (p.IsHiddenThisParameter) {
-				ITypeDefinition def = typeSystem.Resolve(methodDef.DeclaringType).GetDefinition();
+				ITypeDefinition def = module.ResolveType(methodDef.DeclaringType, genericContext).GetDefinition();
 				if (def != null && def.TypeParameterCount > 0) {
 					parameterType = new ParameterizedType(def, def.TypeArguments);
 					if (def.IsReferenceType == false) {
 						parameterType = new ByReferenceType(parameterType);
 					}
 				} else {
-					parameterType = typeSystem.Resolve(p.Type);
+					parameterType = module.ResolveType(p.Type, genericContext);
 				}
 			} else {
 				parameterType = method.Parameters[p.MethodSigIndex].Type;
@@ -292,14 +320,14 @@ namespace ICSharpCode.Decompiler.IL
 			foreach (var eh in body.ExceptionHandlers) {
 				ImmutableStack<ILVariable> ehStack = null;
 				if (eh.HandlerType == ExceptionHandlerType.Catch) {
-					var v = new ILVariable(VariableKind.Exception, typeSystem.Resolve(eh.CatchType), (int)eh.HandlerStart.Offset) {
+					var v = new ILVariable(VariableKind.Exception, module.ResolveType(eh.CatchType, genericContext), (int)eh.HandlerStart.Offset) {
 						Name = "E_" + eh.HandlerStart.Offset,
 						HasGeneratedName = true
 					};
 					variableByExceptionHandler.Add(eh, v);
 					ehStack = ImmutableStack.Create(v);
 				} else if (eh.HandlerType == ExceptionHandlerType.Filter) {
-					var v = new ILVariable(VariableKind.Exception, typeSystem.Compilation.FindType(KnownTypeCode.Object), (int)eh.HandlerStart.Offset) {
+					var v = new ILVariable(VariableKind.Exception, compilation.FindType(KnownTypeCode.Object), (int)eh.HandlerStart.Offset) {
 						Name = "E_" + eh.HandlerStart.Offset,
 						HasGeneratedName = true
 					};
@@ -379,9 +407,9 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Debugging helper: writes the decoded instruction stream interleaved with the inferred evaluation stack layout.
 		/// </summary>
-		public void WriteTypedIL(dnlib.DotNet.MethodDef methodDef, CilBody body, IMethod method, ITextOutput output, CancellationToken cancellationToken = default(CancellationToken))
+		public void WriteTypedIL(dnlib.DotNet.MethodDef methodDef, ITextOutput output, GenericContext genericContext = default, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			Init(methodDef, body, method);
+			Init(methodDef,genericContext);
 			ReadInstructions(cancellationToken);
 			foreach (var inst in instructionBuilder) {
 				if (inst is StLoc stloc && stloc.IsStackAdjustment) {
@@ -419,15 +447,14 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Decodes the specified method body and returns an ILFunction.
 		/// </summary>
-		public ILFunction ReadIL(dnlib.DotNet.MethodDef methodDef, CilBody body, CancellationToken cancellationToken = default(CancellationToken))
+		public ILFunction ReadIL(dnlib.DotNet.MethodDef methodDef, GenericContext genericContext = default, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			var method = typeSystem.Resolve(methodDef);
-			Init(methodDef, body, method);
+			Init(methodDef, genericContext);
 			ReadInstructions(cancellationToken);
-			var blockBuilder = new BlockBuilder(body, typeSystem, variableByExceptionHandler);
+			var blockBuilder = new BlockBuilder(body, variableByExceptionHandler);
 			blockBuilder.CreateBlocks(mainContainer, instructionBuilder, isBranchTarget, cancellationToken);
-			var function = new ILFunction(method, methodDef, mainContainer);
+			var function = new ILFunction(method, methodDef, this.genericContext, mainContainer);
 			CollectionExtensions.AddRange(function.Variables, parameterVariables);
 			CollectionExtensions.AddRange(function.Variables, localVariables);
 			CollectionExtensions.AddRange(function.Variables, stackVariables);
@@ -1324,12 +1351,12 @@ namespace ICSharpCode.Decompiler.IL
 			var parameterTypes = new IType[signature.Params.Count];
 			var arguments = new ILInstruction[parameterTypes.Length];
 			for (int i = signature.Params.Count - 1; i >= 0; i--) {
-				parameterTypes[i] = typeSystem.Resolve(signature.Params[i]);
+				parameterTypes[i] = module.ResolveType(signature.Params[i], genericContext);
 				arguments[i] = Pop(parameterTypes[i].GetStackType());
 			}
 			var call = new CallIndirect(
 				signature.CallingConvention,
-				typeSystem.Resolve(signature.RetType),
+				module.ResolveType(signature.RetType, genericContext),
 				parameterTypes.ToImmutableArray(),
 				arguments,
 				functionPointer
@@ -1570,21 +1597,10 @@ namespace ICSharpCode.Decompiler.IL
 
 		ILInstruction LdToken(dnlib.DotNet.IMDTokenProvider token)
 		{
-			if (token is dnlib.DotNet.ITypeDefOrRef)
-				return new LdTypeToken(typeSystem.Resolve((dnlib.DotNet.ITypeDefOrRef)token));
-			if (token is dnlib.DotNet.MemberRef memberRef) {
-				if (memberRef.IsFieldRef) {
-					return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IField)token));
-				}
-				if (memberRef.IsMethodRef) {
-					return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IMethod)token));
-				}
+			if (token is dnlib.DotNet.ITypeDefOrRef s) {
+				return new LdTypeToken(module.ResolveType(s, genericContext));
 			}
-			if (token is dnlib.DotNet.IField)
-				return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IField)token));
-			if (token is dnlib.DotNet.IMethod)
-				return new LdMemberToken(typeSystem.Resolve((dnlib.DotNet.IMethod)token));
-			throw new NotImplementedException();
+			return new LdMemberToken((IMember)module.ResolveEntity(token, genericContext));
 		}
 	}
 }

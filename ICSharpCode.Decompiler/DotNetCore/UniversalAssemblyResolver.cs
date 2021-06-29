@@ -57,12 +57,13 @@ namespace ICSharpCode.Decompiler
 			AddSearchDirectory(baseDirectory);
 		}
 
-		public static ModuleDef LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
+		public static ModuleDefMD LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
 		{
 			var resolver = new UniversalAssemblyResolver(mainAssemblyFileName, throwOnError);
 
 			//var modCreateOpts = new ModuleCreationOptions(resolver.DefaultModuleContext);
 			var module = ModuleDefMD.Load(mainAssemblyFileName, new ModuleContext(resolver));
+			module.Location = mainAssemblyFileName;
 
 			resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
 
@@ -179,7 +180,7 @@ namespace ICSharpCode.Decompiler
 			return version.Major == 0 && version.Minor == 0 && version.Build == 0 && version.Revision == 0;
 		}
 
-		static Version ZeroVersion = new Version(0, 0, 0, 0);
+		internal static Version ZeroVersion = new Version(0, 0, 0, 0);
 
 		string GetCorlib(IAssembly reference)
 		{

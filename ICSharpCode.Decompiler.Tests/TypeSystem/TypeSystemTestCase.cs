@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2018 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -61,6 +61,7 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 
 	public unsafe class DynamicTest
 	{
+		public dynamic DynamicField;
 		public dynamic SimpleProperty { get; set; }
 
 		public List<dynamic> DynamicGenerics1(Action<object, dynamic[], object> param) { return null; }
@@ -259,6 +260,21 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 		int Prop { get; set; }
 	}
 
+	public interface IBase1
+	{
+		int Prop { get; set; }
+	}
+
+	public interface IBase2
+	{
+		int Prop { get; set; }
+	}
+
+	public interface IDerived : IBase1, IBase2
+	{
+		new int Prop { get; set; }
+	}
+
 	public class ClassWithVirtualProperty
 	{
 		public virtual int Prop { get; protected set; }
@@ -301,6 +317,12 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 		int this[T x] { get; set; }
 	}
 
+	public interface IInterfaceWithRenamedIndexer
+	{
+		[IndexerName("NewName")]
+		int this[int x] { get; set; }
+	}
+
 	public class ClassThatImplementsIndexers : IInterfaceWithIndexers, IGenericInterfaceWithIndexer<int>
 	{
 		public int this[int x] { get { return 0; } set { } }
@@ -308,12 +330,13 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 		public int this[int x, int y] { get { return 0; } set { } }
 	}
 
-	public class ClassThatImplementsIndexersExplicitly : IInterfaceWithIndexers, IGenericInterfaceWithIndexer<int>
+	public class ClassThatImplementsIndexersExplicitly : IInterfaceWithIndexers, IGenericInterfaceWithIndexer<int>, IInterfaceWithRenamedIndexer
 	{
 		int IInterfaceWithIndexers.this[int x] { get { return 0; } set { } }
 		int IGenericInterfaceWithIndexer<int>.this[int x] { get { return 0; } set { } }
 		int IInterfaceWithIndexers.this[string x] { get { return 0; } set { } }
 		int IInterfaceWithIndexers.this[int x, int y] { get { return 0; } set { } }
+		int IInterfaceWithRenamedIndexer.this[int x] { get { return 0; } set { } }
 	}
 
 	public interface IHasEvent
@@ -352,7 +375,11 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 		new event EventHandler Evt;
 	}
 
-	public static class StaticClass { }
+	public static class StaticClass
+	{
+		public static void Extension(this object inst) { }
+	}
+
 	public abstract class AbstractClass { }
 
 	public class IndexerNonDefaultName

@@ -1,81 +1,118 @@
-﻿using System;
+﻿// Copyright (c) 2018 Daniel Grunwald
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this
+// software and associated documentation files (the "Software"), to deal in the Software
+// without restriction, including without limitation the rights to use, copy, modify, merge,
+// publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+// to whom the Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+// PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using dnlib.DotNet;
-using dnlib.DotNet.MD;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
+	/// <summary>
+	/// Options that control how metadata is represented in the type system.
+	/// </summary>
+	[Flags]
+	public enum TypeSystemOptions
+	{
+		/// <summary>
+		/// No options enabled; stay as close to the metadata as possible.
+		/// </summary>
+		None = 0,
+		/// <summary>
+		/// [DynamicAttribute] is used to replace 'object' types with the 'dynamic' type.
+		///
+		/// If this option is not active, the 'dynamic' type is not used, and the attribute is preserved.
+		/// </summary>
+		Dynamic = 1,
+		/// <summary>
+		/// Tuple types are represented using the TupleType class.
+		/// [TupleElementNames] is used to name the tuple elements.
+		///
+		/// If this option is not active, the tuples are represented using their underlying type, and the attribute is preserved.
+		/// </summary>
+		Tuple = 2,
+		/// <summary>
+		/// If this option is active, [ExtensionAttribute] is removed and methods are marked as IsExtensionMethod.
+		/// Otherwise, the attribute is preserved but the methods are not marked.
+		/// </summary>
+		ExtensionMethods = 4,
+		/// <summary>
+		/// Only load the public API into the type system.
+		/// </summary>
+		OnlyPublicAPI = 8,
+		/// <summary>
+		/// Do not cache accessed entities.
+		/// In a normal type system (without this option), every type or member definition has exactly one ITypeDefinition/IMember
+		/// instance. This instance is kept alive until the whole type system can be garbage-collected.
+		/// When this option is specified, the type system avoids these caches.
+		/// This reduces the memory usage in many cases, but increases the number of allocations.
+		/// Also, some code in the decompiler expects to be able to compare type/member definitions by reference equality,
+		/// and thus will fail with uncached type systems.
+		/// </summary>
+		Uncached = 0x10,
+		/// <summary>
+		/// Default settings: all features enabled.
+		/// </summary>
+		Default = Dynamic | Tuple | ExtensionMethods
+	}
+
 	/// <summary>
 	/// Manages the NRefactory type system for the decompiler.
 	/// </summary>
 	/// <remarks>
 	/// This class is thread-safe.
 	/// </remarks>
-	public class DecompilerTypeSystem : IDecompilerTypeSystem
+	public class DecompilerTypeSystem : SimpleCompilation, IDecompilerTypeSystem
 	{
-		readonly ModuleDef moduleDefinition;
-		readonly ICompilation compilation;
-		readonly ITypeResolveContext context;
+		public static TypeSystemOptions GetOptions(DecompilerSettings settings)
+		{
+			var typeSystemOptions = TypeSystemOptions.None;
+			if (settings.Dynamic)
+				typeSystemOptions |= TypeSystemOptions.Dynamic;
+			if (settings.TupleTypes)
+				typeSystemOptions |= TypeSystemOptions.Tuple;
+			//if (settings.ExtensionMethods)
+				typeSystemOptions |= TypeSystemOptions.ExtensionMethods;
+			return typeSystemOptions;
+		}
 
-		/// <summary>
-		/// CecilLoader used for converting cecil type references to ITypeReference.
-		/// May only be accessed within lock(typeReferenceCecilLoader).
-		/// </summary>
-		readonly CecilLoader typeReferenceCecilLoader;
-
-		/// <summary>
-		/// Dictionary for NRefactory->Cecil lookup.
-		/// May only be accessed within lock(entityDict)
-		/// </summary>
-		Dictionary<IUnresolvedEntity, IMemberRef> entityDict = new Dictionary<IUnresolvedEntity, IMemberRef>();
-
-		private const SigComparerOptions cacheCompareOptions = SigComparerOptions.CompareDeclaringTypes |
-															   SigComparerOptions.CompareAssemblyVersion |
-															   SigComparerOptions.CompareAssemblyPublicKeyToken |
-															   SigComparerOptions.CompareAssemblyLocale |
-															   SigComparerOptions.CompareSentinelParams |
-															   SigComparerOptions.MscorlibIsNotSpecial |
-															   SigComparerOptions.TypeRefCanReferenceGlobalType |
-															   SigComparerOptions.PrivateScopeIsComparable |
-															   SigComparerOptions.DontCheckTypeEquivalence |
-															   // Type system ignores modifiers!
-															   SigComparerOptions.IgnoreModifiers;
-		Dictionary<dnlib.DotNet.IField, IField> fieldLookupCache = new Dictionary<dnlib.DotNet.IField, IField>(new FieldEqualityComparer(cacheCompareOptions));
-		Dictionary<PropertyDef, IProperty> propertyLookupCache = new Dictionary<PropertyDef, IProperty>(new PropertyEqualityComparer(cacheCompareOptions));
-		Dictionary<dnlib.DotNet.IMethod, IMethod> methodLookupCache = new Dictionary<dnlib.DotNet.IMethod, IMethod>(new MethodEqualityComparer(cacheCompareOptions));
-		Dictionary<EventDef, IEvent> eventLookupCache = new Dictionary<EventDef, IEvent>(new EventEqualityComparer(cacheCompareOptions));
-
-		public DecompilerTypeSystem(ModuleDef moduleDefinition) : this(moduleDefinition, new DecompilerSettings())
+		public DecompilerTypeSystem(PEFile mainModule)
+			: this(mainModule, TypeSystemOptions.Default)
 		{
 		}
 
-		public DecompilerTypeSystem(ModuleDef moduleDefinition, DecompilerSettings settings)
+		public DecompilerTypeSystem(PEFile mainModule, DecompilerSettings settings)
+			: this(mainModule, GetOptions(settings ?? throw new ArgumentNullException(nameof(settings))))
 		{
-			if (moduleDefinition == null)
-				throw new ArgumentNullException(nameof(moduleDefinition));
-			if (settings == null)
-				throw new ArgumentNullException(nameof(settings));
-			this.moduleDefinition = moduleDefinition;
-			typeReferenceCecilLoader = new CecilLoader {
-				UseDynamicType = settings.Dynamic,
-				UseTupleTypes = settings.TupleTypes,
-			};
-			CecilLoader cecilLoader = new CecilLoader {
-				IncludeInternalMembers = true,
-				LazyLoad = true,
-				OnEntityLoaded = StoreMemberReference,
-				ShortenInterfaceImplNames = false,
-				UseDynamicType = settings.Dynamic,
-				UseTupleTypes = settings.TupleTypes,
-			};
-			typeReferenceCecilLoader.SetCurrentModule(moduleDefinition);
-			IUnresolvedAssembly mainAssembly = cecilLoader.LoadModule(moduleDefinition);
+		}
+
+		public DecompilerTypeSystem(PEFile mainModule, TypeSystemOptions typeSystemOptions)
+		{
+			if (mainModule == null)
+				throw new ArgumentNullException(nameof(mainModule));
 			// Load referenced assemblies and type-forwarder references.
 			// This is necessary to make .NET Core/PCL binaries work better.
-			var referencedAssemblies = new List<IUnresolvedAssembly>();
+			var moduleDefinition = mainModule.Metadata;
+			// Load referenced assemblies and type-forwarder references.
+			// This is necessary to make .NET Core/PCL binaries work better.
+			var referencedAssemblies = new List<PEFile>();
 			var assemblyReferenceQueue = new Queue<dnlib.DotNet.IAssembly>(moduleDefinition.GetAssemblyRefs());
 			var processedAssemblyReferences = new HashSet<dnlib.DotNet.IAssembly>(KeyComparer.Create((dnlib.DotNet.IAssembly reference) => reference.FullName));
 			while (assemblyReferenceQueue.Count > 0) {
@@ -84,391 +121,37 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					continue;
 				var asm = moduleDefinition.Context.AssemblyResolver.Resolve(asmRef, moduleDefinition);
 				if (asm != null) {
-					referencedAssemblies.Add(cecilLoader.LoadAssembly(asm));
-					for (int i = 0; i < asm.ManifestModule.ExportedTypes.Count; i++) {
-						var forwarder = asm.ManifestModule.ExportedTypes[i];
+					referencedAssemblies.Add(new PEFile(asm.ManifestModule));
+					foreach (var forwarder in asm.ManifestModule.ExportedTypes) {
 						if (!forwarder.IsForwarder || !(forwarder.Scope is dnlib.DotNet.IAssembly forwarderRef)) continue;
 						assemblyReferenceQueue.Enqueue(forwarderRef);
 					}
 				}
 			}
-			compilation = new SimpleCompilation(mainAssembly, referencedAssemblies);
+			var mainModuleWithOptions = mainModule.WithOptions(typeSystemOptions);
+			var referencedAssembliesWithOptions = referencedAssemblies.Select(file => file.WithOptions(typeSystemOptions));
 			// Primitive types are necessary to avoid assertions in ILReader.
 			// Fallback to MinimalCorlib to provide the primitive types.
-			if (compilation.FindType(KnownTypeCode.Void).Kind == TypeKind.Unknown || compilation.FindType(KnownTypeCode.Int32).Kind == TypeKind.Unknown) {
-				referencedAssemblies.Add(MinimalCorlib.Instance);
-				compilation = new SimpleCompilation(mainAssembly, referencedAssemblies);
-			}
-			context = new SimpleTypeResolveContext(compilation.MainAssembly);
-		}
-
-		public ICompilation Compilation {
-			get { return compilation; }
-		}
-
-		public IAssembly MainAssembly {
-			get { return compilation.MainAssembly; }
-		}
-
-		public ModuleDef ModuleDefinition {
-			get { return moduleDefinition; }
-		}
-
-		void StoreMemberReference(IUnresolvedEntity entity, IMemberRef mr)
-		{
-			// This is a callback from the type system, which is multi-threaded and may be accessed externally
-			lock (entityDict)
-				entityDict[entity] = mr;
-		}
-
-		/// <summary>
-		/// Retrieves the Cecil member definition for the specified member.
-		/// </summary>
-		/// <remarks>
-		/// Returns null if the member is not defined in the module being decompiled.
-		/// </remarks>
-		public dnlib.DotNet.IMemberRef GetCecil(IUnresolvedEntity member)
-		{
-			if (member == null)
-				return null;
-			lock (entityDict) {
-				dnlib.DotNet.IMemberRef mr;
-				if (entityDict.TryGetValue(member, out mr))
-					return mr;
-				return null;
-			}
-		}
-
-		/// <summary>
-		/// Retrieves the Cecil member definition for the specified member.
-		/// </summary>
-		/// <remarks>
-		/// Returns null if the member is not defined in the module being decompiled.
-		/// </remarks>
-		public dnlib.DotNet.IMemberRef GetCecil(IMember member)
-		{
-			if (member == null)
-				return null;
-			return GetCecil(member.UnresolvedMember);
-		}
-
-		/// <summary>
-		/// Retrieves the Cecil type definition.
-		/// </summary>
-		/// <remarks>
-		/// Returns null if the type is not defined in the module being decompiled.
-		/// </remarks>
-		public TypeDef GetCecil(ITypeDefinition typeDefinition)
-		{
-			if (typeDefinition == null)
-				return null;
-			return GetCecil(typeDefinition.Parts[0]) as TypeDef;
-		}
-
-		#region Resolve Type
-		public IType Resolve(ITypeDefOrRef typeReference)
-		{
-			if (typeReference == null)
-				return SpecialType.UnknownType;
-			if (typeReference is TypeSpec spec) {
-				return Resolve(spec.TypeSig);
-			}
-			CorLibTypeSig corLibTypeSig = typeReference.Module?.CorLibTypes.GetCorLibTypeSig(typeReference);
-			if (corLibTypeSig != null)
-			{
-				return Resolve(corLibTypeSig);
-			}
-
-			ITypeReference typeRef;
-			lock (typeReferenceCecilLoader)
-				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeReference);
-			return typeRef.Resolve(context);
-		}
-
-		public IType Resolve(TypeSig typeSig)
-		{
-			if (typeSig == null)
-				return SpecialType.UnknownType;
-			typeSig = typeSig.RemovePinnedAndModifiers();
-			if (typeSig is SentinelSig) {
-				typeSig = typeSig.Next;
-			}
-
-			ITypeReference typeRef;
-			lock (typeReferenceCecilLoader)
-				typeRef = typeReferenceCecilLoader.ReadTypeReference(typeSig);
-			return typeRef.Resolve(context);
-		}
-		#endregion
-
-		#region Resolve Field
-		public IField Resolve(dnlib.DotNet.IField fieldReference)
-		{
-			if (fieldReference == null)
-				throw new ArgumentNullException(nameof(fieldReference));
-			lock (fieldLookupCache) {
-				IField field;
-				if (!fieldLookupCache.TryGetValue(fieldReference, out field)) {
-					field = FindNonGenericField(fieldReference);
-					if (fieldReference.DeclaringType is TypeSpec spec && spec.TypeSig is GenericInstSig git) {
-						var typeArguments = git.GenericArguments.SelectArray(Resolve);
-						field = (IField)field.Specialize(new TypeParameterSubstitution(typeArguments, null));
-					}
-					fieldLookupCache.Add(fieldReference, field);
-				}
-				return field;
-			}
-		}
-
-		IField FindNonGenericField(dnlib.DotNet.IField fieldReference)
-		{
-			ITypeDefinition typeDef = Resolve(fieldReference.DeclaringType).GetDefinition();
-			if (typeDef == null)
-				return CreateFakeField(fieldReference);
-			foreach (IField field in typeDef.Fields)
-				if (field.Name == fieldReference.Name)
-					return field;
-			return CreateFakeField(fieldReference);
-		}
-
-		IField CreateFakeField(dnlib.DotNet.IField fieldReference)
-		{
-			var declaringType = Resolve(fieldReference.DeclaringType);
-			var f = new DefaultUnresolvedField();
-			f.Name = fieldReference.Name;
-			lock (typeReferenceCecilLoader) {
-				f.ReturnType = typeReferenceCecilLoader.ReadTypeReference(fieldReference.FieldSig.Type);
-			}
-			return new ResolvedFakeField(f, context.WithCurrentTypeDefinition(declaringType.GetDefinition()), declaringType);
-		}
-
-		class ResolvedFakeField : DefaultResolvedField
-		{
-			readonly IType declaringType;
-
-			public ResolvedFakeField(DefaultUnresolvedField unresolved, ITypeResolveContext parentContext, IType declaringType)
-				: base(unresolved, parentContext)
-			{
-				this.declaringType = declaringType;
-			}
-
-			public override IType DeclaringType
-			{
-				get { return declaringType; }
-			}
-		}
-		#endregion
-
-		#region Resolve Method
-		public IMethod Resolve(dnlib.DotNet.IMethod methodReference)
-		{
-			if (methodReference == null)
-				throw new ArgumentNullException(nameof(methodReference));
-			lock (methodLookupCache) {
-				IMethod method;
-				if (!methodLookupCache.TryGetValue(methodReference, out method)) {
-					method = FindNonGenericMethod(methodReference);
-					if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
-						method = new VarArgInstanceMethod(
-							method,
-							methodReference.MethodSig.ParamsAfterSentinel is null ? new List<IType>() : methodReference.MethodSig.ParamsAfterSentinel.Select(Resolve)
-						);
-					} else if (methodReference is MethodSpec || (methodReference.DeclaringType is TypeSpec spec && spec.TypeSig is GenericInstSig)) {
-						IReadOnlyList<IType> classTypeArguments = null;
-						IReadOnlyList<IType> methodTypeArguments = null;
-						if (methodReference is MethodSpec gim && gim.GenericInstMethodSig != null) {
-							methodTypeArguments = gim.GenericInstMethodSig.GenericArguments.SelectArray(Resolve);
-						}
-						if (methodReference.DeclaringType is TypeSpec spec2 && spec2.TypeSig is GenericInstSig git) {
-							classTypeArguments = git.GenericArguments.SelectArray(Resolve);
-						}
-						method = method.Specialize(new TypeParameterSubstitution(classTypeArguments, methodTypeArguments));
-					}
-					methodLookupCache.Add(methodReference, method);
-				}
-				return method;
-			}
-		}
-
-		IMethod FindNonGenericMethod(dnlib.DotNet.IMethod methodReference)
-		{
-			ITypeDefinition typeDef = Resolve(methodReference.DeclaringType).GetDefinition();
-			if (typeDef == null)
-				return CreateFakeMethod(methodReference);
-			IEnumerable<IMethod> methods;
-			if (methodReference.Name == ".ctor") {
-				methods = typeDef.GetConstructors();
-			} else if (methodReference.Name == ".cctor") {
-				return typeDef.Methods.FirstOrDefault(m => m.IsConstructor && m.IsStatic);
+			if (!HasType(KnownTypeCode.Void) || !HasType(KnownTypeCode.Int32)) {
+				Init(mainModule.WithOptions(typeSystemOptions), referencedAssembliesWithOptions.Concat(new[] { MinimalCorlib.Instance }));
 			} else {
-				methods = typeDef.GetMethods(m => m.Name == methodReference.Name, GetMemberOptions.IgnoreInheritedMembers)
-					.Concat(typeDef.GetAccessors(m => m.Name == methodReference.Name, GetMemberOptions.IgnoreInheritedMembers));
+				Init(mainModuleWithOptions, referencedAssembliesWithOptions);
 			}
-			if (methodReference.MDToken.Table == Table.Method) {
-				foreach (var method in methods) {
-					if (method.MetadataToken == methodReference.MDToken)
-						return method;
+			this.MainModule = (MetadataModule)base.MainModule;
+
+			bool HasType(KnownTypeCode code)
+			{
+				TopLevelTypeName name = KnownTypeReference.Get(code).TypeName;
+				if (mainModule.GetTypeDefinition(name) != null)
+					return true;
+				foreach (var file in referencedAssemblies) {
+					if (file.GetTypeDefinition(name) != null)
+						return true;
 				}
-			}
-			IType[] parameterTypes;
-			if (methodReference.MethodSig.CallingConvention == CallingConvention.VarArg) {
-				parameterTypes = methodReference.MethodSig.Params
-												.Select(Resolve)
-												.Concat(new[] { SpecialType.ArgList })
-												.ToArray();
-			} else {
-				parameterTypes = methodReference.MethodSig.Params.SelectArray(Resolve);
-			}
-			var returnType = Resolve(methodReference.MethodSig.RetType);
-			foreach (var method in methods) {
-				if (method.TypeParameters.Count != methodReference.NumberOfGenericParameters)
-					continue;
-				if (!CompareSignatures(method.Parameters, parameterTypes) || !CompareTypes(method.ReturnType, returnType))
-					continue;
-				return method;
-			}
-			return CreateFakeMethod(methodReference);
-		}
-
-		static readonly NormalizeTypeVisitor normalizeTypeVisitor = new NormalizeTypeVisitor {
-			ReplaceClassTypeParametersWithDummy = true,
-			ReplaceMethodTypeParametersWithDummy = true,
-		};
-
-		static bool CompareTypes(IType a, IType b)
-		{
-			IType type1 = a.AcceptVisitor(normalizeTypeVisitor);
-			IType type2 = b.AcceptVisitor(normalizeTypeVisitor);
-			return type1.Equals(type2);
-		}
-
-		static bool IsVarArgMethod(IMethod method)
-		{
-			return method.Parameters.Count > 0 && method.Parameters[method.Parameters.Count - 1].Type.Kind == TypeKind.ArgList;
-		}
-
-		static bool CompareSignatures(IReadOnlyList<IParameter> parameters, IType[] parameterTypes)
-		{
-			if (parameterTypes.Length != parameters.Count)
 				return false;
-			for (int i = 0; i < parameterTypes.Length; i++) {
-				if (!CompareTypes(parameterTypes[i], parameters[i].Type))
-					return false;
-			}
-			return true;
-		}
-
-		/// <summary>
-		/// Create a dummy IMethod from the specified MethodReference
-		/// </summary>
-		IMethod CreateFakeMethod(dnlib.DotNet.IMethod methodReference)
-		{
-			var m = new DefaultUnresolvedMethod();
-			ITypeReference declaringTypeReference;
-			lock (typeReferenceCecilLoader) {
-				declaringTypeReference = typeReferenceCecilLoader.ReadTypeReference(methodReference.DeclaringType);
-				if (methodReference.Name == ".ctor" || methodReference.Name == ".cctor")
-					m.SymbolKind = SymbolKind.Constructor;
-				m.Name = methodReference.Name;
-				m.ReturnType = typeReferenceCecilLoader.ReadTypeReference(methodReference.MethodSig.RetType);
-				m.IsStatic = !methodReference.MethodSig.HasThis;
-				// not sure if empty is ok !?
-				for (int i = 0; i < methodReference.NumberOfGenericParameters; i++) {
-					m.TypeParameters.Add(new DefaultUnresolvedTypeParameter(SymbolKind.Method, i, string.Empty));
-				}
-				foreach (var p in methodReference.MethodSig.Params) {
-					m.Parameters.Add(new DefaultUnresolvedParameter(typeReferenceCecilLoader.ReadTypeReference(p), string.Empty));
-				}
-			}
-			var type = declaringTypeReference.Resolve(context);
-			return new ResolvedFakeMethod(m, context.WithCurrentTypeDefinition(type.GetDefinition()), type);
-		}
-
-		class ResolvedFakeMethod : DefaultResolvedMethod
-		{
-			readonly IType declaringType;
-
-			public ResolvedFakeMethod(DefaultUnresolvedMethod unresolved, ITypeResolveContext parentContext, IType declaringType)
-				: base(unresolved, parentContext)
-			{
-				this.declaringType = declaringType;
-			}
-
-			public override IType DeclaringType
-			{
-				get { return declaringType; }
-			}
-		}
-		#endregion
-
-		#region Resolve Property
-		public IProperty Resolve(PropertyDef propertyReference)
-		{
-			if (propertyReference == null)
-				throw new ArgumentNullException(nameof(propertyReference));
-			lock (propertyLookupCache) {
-				if (!propertyLookupCache.TryGetValue(propertyReference, out IProperty property)) {
-					property = FindNonGenericProperty(propertyReference);
-					propertyLookupCache.Add(propertyReference, property);
-				}
-				return property;
 			}
 		}
 
-		IProperty FindNonGenericProperty(PropertyDef propertyReference)
-		{
-			ITypeDefinition typeDef = Resolve(propertyReference.DeclaringType).GetDefinition();
-			if (typeDef == null)
-				return null;
-
-			var parameterTypes = propertyReference.GetParameters().Where(x => x.IsNormalMethodParameter)
-												  .Select(p => Resolve(p.Type)).ToArray();
-			var returnType = Resolve(propertyReference.PropertySig.RetType);
-			foreach (IProperty property in typeDef.Properties) {
-				if (property.Name == propertyReference.Name
-				    && CompareTypes(property.ReturnType, returnType)
-				    && CompareSignatures(property.Parameters, parameterTypes))
-					return property;
-			}
-			return null;
-		}
-		#endregion
-
-		#region Resolve Event
-		public IEvent Resolve(EventDef eventReference)
-		{
-			if (eventReference == null)
-				throw new ArgumentNullException("propertyReference");
-			lock (eventLookupCache) {
-				if (!eventLookupCache.TryGetValue(eventReference, out IEvent ev)) {
-					ev = FindNonGenericEvent(eventReference);
-					eventLookupCache.Add(eventReference, ev);
-				}
-				return ev;
-			}
-		}
-
-		IEvent FindNonGenericEvent(EventDef eventReference)
-		{
-			ITypeDefinition typeDef = Resolve(eventReference.DeclaringType).GetDefinition();
-			if (typeDef == null)
-				return null;
-			var returnType = Resolve(eventReference.EventType);
-			foreach (IEvent ev in typeDef.Events) {
-				if (ev.Name == eventReference.Name && CompareTypes(ev.ReturnType, returnType))
-					return ev;
-			}
-			return null;
-		}
-		#endregion
-
-		public IDecompilerTypeSystem GetSpecializingTypeSystem(TypeParameterSubstitution substitution)
-		{
-			if (substitution.Equals(TypeParameterSubstitution.Identity)) {
-				return this;
-			} else {
-				return new SpecializingDecompilerTypeSystem(this, substitution);
-			}
-		}
+		public new MetadataModule MainModule { get; }
 	}
 }

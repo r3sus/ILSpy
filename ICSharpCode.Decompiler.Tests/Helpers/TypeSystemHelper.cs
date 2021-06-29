@@ -31,7 +31,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		static readonly Lazy<DecompilerTypeSystem> decompilerTypeSystem = new Lazy<DecompilerTypeSystem>(
 			delegate {
 				using (var module = dnlib.DotNet.ModuleDefMD.Load(typeof(TypeSystem).Module.FullyQualifiedName)) {
-					return new DecompilerTypeSystem(module);
+					return new DecompilerTypeSystem(new PEFile(module));
 				}
 			});
 
@@ -39,14 +39,14 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			get { return decompilerTypeSystem.Value; }
 		}
 
-		public static IAssembly FromReflection(Assembly assembly)
+		public static IModule FromReflection(Assembly assembly)
 		{
-			return decompilerTypeSystem.Value.Compilation.Assemblies.Single(asm => asm.AssemblyName == assembly.GetName().Name);
+			return decompilerTypeSystem.Value.Modules.Single(asm => asm.AssemblyName == assembly.GetName().Name);
 		}
 
 		public static IType FromReflection(Type type)
 		{
-			return decompilerTypeSystem.Value.Compilation.FindType(type);
+			return decompilerTypeSystem.Value.FindType(type);
 		}
 
 		/// <summary>

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -37,8 +37,8 @@ namespace ICSharpCode.Decompiler.Tests.Semantics
 		[OneTimeSetUp]
 		public void SetUp()
 		{
-			compilation = new SimpleCompilation(TypeSystemLoaderTests.TestAssembly, 
-				TypeSystemLoaderTests.Mscorlib, 
+			compilation = new SimpleCompilation(TypeSystemLoaderTests.TestAssembly,
+				TypeSystemLoaderTests.Mscorlib,
 				TypeSystemLoaderTests.SystemCore);
 		}
 
@@ -49,41 +49,33 @@ namespace ICSharpCode.Decompiler.Tests.Semantics
 
 		IMethod MakeMethod(params object[] parameterTypesOrDefaultValues)
 		{
-			var context = new SimpleTypeResolveContext(compilation.MainAssembly);
-			return (IMethod)MakeUnresolvedMethod(parameterTypesOrDefaultValues).CreateResolved(context);
-		}
-
-		DefaultUnresolvedMethod MakeUnresolvedMethod(params object[] parameterTypesOrDefaultValues)
-		{
-			var m = new DefaultUnresolvedMethod();
+			var context = new SimpleTypeResolveContext(compilation.MainModule);
+			var m = new FakeMethod(compilation, SymbolKind.Method);
 			m.Name = "Method";
+			var parameters = new List<IParameter>();
 			foreach (var typeOrDefaultValue in parameterTypesOrDefaultValues) {
 				Type type = typeOrDefaultValue as Type;
 				if (type != null)
-					m.Parameters.Add(new DefaultUnresolvedParameter(type.ToTypeReference(), string.Empty));
+					parameters.Add(new DefaultParameter(compilation.FindType(type), string.Empty, owner: m));
 				else if (Type.GetTypeCode(typeOrDefaultValue.GetType()) > TypeCode.Object)
-					m.Parameters.Add(new DefaultUnresolvedParameter(typeOrDefaultValue.GetType().ToTypeReference(), string.Empty) {
-						DefaultValue = new SimpleConstantValue(typeOrDefaultValue.GetType().ToTypeReference(), typeOrDefaultValue)
-					});
+					parameters.Add(new DefaultParameter(compilation.FindType(typeOrDefaultValue.GetType()), string.Empty,
+						owner: m, isOptional: true, defaultValue: typeOrDefaultValue));
 				else
 					throw new ArgumentException(typeOrDefaultValue.ToString());
 			}
+			m.Parameters = parameters;
 			return m;
 		}
 
 		IMethod MakeParamsMethod(params object[] parameterTypesOrDefaultValues)
 		{
-			var m = MakeUnresolvedMethod(parameterTypesOrDefaultValues);
-			((DefaultUnresolvedParameter)m.Parameters.Last()).IsParams = true;
-			var context = new SimpleTypeResolveContext(compilation.MainAssembly);
-			return (IMethod)m.CreateResolved(context);
-		}
-
-		IUnresolvedParameter MakeOptionalParameter(ITypeReference type, string name)
-		{
-			return new DefaultUnresolvedParameter(type, name) {
-				DefaultValue = new SimpleConstantValue(type, null)
-			};
+			var m = (FakeMethod)MakeMethod(parameterTypesOrDefaultValues);
+			var parameters = m.Parameters.ToList();
+			parameters[parameters.Count - 1] = new DefaultParameter(
+				parameters.Last().Type, parameters.Last().Name,
+				isParams: true);
+			m.Parameters = parameters;
+			return m;
 		}
 
 		[Test]
@@ -328,7 +320,7 @@ namespace ICSharpCode.Decompiler.Tests.Semantics
 			var container = compilation.FindType(typeof(BetterFunctionMemberIsNotTransitiveTestCase)).GetDefinition();
 
 			var args = new ResolveResult[] {
-				new MockLambda(compilation.FindType(KnownTypeCode.String)) { parameters = { new DefaultParameter(SpecialType.UnknownType, "arg") } } 
+				new MockLambda(compilation.FindType(KnownTypeCode.String)) { parameters = { new DefaultParameter(SpecialType.UnknownType, "arg") } }
 			};
 
 			OverloadResolution r = new OverloadResolution(compilation, args);
@@ -336,7 +328,7 @@ namespace ICSharpCode.Decompiler.Tests.Semantics
 				Assert.AreEqual(OverloadResolutionErrors.None, r.AddCandidate(method));
 			}
 
-			Assert.AreEqual(container.GetMethods(m => m.Name == "Method").Last(), r.BestCandidate); 
+			Assert.AreEqual(container.GetMethods(m => m.Name == "Method").Last(), r.BestCandidate);
 		}
 
 		class BetterFunctionMemberIsNotTransitiveTestCase

@@ -101,9 +101,9 @@ namespace ICSharpCode.Decompiler
 		dnlib.DotNet.IMemberRef SymbolToCecil(ISymbol symbol)
 		{
 			if (symbol is IType type) {
-				return typeSystem.GetCecil(type.GetDefinition());
+				return (dnlib.DotNet.IMemberRef)type.GetDefinition().MetadataToken;
 			} else if (symbol is IMember member) {
-				return typeSystem.GetCecil(member);
+				return (dnlib.DotNet.IMemberRef)member.MetadataToken;
 			} else {
 				return null;
 			}
@@ -199,7 +199,7 @@ namespace ICSharpCode.Decompiler
 			//To make reference for 'this' and 'base' keywords in the ClassName():this() expression
 			if (role == ConstructorInitializer.ThisKeywordRole || role == ConstructorInitializer.BaseKeywordRole) {
 				if (nodeStack.Peek() is ConstructorInitializer initializer && initializer.GetSymbol() is IMember member) {
-					var cecil = typeSystem.GetCecil(member);
+					var cecil = member.MetadataToken;
 					if (cecil != null) {
 						output.WriteReference(keyword, cecil);
 						return;

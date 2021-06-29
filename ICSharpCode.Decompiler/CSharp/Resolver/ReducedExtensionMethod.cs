@@ -27,7 +27,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
+using IModule = ICSharpCode.Decompiler.TypeSystem.IModule;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.CSharp.Resolver
 {
@@ -80,21 +84,15 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 
-		public IUnresolvedMember UnresolvedMember {
-			get {
-				return baseMethod.UnresolvedMember;
-			}
-		}
-
 		public IType ReturnType {
 			get {
 				return baseMethod.ReturnType;
 			}
 		}
 
-		public IReadOnlyList<IMember> ImplementedInterfaceMembers {
+		public IEnumerable<IMember> ExplicitlyImplementedInterfaceMembers {
 			get {
-				return baseMethod.ImplementedInterfaceMembers;
+				return baseMethod.ExplicitlyImplementedInterfaceMembers;
 			}
 		}
 
@@ -142,18 +140,6 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		#region IMethod implementation
 
-		public IReadOnlyList<IUnresolvedMethod> Parts {
-			get {
-				return baseMethod.Parts;
-			}
-		}
-
-		public IReadOnlyList<IAttribute> ReturnTypeAttributes {
-			get {
-				return baseMethod.ReturnTypeAttributes;
-			}
-		}
-
 		public IReadOnlyList<ITypeParameter> TypeParameters {
 			get {
 				return baseMethod.TypeParameters;
@@ -181,18 +167,6 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		public bool IsOperator {
 			get {
 				return baseMethod.IsOperator;
-			}
-		}
-
-		public bool IsPartial {
-			get {
-				return baseMethod.IsPartial;
-			}
-		}
-
-		public bool IsAsync {
-			get {
-				return baseMethod.IsAsync;
 			}
 		}
 
@@ -241,7 +215,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		#region IEntity implementation
 
-		public dnlib.DotNet.MDToken MetadataToken => baseMethod.MetadataToken;
+		public IMDTokenProvider MetadataToken => baseMethod.MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get {
@@ -261,17 +235,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 
-		public IAssembly ParentAssembly {
+		public IModule ParentModule {
 			get {
-				return baseMethod.ParentAssembly;
+				return baseMethod.ParentModule;
 			}
 		}
 
-		public IReadOnlyList<IAttribute> Attributes {
-			get {
-				return baseMethod.Attributes;
-			}
-		}
+		IEnumerable<IAttribute> IEntity.GetAttributes() => baseMethod.GetAttributes();
+		IEnumerable<IAttribute> IMethod.GetReturnTypeAttributes() => baseMethod.GetReturnTypeAttributes();
 
 		public bool IsStatic {
 			get {
@@ -291,18 +262,6 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 
-		public bool IsShadowing {
-			get {
-				return baseMethod.IsShadowing;
-			}
-		}
-
-		public bool IsSynthetic {
-			get {
-				return baseMethod.IsSynthetic;
-			}
-		}
-
 		#endregion
 
 		#region IHasAccessibility implementation
@@ -310,42 +269,6 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		public Accessibility Accessibility {
 			get {
 				return baseMethod.Accessibility;
-			}
-		}
-
-		public bool IsPrivate {
-			get {
-				return baseMethod.IsPrivate;
-			}
-		}
-
-		public bool IsPublic {
-			get {
-				return baseMethod.IsPublic;
-			}
-		}
-
-		public bool IsProtected {
-			get {
-				return baseMethod.IsProtected;
-			}
-		}
-
-		public bool IsInternal {
-			get {
-				return baseMethod.IsInternal;
-			}
-		}
-
-		public bool IsProtectedOrInternal {
-			get {
-				return baseMethod.IsProtectedOrInternal;
-			}
-		}
-
-		public bool IsProtectedAndInternal {
-			get {
-				return baseMethod.IsProtectedAndInternal;
 			}
 		}
 

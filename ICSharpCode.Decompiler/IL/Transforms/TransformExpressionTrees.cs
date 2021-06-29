@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -100,8 +100,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		{
 			if (!context.Settings.ExpressionTrees) return;
 			this.context = context;
-			this.conversions = CSharpConversions.Get(context.TypeSystem.Compilation);
-			this.resolver = new CSharpResolver(context.TypeSystem.Compilation);
+			this.conversions = CSharpConversions.Get(context.TypeSystem);
+			this.resolver = new CSharpResolver(context.TypeSystem);
 			this.parameters = new Dictionary<ILVariable, (IType, string)>();
 			this.parameterMapping = new Dictionary<ILVariable, ILVariable>();
 			this.instructionsToRemove = new List<ILInstruction>();
@@ -153,7 +153,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			bool isQuotedLambda = instruction.Parent is CallInstruction call && call.Method.FullName == "System.Linq.Expressions.Expression.Quote";
 			var container = new BlockContainer();
 			var functionType = instruction.Method.ReturnType.TypeArguments[0];
-			var function = new ILFunction(functionType.GetDelegateInvokeMethod()?.ReturnType, parameterList, container);
+			var function = new ILFunction(functionType.GetDelegateInvokeMethod()?.ReturnType, parameterList, context.Function.GenericContext, container);
 			if (isQuotedLambda || lambdaStack.Count == 0)
 				function.DelegateType = instruction.Method.ReturnType;
 			else
@@ -361,7 +361,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var (converted, arrayType) = ConvertInstruction(invocation.Arguments[0]);
 			if (converted == null)
 				return (null, SpecialType.UnknownType);
-			return (new LdLen(StackType.I4, converted), context.TypeSystem.Compilation.FindType(KnownTypeCode.Int32));
+			return (new LdLen(StackType.I4, converted), context.TypeSystem.FindType(KnownTypeCode.Int32));
 		}
 
 		(ILInstruction, IType) ConvertBinaryNumericOperator(CallInstruction invocation, BinaryNumericOperator op, bool? isChecked = null)
@@ -573,7 +573,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				}
 				return (new Call(operatorMethod) { Arguments = { left, right } }, operatorMethod.ReturnType);
 			}
-			var resultType = context.TypeSystem.Compilation.FindType(KnownTypeCode.Boolean);
+			var resultType = context.TypeSystem.FindType(KnownTypeCode.Boolean);
 			return (new Comp(kind, NullableType.IsNullable(leftType) ? ComparisonLiftingKind.CSharp : ComparisonLiftingKind.None, leftType.GetStackType(), leftType.GetSign(), left, right), resultType);
 		}
 
@@ -723,7 +723,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			IMember method;
 			switch (invocation.Arguments.Count) {
 				case 2:
-					var resultType = context.TypeSystem.Compilation.FindType(KnownTypeCode.Boolean);
+					var resultType = context.TypeSystem.FindType(KnownTypeCode.Boolean);
 					return (and ? IfInstruction.LogicAnd(left, right) : IfInstruction.LogicOr(left, right), resultType);
 				case 3:
 					if (!MatchGetMethodFromHandle(invocation.Arguments[2], out method))
@@ -794,7 +794,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					return (null, SpecialType.UnknownType);
 				indices[i] = index;
 			}
-			return (new NewArr(type, indices), new ArrayType(context.TypeSystem.Compilation, type, arguments.Count));
+			return (new NewArr(type, indices), new ArrayType(context.TypeSystem, type, arguments.Count));
 		}
 
 		(ILInstruction, IType) ConvertNewArrayInit(CallInstruction invocation)
@@ -805,7 +805,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return (null, SpecialType.UnknownType);
 			if (!MatchArgumentList(invocation.Arguments[1], out var arguments))
 				return (null, SpecialType.UnknownType);
-			ArrayType arrayType = new ArrayType(context.BlockContext.TypeSystem.Compilation, type);
+			ArrayType arrayType = new ArrayType(context.BlockContext.TypeSystem, type);
 			if (arguments.Count == 0)
 				return (new NewArr(type, new LdcI4(0)), arrayType);
 			var block = (Block)invocation.Arguments[1];
@@ -943,7 +943,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var converted = ConvertInstruction(invocation.Arguments[0]).Item1;
 			if (!MatchGetTypeFromHandle(invocation.Arguments[1], out var type))
 				return (null, SpecialType.UnknownType);
-			var resultType = context.TypeSystem.Compilation.FindType(KnownTypeCode.Boolean);
+			var resultType = context.TypeSystem.FindType(KnownTypeCode.Boolean);
 			if (converted != null)
 				return (new Comp(ComparisonKind.Inequality, Sign.None, new IsInst(converted, type), new LdNull()), resultType);
 			return (null, SpecialType.UnknownType);
@@ -1045,7 +1045,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			//castclass System.Reflection.MethodInfo(call GetMethodFromHandle(ldmembertoken op_Addition))
 			if (!inst.MatchCastClass(out var arg, out var type))
 				return false;
-			if (!type.Equals(context.TypeSystem.Compilation.FindType(new FullTypeName("System.Reflection.MethodInfo"))))
+			if (!type.Equals(context.TypeSystem.FindType(new FullTypeName("System.Reflection.MethodInfo"))))
 				return false;
 			if (!(arg is CallInstruction call && call.Method.FullName == "System.Reflection.MethodBase.GetMethodFromHandle"))
 				return false;
@@ -1070,7 +1070,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			//castclass System.Reflection.ConstructorInfo(call GetMethodFromHandle(ldmembertoken op_Addition))
 			if (!inst.MatchCastClass(out var arg, out var type))
 				return false;
-			if (!type.Equals(context.TypeSystem.Compilation.FindType(new FullTypeName("System.Reflection.ConstructorInfo"))))
+			if (!type.Equals(context.TypeSystem.FindType(new FullTypeName("System.Reflection.ConstructorInfo"))))
 				return false;
 			if (!(arg is CallInstruction call && call.Method.FullName == "System.Reflection.MethodBase.GetMethodFromHandle"))
 				return false;
