@@ -25,11 +25,7 @@ namespace ICSharpCode.Decompiler
 	{
 		public static bool IsCompilerGenerated(this IEntity entity)
 		{
-			if (entity != null) {
-				if (entity.HasAttribute(KnownAttribute.CompilerGenerated))
-					return true;
-			}
-			return false;
+			return entity != null && entity.HasAttribute(KnownAttribute.CompilerGenerated);
 		}
 
 		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this IEntity entity)

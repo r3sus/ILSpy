@@ -134,7 +134,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public bool IsDestructor => symbolKind == SymbolKind.Destructor;
 		public bool IsOperator => symbolKind == SymbolKind.Operator;
 		public bool IsAccessor => symbolKind == SymbolKind.Accessor;
-		public bool HasBody => handle.HasBody;
+		public bool HasBody => !handle.IsAbstract && !handle.IsPinvokeImpl && !handle.IsInternalCall && !handle.IsNative &&
+							   !handle.IsRuntime && !handle.IsUnmanaged;
 
 		public IMember AccessorOwner {
 			get {

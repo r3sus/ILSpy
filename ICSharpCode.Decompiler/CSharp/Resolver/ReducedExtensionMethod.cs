@@ -24,14 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
-using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
-using IModule = ICSharpCode.Decompiler.TypeSystem.IModule;
-using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.CSharp.Resolver
 {
@@ -215,7 +210,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		#region IEntity implementation
 
-		public IMDTokenProvider MetadataToken => baseMethod.MetadataToken;
+		public dnlib.DotNet.IMDTokenProvider MetadataToken => baseMethod.MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get {

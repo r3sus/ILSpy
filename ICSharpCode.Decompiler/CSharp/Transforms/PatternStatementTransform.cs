@@ -792,7 +792,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				if (field != null) {
 					ed.AddAnnotation(field);
 					var attributes = field.GetAttributes()
-							.Where(a => !attributeTypesToRemoveFromAutoEvents.Any(t => t == a.AttributeType.FullName))
+							.Where(a => !attributeTypesToRemoveFromAutoEvents.Contains(a.AttributeType.FullName))
 							.Select(context.TypeSystemAstBuilder.ConvertAttribute).ToArray();
 					if (attributes.Length > 0) {
 						var section = new AttributeSection {
