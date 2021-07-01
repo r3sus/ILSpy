@@ -156,7 +156,7 @@ namespace ICSharpCode.Decompiler.IL
 			VariableKind kind = IsPinned(v.Type) ? VariableKind.PinnedLocal : VariableKind.Local;
 
 			IType localType = module.ResolveType(v.Type, genericContext);
-			if (kind == VariableKind.PinnedLocal && localType is PinnedType pinnedType)
+			if (kind == VariableKind.PinnedLocal && localType.SkipModifiers() is PinnedType pinnedType)
 				localType = pinnedType.ElementType;
 
 			ILVariable ilVar = new ILVariable(kind, localType, v.Index);
