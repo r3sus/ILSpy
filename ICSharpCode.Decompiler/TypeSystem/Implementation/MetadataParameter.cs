@@ -54,7 +54,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			if (IsOptional && !HasConstantValueInSignature)
 				b.Add(KnownAttribute.Optional);
 
-			if (!IsOut) {
+			if (!IsOut && !IsIn) {
 				if (handle.HasParamDef) {
 					if (handle.ParamDef.IsIn)
 						b.Add(KnownAttribute.In);
@@ -72,9 +72,21 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 		#endregion
 
+		const ParamAttributes inOut = ParamAttributes.In | ParamAttributes.Out;
 		public bool IsRef => Type.Kind == TypeKind.ByReference && handle.HasParamDef && (handle.ParamDef.IsIn || !handle.ParamDef.IsOut);
 		public bool IsOut => Type.Kind == TypeKind.ByReference && handle.HasParamDef && !handle.ParamDef.IsIn && handle.ParamDef.IsOut;
 		public bool IsOptional => handle.HasParamDef && handle.ParamDef.IsOptional;
+
+		public bool IsIn {
+			get {
+				if (!handle.HasParamDef)
+					return false;
+				if ((module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == 0 ||
+					Type.Kind != TypeKind.ByReference || (handle.ParamDef.Attributes & inOut) != ParamAttributes.In)
+					return false;
+				return handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+			}
+		}
 
 		public bool IsParams {
 			get {
