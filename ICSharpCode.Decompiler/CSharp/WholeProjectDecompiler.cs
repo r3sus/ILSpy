@@ -55,6 +55,21 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 		}
 
+		LanguageVersion? languageVersion;
+
+		public LanguageVersion LanguageVersion {
+			get { return languageVersion ?? Settings.GetMinimumRequiredVersion(); }
+			set {
+				var minVersion = Settings.GetMinimumRequiredVersion();
+				if (value < minVersion)
+					throw new InvalidOperationException($"The chosen settings require at least {minVersion}." +
+						$" Please change the DecompilerSettings accordingly.");
+				languageVersion = value;
+			}
+		}
+
+		public IAssemblyResolver AssemblyResolver { get; set; }
+
 		/// <summary>
 		/// The MSBuild ProjectGuid to use for the new project.
 		/// <c>null</c> to automatically generate a new GUID.
@@ -139,6 +154,8 @@ namespace ICSharpCode.Decompiler.CSharp
 						w.WriteElementString("OutputType", "Library");
 						break;
 				}
+
+				w.WriteElementString("LangVersion", LanguageVersion.ToString().Replace("CSharp", "").Replace('_', '.'));
 
 				w.WriteElementString("AssemblyName", module.Assembly.Name);
 				bool useTargetFrameworkAttribute = false;
