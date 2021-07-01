@@ -68,6 +68,8 @@
     <Compile Include="Semantics\OverloadResolutionTests.cs" />
     <Compile Include="DataFlowTest.cs" />
     <Compile Include="TestCases\Correctness\RefLocalsAndReturns.cs" />
+    <Compile Include="TestCases\Pretty\OptionalArguments.cs" />
+    <Compile Include="TestCases\Pretty\TypeTests.cs" />
     <Compile Include="TestCases\Pretty\CustomAttributeConflicts.cs" />
     <Compile Include="TestCases\Pretty\DynamicTests.cs" />
     <Compile Include="TestCases\Pretty\Issue1080.cs" />
@@ -76,7 +78,6 @@
     <Compile Include="TestCases\Pretty\QualifierTests.cs" />
     <Compile Include="TestCases\Pretty\RefLocalsAndReturns.cs" />
     <Compile Include="TestCases\Pretty\TupleTests.cs" />
-    <Compile Include="TestCases\Pretty\TypeTests.cs" />
     <Compile Include="TestCases\Pretty\WellKnownConstants.cs" />
     <Compile Include="TypeSystem\TypeSystemLoaderTests.cs" />
     <Compile Include="TypeSystem\TypeSystemTestCase.cs" />
