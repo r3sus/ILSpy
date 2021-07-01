@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -33,20 +33,20 @@ namespace ICSharpCode.ILSpy.Options
 		{
 			InitializeComponent();
 		}
-		
+
 		public void Load(ILSpySettings settings)
 		{
 			this.DataContext = currentDecompilerSettings ?? LoadDecompilerSettings(settings);
 		}
-		
+
 		static DecompilerSettings currentDecompilerSettings;
-		
+
 		public static DecompilerSettings CurrentDecompilerSettings {
 			get {
 				return currentDecompilerSettings ?? (currentDecompilerSettings = LoadDecompilerSettings(ILSpySettings.Load()));
 			}
 		}
-		
+
 		public static DecompilerSettings LoadDecompilerSettings(ILSpySettings settings)
 		{
 			XElement e = settings["DecompilerSettings"];
@@ -57,11 +57,10 @@ namespace ICSharpCode.ILSpy.Options
 			s.ExpandMemberDefinitions = (bool?)e.Attribute("expandMemberDefinitions") ?? s.ExpandMemberDefinitions;
 			s.RemoveDeadCode = (bool?)e.Attribute("removeDeadCode") ?? s.RemoveDeadCode;
 			s.UsingDeclarations = (bool?)e.Attribute("usingDeclarations") ?? s.UsingDeclarations;
-			s.FullyQualifyAmbiguousTypeNames = (bool?)e.Attribute("fullyQualifyAmbiguousTypeNames") ?? s.FullyQualifyAmbiguousTypeNames;
 			s.AlwaysUseBraces = (bool?)e.Attribute("alwaysUseBraces") ?? s.AlwaysUseBraces;
 			return s;
 		}
-		
+
 		public void Save(XElement root)
 		{
 			DecompilerSettings s = (DecompilerSettings)this.DataContext;
@@ -73,7 +72,6 @@ namespace ICSharpCode.ILSpy.Options
 			section.SetAttributeValue("expandMemberDefinitions", s.ExpandMemberDefinitions);
 			section.SetAttributeValue("removeDeadCode", s.RemoveDeadCode);
 			section.SetAttributeValue("usingDeclarations", s.UsingDeclarations);
-			section.SetAttributeValue("fullyQualifyAmbiguousTypeNames", s.FullyQualifyAmbiguousTypeNames);
 			section.SetAttributeValue("alwaysUseBraces", s.AlwaysUseBraces);
 
 			XElement existingElement = root.Element("DecompilerSettings");
@@ -81,7 +79,7 @@ namespace ICSharpCode.ILSpy.Options
 				existingElement.ReplaceWith(section);
 			else
 				root.Add(section);
-			
+
 			currentDecompilerSettings = s; // update cached settings
 		}
 	}
@@ -142,18 +140,6 @@ namespace ICSharpCode.ILSpy.Options
 			}
 		}
 
-		bool fullyQualifyAmbiguousTypeNames = true;
-
-		public bool FullyQualifyAmbiguousTypeNames {
-			get { return fullyQualifyAmbiguousTypeNames; }
-			set {
-				if (fullyQualifyAmbiguousTypeNames != value) {
-					fullyQualifyAmbiguousTypeNames = value;
-					OnPropertyChanged();
-				}
-			}
-		}
-
 		bool useDebugSymbols = true;
 
 		/// <summary>
@@ -208,7 +194,7 @@ namespace ICSharpCode.ILSpy.Options
 		bool alwaysUseBraces = true;
 
 		/// <summary>
-		/// Gets/Sets whether to use braces for single-statement-blocks. 
+		/// Gets/Sets whether to use braces for single-statement-blocks.
 		/// </summary>
 		public bool AlwaysUseBraces {
 			get { return alwaysUseBraces; }

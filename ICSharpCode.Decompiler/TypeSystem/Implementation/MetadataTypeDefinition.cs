@@ -60,19 +60,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			Debug.Assert(handle != null);
 			this.module = module;
 			this.handle = handle;
-			var metadata = module.metadata;
-			var td = handle;
-			this.attributes = td.Attributes;
-			this.fullTypeName = td.GetFullTypeName();
+			this.attributes = handle.Attributes;
+			this.fullTypeName = handle.GetFullTypeName();
 			// Find DeclaringType + KnownTypeCode:
 			if (fullTypeName.IsNested) {
-				this.DeclaringTypeDefinition = module.GetDefinition(td.DeclaringType);
+				this.DeclaringTypeDefinition = module.GetDefinition(handle.DeclaringType);
 
 				// Create type parameters:
-				this.TypeParameters = MetadataTypeParameter.Create(module, this.DeclaringTypeDefinition, this, td.GenericParameters);
+				this.TypeParameters = MetadataTypeParameter.Create(module, this.DeclaringTypeDefinition, this, handle.GenericParameters);
 			} else {
 				// Create type parameters:
-				this.TypeParameters = MetadataTypeParameter.Create(module, this, td.GenericParameters);
+				this.TypeParameters = MetadataTypeParameter.Create(module, this, handle.GenericParameters);
 
 				var topLevelTypeName = fullTypeName.TopLevelTypeName;
 				for (int i = 0; i < KnownTypeReference.KnownTypeCodeCount; i++) {
@@ -86,22 +84,22 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			// Find type kind:
 			if ((attributes & TypeAttributes.ClassSemanticsMask) == TypeAttributes.Interface) {
 				this.Kind = TypeKind.Interface;
-			} else if (td.IsEnum) {
+			} else if (handle.IsEnum) {
 				this.Kind = TypeKind.Enum;
-				this.EnumUnderlyingType = module.Compilation.FindType(td.GetEnumUnderlyingType().ElementType.ToKnownTypeCode());
-			} else if (td.IsValueType) {
+				this.EnumUnderlyingType = module.Compilation.FindType(handle.GetEnumUnderlyingType().ElementType.ToKnownTypeCode());
+			} else if (handle.IsValueType) {
 				if (KnownTypeCode == KnownTypeCode.Void) {
 					this.Kind = TypeKind.Void;
 				} else {
 					this.Kind = TypeKind.Struct;
-					this.IsByRefLike = td.CustomAttributes.HasKnownAttribute(metadata, KnownAttribute.IsByRefLike);
+					this.IsByRefLike = handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsByRefLike);
 				}
-			} else if (td.IsDelegate) {
+			} else if (handle.IsDelegate) {
 				this.Kind = TypeKind.Delegate;
 			} else {
 				this.Kind = TypeKind.Class;
 				this.HasExtensionMethods = this.IsStatic
-					&& td.CustomAttributes.HasKnownAttribute(metadata, KnownAttribute.Extension);
+					&& handle.CustomAttributes.HasKnownAttribute(KnownAttribute.Extension);
 			}
 		}
 

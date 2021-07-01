@@ -53,7 +53,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			Debug.Assert(handle != null);
 			this.module = module;
 			this.handle = handle;
-			var metadata = module.metadata;
 			this.attributes = handle.Attributes;
 
 			this.symbolKind = SymbolKind.Method;
@@ -71,7 +70,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.typeParameters = MetadataTypeParameter.Create(module, this, handle.GenericParameters);
 			this.IsExtensionMethod = (attributes & MethodAttributes.Static) == MethodAttributes.Static
 									 && (module.TypeSystemOptions & TypeSystemOptions.ExtensionMethods) == TypeSystemOptions.ExtensionMethods
-									 && handle.CustomAttributes.HasKnownAttribute(metadata, KnownAttribute.Extension);
+									 && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.Extension);
 		}
 
 		private static IHasSemantic FindOwner(MethodDef handle){

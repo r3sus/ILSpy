@@ -67,28 +67,10 @@ namespace ICSharpCode.Decompiler
 			return accessorMethods;
 		}
 
-		public static TypeDef ResolveWithinSameModule(this ITypeDefOrRef type)
-		{
-			if (type != null && type.Scope == type.Module)
-				return type.ResolveTypeDef();
-			else
-				return null;
-		}
-
 		public static FieldDef ResolveFieldWithinSameModule(this IField field)
 		{
 			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
 				return field is FieldDef ? (FieldDef)field : ((MemberRef)field).ResolveField();
-			else
-				return null;
-		}
-
-		public static MethodDef ResolveMethodWithinSameModule(this IMethod method)
-		{
-			if (method is MethodSpec)
-				method = ((MethodSpec)method).Method;
-			if (method != null && method.DeclaringType != null && method.DeclaringType.Scope == method.Module)
-				return method is MethodDef ? (MethodDef)method : ((MemberRef)method).ResolveMethod();
 			else
 				return null;
 		}
@@ -154,15 +136,6 @@ namespace ICSharpCode.Decompiler
 			return false;
 		}
 
-		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this IMemberDef member)
-		{
-			if (member == null)
-				return false;
-			if (member.IsCompilerGenerated())
-				return true;
-			return IsCompilerGeneratedOrIsInCompilerGeneratedClass(member.DeclaringType);
-		}
-
 		public static bool IsAnonymousType(this ITypeDefOrRef type)
 		{
 			if (type == null)
@@ -177,36 +150,6 @@ namespace ICSharpCode.Decompiler
 		public static bool HasGeneratedName(this IMemberRef member)
 		{
 			return member.Name.StartsWith("<", StringComparison.Ordinal);
-		}
-
-		public static bool ContainsAnonymousType(this TypeSig type)
-		{
-			return type.ContainsAnonymousType(0);
-		}
-
-		static bool ContainsAnonymousType(this TypeSig type, int depth)
-		{
-			if (depth >= 30)
-				return false;
-			GenericInstSig git = type as GenericInstSig;
-			if (git != null && git.GenericType != null) {
-				if (IsAnonymousType(git.GenericType.TypeDefOrRef))
-					return true;
-				for (int i = 0; i < git.GenericArguments.Count; i++) {
-					if (git.GenericArguments[i].ContainsAnonymousType(depth + 1))
-						return true;
-				}
-				return false;
-			}
-			if (type != null && type.Next != null)
-				return type.Next.ContainsAnonymousType(depth + 1);
-			return false;
-		}
-
-		public static string GetDefaultMemberName(this TypeDef type)
-		{
-			CustomAttribute attr;
-			return type.GetDefaultMemberName(out attr);
 		}
 
 		public static string GetDefaultMemberName(this TypeDef type, out CustomAttribute defaultMemberAttribute)
@@ -409,7 +352,7 @@ namespace ICSharpCode.Decompiler
 				return scope.ScopeName;	// Shouldn't be reached
 		}
 
-		internal static bool HasKnownAttribute(this CustomAttributeCollection customAttributes, ModuleDef metadata, TypeSystem.KnownAttribute type)
+		internal static bool HasKnownAttribute(this CustomAttributeCollection customAttributes, TypeSystem.KnownAttribute type)
 		{
 			foreach (var customAttribute in customAttributes) {
 				if (customAttribute.IsKnownAttribute(type))

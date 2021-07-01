@@ -180,8 +180,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		bool IsDecimalConstant {
 			get {
 				if (decimalConstant == 2) {
-					var metadata = module.metadata;
-					if (handle.CustomAttributes.HasKnownAttribute(metadata, KnownAttribute.DecimalConstant))
+					if (handle.CustomAttributes.HasKnownAttribute(KnownAttribute.DecimalConstant))
 						decimalConstant = 1;
 					else
 						decimalConstant = 0;

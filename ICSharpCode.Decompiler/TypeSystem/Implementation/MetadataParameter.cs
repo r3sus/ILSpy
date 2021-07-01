@@ -72,10 +72,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get {
 				if (Type.Kind != TypeKind.Array)
 					return false;
-				var metadata = module.metadata;
 				if (!handle.HasParamDef)
 					return false;
-				return handle.ParamDef.CustomAttributes.HasKnownAttribute(metadata, KnownAttribute.ParamArray);
+				return handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.ParamArray);
 			}
 		}
 

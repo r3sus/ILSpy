@@ -88,7 +88,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				typeSystemOptions |= TypeSystemOptions.Dynamic;
 			if (settings.TupleTypes)
 				typeSystemOptions |= TypeSystemOptions.Tuple;
-			//if (settings.ExtensionMethods)
+			if (settings.ExtensionMethods)
 				typeSystemOptions |= TypeSystemOptions.ExtensionMethods;
 			return typeSystemOptions;
 		}
