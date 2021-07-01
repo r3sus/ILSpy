@@ -486,7 +486,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 		PropertyDeclaration TransformAutomaticProperties(PropertyDeclaration property)
 		{
-			dnlib.DotNet.PropertyDef cecilProperty = context.TypeSystem.GetCecil(property.GetSymbol() as IProperty) as dnlib.DotNet.PropertyDef;
+			dnlib.DotNet.PropertyDef cecilProperty = (property.GetSymbol() as IProperty).MetadataToken as dnlib.DotNet.PropertyDef;
 			if (cecilProperty == null || cecilProperty.GetMethod == null)
 				return null;
 			if (!cecilProperty.GetMethod.IsCompilerGenerated() && (cecilProperty.SetMethod?.IsCompilerGenerated() == false))
@@ -503,7 +503,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			if (fieldInfo == null)
 				return null;
-			dnlib.DotNet.FieldDef field = context.TypeSystem.GetCecil(fieldInfo) as dnlib.DotNet.FieldDef;
+			dnlib.DotNet.FieldDef field = fieldInfo.MetadataToken as dnlib.DotNet.FieldDef;
 			if (field.IsCompilerGenerated() && field.DeclaringType == cecilProperty.DeclaringType) {
 				RemoveCompilerGeneratedAttribute(property.Getter.Attributes);
 				RemoveCompilerGeneratedAttribute(property.Setter.Attributes);
@@ -511,7 +511,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				property.Setter.Body = null;
 
 				// Add C# 7.3 attributes on backing field:
-				var attributes = fieldInfo.Attributes
+				var attributes = fieldInfo.GetAttributes()
 					.Where(a => !attributeTypesToRemoveFromAutoProperties.Any(t => t == a.AttributeType.FullName))
 					.Select(context.TypeSystemAstBuilder.ConvertAttribute).ToArray();
 				if (attributes.Length > 0) {
@@ -791,8 +791,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				IField field = eventDef.DeclaringType.GetFields(f => f.Name == ev.Name, GetMemberOptions.IgnoreInheritedMembers).SingleOrDefault();
 				if (field != null) {
 					ed.AddAnnotation(field);
-					var attributes = field.Attributes
-							.Where(a => !attributeTypesToRemoveFromAutoEvents.Any(t => t == a.AttributeType.FullName))
+					var attributes = field.GetAttributes()
+							.Where(a => !attributeTypesToRemoveFromAutoEvents.Contains(a.AttributeType.FullName))
 							.Select(context.TypeSystemAstBuilder.ConvertAttribute).ToArray();
 					if (attributes.Length > 0) {
 						var section = new AttributeSection {

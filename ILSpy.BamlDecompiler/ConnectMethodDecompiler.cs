@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using dnlib.DotNet;
 using ICSharpCode.Decompiler;
@@ -14,6 +15,7 @@ using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 using IField = ICSharpCode.Decompiler.TypeSystem.IField;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
 
 namespace ILSpy.BamlDecompiler
 {
@@ -30,37 +32,42 @@ namespace ILSpy.BamlDecompiler
 	/// </summary>
 	sealed class ConnectMethodDecompiler
 	{
-		AssemblyDef assembly;
+		private PEFile module;
 
 		public ConnectMethodDecompiler(AssemblyDef assembly)
 		{
-			this.assembly = assembly;
+			this.module = new PEFile(assembly.ManifestModule);
 		}
 
 		public List<(LongSet, EventRegistration[])> DecompileEventMappings(string fullTypeName, CancellationToken cancellationToken)
 		{
 			var result = new List<(LongSet, EventRegistration[])>();
-			TypeDef type = this.assembly.ManifestModule.Find(fullTypeName, false);
+			var typeSystem = new DecompilerTypeSystem(module);
 
-			if (type == null)
+			var typeDefinition = typeSystem.FindType(new FullTypeName(fullTypeName)).GetDefinition();
+			if (typeDefinition == null)
 				return result;
 
-			MethodDef method = null;
+			IMethod method = null;
+			MethodDef metadataEntry = default;
 
-			foreach (var m in type.Methods) {
+			foreach (var m in typeDefinition.GetMethods()) {
 				if (m.Name == "System.Windows.Markup.IComponentConnector.Connect") {
 					method = m;
+					metadataEntry = (MethodDef)method.MetadataToken;
 					break;
 				}
 			}
 
-			if (method == null)
+			if (method == null || !metadataEntry.HasBody)
 				return result;
 
+			var genericContext = new ICSharpCode.Decompiler.TypeSystem.GenericContext(
+				classTypeParameters: method.DeclaringType?.TypeParameters,
+				methodTypeParameters: method.TypeParameters);
 			// decompile method and optimize the switch
-			var typeSystem = new DecompilerTypeSystem(method.Module);
-			var ilReader = new ILReader(typeSystem);
-			var function = ilReader.ReadIL(method, method.Body, cancellationToken);
+			var ilReader = new ILReader(typeSystem.MainModule);
+			var function = ilReader.ReadIL((MethodDef)method.MetadataToken, genericContext, cancellationToken);
 
 			var context = new ILTransformContext(function, typeSystem) {
 				CancellationToken = cancellationToken

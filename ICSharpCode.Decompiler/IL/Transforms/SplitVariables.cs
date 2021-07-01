@@ -113,7 +113,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					}
 					foreach (var p in call.Method.Parameters) {
 						// catch "out Span<int>" and similar
-						if (p.Type is ByReferenceType brt && brt.ElementType.IsByRefLike)
+						if (p.Type.SkipModifiers() is ByReferenceType brt && brt.ElementType.IsByRefLike)
 							return AddressUse.Unknown;
 					}
 					// ensure there's no 'stloc target' in between the ldloca and the call consuming the address

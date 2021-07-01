@@ -41,7 +41,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 			node.AcceptVisitor(visitor);
 
-			visitor.RemoveSingleEmptyConstructor(node.Children, context.DecompiledTypeDefinition);
+			visitor.RemoveSingleEmptyConstructor(node.Children, context.CurrentTypeDefinition);
 		}
 	}
 
@@ -186,7 +186,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			var staticCtor = members.OfType<ConstructorDeclaration>().FirstOrDefault(c => (c.Modifiers & Modifiers.Static) == Modifiers.Static);
 			if (staticCtor != null) {
 				IMethod ctorMethod = staticCtor.GetSymbol() as IMethod;
-				dnlib.DotNet.MethodDef ctorMethodDef = context.TypeSystem.GetCecil(ctorMethod) as dnlib.DotNet.MethodDef;
+				dnlib.DotNet.MethodDef ctorMethodDef = ctorMethod?.MetadataToken as dnlib.DotNet.MethodDef;
 				if (ctorMethodDef != null && ctorMethodDef.DeclaringType.IsBeforeFieldInit) {
 					while (true) {
 						ExpressionStatement es = staticCtor.Body.Statements.FirstOrDefault() as ExpressionStatement;

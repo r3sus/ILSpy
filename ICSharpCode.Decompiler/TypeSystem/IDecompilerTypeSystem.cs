@@ -16,29 +16,15 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using dnlib.DotNet;
-
 namespace ICSharpCode.Decompiler.TypeSystem
 {
 	/// <summary>
-	/// Allows resolving cecil types into the NRefactory type system.
+	/// Main interface for the decompiler type system.
+	///
+	/// The MetadataModule class allows decoding/resolving metadata tokens into type system entities.
 	/// </summary>
-	public interface IDecompilerTypeSystem
+	public interface IDecompilerTypeSystem : ICompilation
 	{
-		ICompilation Compilation { get; }
-
-		TypeDef GetCecil(ITypeDefinition typeDefinition);
-		IMemberRef GetCecil(IMember member);
-
-		IType Resolve(ITypeDefOrRef typeReference);
-		IType Resolve(TypeSig typeReference);
-		IField Resolve(dnlib.DotNet.IField fieldReference);
-		IMethod Resolve(dnlib.DotNet.IMethod methodReference);
-
-		/// <summary>
-		/// Gets a type system instance that automatically specializes the results
-		/// of each Resolve() call with the provided substitution.
-		/// </summary>
-		IDecompilerTypeSystem GetSpecializingTypeSystem(TypeParameterSubstitution substitution);
+		new MetadataModule MainModule { get; }
 	}
 }

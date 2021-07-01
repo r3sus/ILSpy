@@ -306,7 +306,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				return false;
 			if (!(initialState == -2 || initialState == 0))
 				return false;
-			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDef;
+			enumeratorCtor = newObj.Method.MetadataToken as MethodDef;
 			enumeratorType = enumeratorCtor?.DeclaringType;
 			return enumeratorType?.DeclaringType == currentType
 				&& IsCompilerGeneratorEnumerator(enumeratorType);
@@ -319,7 +319,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				return false;
 			if (newObj.Arguments.Count != 0)
 				return false;
-			enumeratorCtor = context.TypeSystem.GetCecil(newObj.Method) as MethodDef;
+			enumeratorCtor = newObj.Method.MetadataToken as MethodDef;
 			enumeratorType = enumeratorCtor?.DeclaringType;
 			return enumeratorType?.DeclaringType == currentType
 				&& IsCompilerGeneratorEnumerator(enumeratorType);
@@ -367,21 +367,15 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			if (method == null || !method.HasBody)
 				throw new SymbolicAnalysisFailedException();
 
-			var typeSystem = context.TypeSystem;
-			var sdtp = typeSystem as SpecializingDecompilerTypeSystem;
-			if (sdtp != null) {
-				typeSystem = new SpecializingDecompilerTypeSystem(
-					sdtp.Context,
-					new TypeParameterSubstitution(
-						(sdtp.Substitution.ClassTypeArguments ?? EmptyList<IType>.Instance)
-						.Concat(sdtp.Substitution.MethodTypeArguments ?? EmptyList<IType>.Instance).ToArray(),
-						EmptyList<IType>.Instance
-					)
-				);
-			}
-			var il = new ILReader(typeSystem).ReadIL(method, method.Body, context.CancellationToken);
+			GenericContext genericContext = context.Function.GenericContext;
+			genericContext = new GenericContext(
+				classTypeParameters: (genericContext.ClassTypeParameters ?? EmptyList<ITypeParameter>.Instance)
+									 .Concat(genericContext.MethodTypeParameters ?? EmptyList<ITypeParameter>.Instance).ToArray(),
+				methodTypeParameters: null);
+			var il = context.CreateILReader()
+							.ReadIL(method, genericContext, context.CancellationToken);
 			il.RunTransforms(CSharpDecompiler.EarlyILTransforms(true),
-				new ILTransformContext(il, typeSystem, context.Settings) {
+				new ILTransformContext(il, context.TypeSystem, context.Settings) {
 					CancellationToken = context.CancellationToken,
 					DecompileRun = context.DecompileRun
 				});
@@ -506,7 +500,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				var faultBlock = faultBlockContainer.Blocks.Single();
 				if (!(faultBlock.Instructions.Count == 2
 					&& faultBlock.Instructions[0] is Call call
-					&& context.TypeSystem.GetCecil(call.Method) == disposeMethod
+					&& call.Method.MetadataToken == disposeMethod
 					&& call.Arguments.Count == 1
 					&& call.Arguments[0].MatchLdThis()
 					&& faultBlock.Instructions[1].MatchLeave(faultBlockContainer))) {
@@ -827,7 +821,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		void DecompileFinallyBlocks()
 		{
 			foreach (var method in finallyMethodToStateRange.Keys) {
-				var function = CreateILAst((MethodDef)context.TypeSystem.GetCecil(method), context);
+				var function = CreateILAst(method.MetadataToken as MethodDef, context);
 				var body = (BlockContainer)function.Body;
 				var newState = GetNewState(body.EntryPoint);
 				if (newState != null) {

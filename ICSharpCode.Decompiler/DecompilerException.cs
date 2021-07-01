@@ -38,7 +38,7 @@ namespace ICSharpCode.Decompiler
 
 		public string FileName => DecompiledMethod.Module.Location;
 
-		public FullTypeName DecompiledType => new FullTypeName(DecompiledMethod.DeclaringType.FullName);
+		public FullTypeName DecompiledType => new FullTypeName(DecompiledMethod.DeclaringType.ReflectionFullName);
 
 		public MethodDef DecompiledMethod { get; }
 

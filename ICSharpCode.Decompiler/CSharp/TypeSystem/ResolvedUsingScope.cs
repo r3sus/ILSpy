@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -37,10 +37,10 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 	{
 		readonly CSharpTypeResolveContext parentContext;
 		readonly UsingScope usingScope;
-		
+
 		internal readonly ConcurrentDictionary<string, ResolveResult> ResolveCache = new ConcurrentDictionary<string, ResolveResult>();
 		internal List<List<IMethod>> AllExtensionMethods;
-		
+
 		public ResolvedUsingScope(CSharpTypeResolveContext context, UsingScope usingScope)
 		{
 			if (context == null)
@@ -57,13 +57,13 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 					throw new InvalidOperationException();
 			}
 		}
-		
+
 		public UsingScope UnresolvedUsingScope {
 			get { return usingScope; }
 		}
-		
+
 		INamespace @namespace;
-		
+
 		public INamespace Namespace {
 			get {
 				INamespace result = LazyInit.VolatileRead(ref this.@namespace);
@@ -82,13 +82,13 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				}
 			}
 		}
-		
+
 		public ResolvedUsingScope Parent {
 			get { return parentContext.CurrentUsingScope; }
 		}
-		
+
 		IList<INamespace> usings;
-		
+
 		public IList<INamespace> Usings {
 			get {
 				var result = LazyInit.VolatileRead(ref this.usings);
@@ -106,9 +106,9 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				}
 			}
 		}
-		
+
 		IList<KeyValuePair<string, ResolveResult>> usingAliases;
-		
+
 		public IList<KeyValuePair<string, ResolveResult>> UsingAliases {
 			get {
 				var result = LazyInit.VolatileRead(ref this.usingAliases);
@@ -133,11 +133,11 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 				}
 			}
 		}
-		
+
 		public IList<string> ExternAliases {
 			get { return usingScope.ExternAliases; }
 		}
-		
+
 		/// <summary>
 		/// Gets whether this using scope has an alias (either using or extern)
 		/// with the specified name.
@@ -146,57 +146,57 @@ namespace ICSharpCode.Decompiler.CSharp.TypeSystem
 		{
 			return usingScope.HasAlias(identifier);
 		}
-		
+
 		sealed class DummyNamespace : INamespace
 		{
 			readonly INamespace parentNamespace;
 			readonly string name;
-			
+
 			public DummyNamespace(INamespace parentNamespace, string name)
 			{
 				this.parentNamespace = parentNamespace;
 				this.name = name;
 			}
-			
+
 			public string ExternAlias { get; set; }
-			
+
 			string INamespace.FullName {
 				get { return NamespaceDeclaration.BuildQualifiedName(parentNamespace.FullName, name); }
 			}
-			
+
 			public string Name {
 				get { return name; }
 			}
-			
+
 			SymbolKind ISymbol.SymbolKind {
 				get { return SymbolKind.Namespace; }
 			}
-			
+
 			INamespace INamespace.ParentNamespace {
 				get { return parentNamespace; }
 			}
-			
+
 			IEnumerable<INamespace> INamespace.ChildNamespaces {
 				get { return EmptyList<INamespace>.Instance; }
 			}
-			
+
 			IEnumerable<ITypeDefinition> INamespace.Types {
 				get { return EmptyList<ITypeDefinition>.Instance; }
 			}
-			
-			IEnumerable<IAssembly> INamespace.ContributingAssemblies {
-				get { return EmptyList<IAssembly>.Instance; }
+
+			IEnumerable<IModule> INamespace.ContributingModules {
+				get { return EmptyList<IModule>.Instance; }
 			}
-			
+
 			ICompilation ICompilationProvider.Compilation {
 				get { return parentNamespace.Compilation; }
 			}
-			
+
 			INamespace INamespace.GetChildNamespace(string name)
 			{
 				return null;
 			}
-			
+
 			ITypeDefinition INamespace.GetTypeDefinition(string name, int typeParameterCount)
 			{
 				return null;

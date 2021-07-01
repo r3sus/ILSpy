@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -31,15 +31,15 @@ namespace ICSharpCode.Decompiler.Semantics
 		/// <summary>
 		/// Gets the size arguments.
 		/// </summary>
-		public readonly IList<ResolveResult> SizeArguments;
-		
+		public readonly IReadOnlyList<ResolveResult> SizeArguments;
+
 		/// <summary>
 		/// Gets the initializer elements.
 		/// This field may be null if no initializer was specified.
 		/// </summary>
-		public readonly IList<ResolveResult> InitializerElements;
-		
-		public ArrayCreateResolveResult(IType arrayType, IList<ResolveResult> sizeArguments, IList<ResolveResult> initializerElements)
+		public readonly IReadOnlyList<ResolveResult> InitializerElements;
+
+		public ArrayCreateResolveResult(IType arrayType, IReadOnlyList<ResolveResult> sizeArguments, IReadOnlyList<ResolveResult> initializerElements)
 			: base(arrayType)
 		{
 			if (sizeArguments == null)
@@ -47,7 +47,7 @@ namespace ICSharpCode.Decompiler.Semantics
 			this.SizeArguments = sizeArguments;
 			this.InitializerElements = initializerElements;
 		}
-		
+
 		public override IEnumerable<ResolveResult> GetChildResults()
 		{
 			if (InitializerElements != null)

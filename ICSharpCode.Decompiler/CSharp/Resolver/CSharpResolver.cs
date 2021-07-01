@@ -52,7 +52,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				throw new ArgumentNullException("compilation");
 			this.compilation = compilation;
 			this.conversions = CSharpConversions.Get(compilation);
-			this.context = new CSharpTypeResolveContext(compilation.MainAssembly);
+			this.context = new CSharpTypeResolveContext(compilation.MainModule);
 		}
 
 		public CSharpResolver(CSharpTypeResolveContext context)
@@ -94,8 +94,8 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			get { return context; }
 		}
 
-		IAssembly ITypeResolveContext.CurrentAssembly {
-			get { return context.CurrentAssembly; }
+		IModule ITypeResolveContext.CurrentModule {
+			get { return context.CurrentModule; }
 		}
 
 		CSharpResolver WithContext(CSharpTypeResolveContext newContext)
@@ -400,13 +400,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 						if (isCompletedProperty != null && (!isCompletedProperty.ReturnType.IsKnownType(KnownTypeCode.Boolean) || !isCompletedProperty.CanGet))
 							isCompletedProperty = null;
 
+						/*
 						var interfaceOnCompleted = compilation.FindType(KnownTypeCode.INotifyCompletion).GetMethods().FirstOrDefault(x => x.Name == "OnCompleted");
 						var interfaceUnsafeOnCompleted = compilation.FindType(KnownTypeCode.ICriticalNotifyCompletion).GetMethods().FirstOrDefault(x => x.Name == "UnsafeOnCompleted");
 
 						IMethod onCompletedMethod = null;
-						var candidates = getAwaiterInvocation.Type.GetMethods().Where(x => x.ImplementedInterfaceMembers.Select(y => y.MemberDefinition).Contains(interfaceUnsafeOnCompleted)).ToList();
+						var candidates = getAwaiterInvocation.Type.GetMethods().Where(x => x.ExplicitlyImplementedInterfaceMembers.Select(y => y.MemberDefinition).Contains(interfaceUnsafeOnCompleted)).ToList();
 						if (candidates.Count == 0) {
-							candidates = getAwaiterInvocation.Type.GetMethods().Where(x => x.ImplementedInterfaceMembers.Select(y => y.MemberDefinition).Contains(interfaceOnCompleted)).ToList();
+							candidates = getAwaiterInvocation.Type.GetMethods().Where(x => x.ExplicitlyImplementedInterfaceMembers.Select(y => y.MemberDefinition).Contains(interfaceOnCompleted)).ToList();
 							if (candidates.Count == 1)
 								onCompletedMethod = candidates[0];
 						}
@@ -415,6 +416,10 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 						}
 
 						return new AwaitResolveResult(awaitResultType, getAwaiterInvocation, getAwaiterInvocation.Type, isCompletedProperty, onCompletedMethod, getResultMethod);
+						*/
+						// Not adjusted to TS changes for interface impls
+						// But I believe this is dead code for ILSpy anyways...
+						throw new NotImplementedException();
 					}
 
 					default:
@@ -1531,8 +1536,8 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		bool TopLevelTypeDefinitionIsAccessible(ITypeDefinition typeDef)
 		{
-			if (typeDef.IsInternal) {
-				return typeDef.ParentAssembly.InternalsVisibleTo(compilation.MainAssembly);
+			if (typeDef.Accessibility == Accessibility.Internal) {
+				return typeDef.ParentModule.InternalsVisibleTo(compilation.MainModule);
 			}
 			return true;
 		}
@@ -1647,7 +1652,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			ITypeDefinition currentTypeDefinition = this.CurrentTypeDefinition;
 			bool isInEnumMemberInitializer = this.CurrentMember != null && this.CurrentMember.SymbolKind == SymbolKind.Field
 				&& currentTypeDefinition != null && currentTypeDefinition.Kind == TypeKind.Enum;
-			return new MemberLookup(currentTypeDefinition, this.Compilation.MainAssembly, isInEnumMemberInitializer);
+			return new MemberLookup(currentTypeDefinition, this.Compilation.MainModule, isInEnumMemberInitializer);
 		}
 
 		/// <summary>
@@ -1660,7 +1665,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				// for accessibility purposes.
 				// This avoids a stack overflow when referencing a protected class nested inside the base class
 				// of a parent class. (NameLookupTests.InnerClassInheritingFromProtectedBaseInnerClassShouldNotCauseStackOverflow)
-				return new MemberLookup(this.CurrentTypeDefinition.DeclaringTypeDefinition, this.Compilation.MainAssembly, false);
+				return new MemberLookup(this.CurrentTypeDefinition.DeclaringTypeDefinition, this.Compilation.MainModule, false);
 			} else {
 				return CreateMemberLookup();
 			}

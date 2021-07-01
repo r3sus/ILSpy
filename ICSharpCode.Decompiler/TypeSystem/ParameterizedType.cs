@@ -82,13 +82,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			get { return genericType; }
 		}
 
-		public bool? IsReferenceType {
-			get { return genericType.IsReferenceType; }
-		}
-
-		public bool IsByRefLike {
-			get { return genericType.IsByRefLike; }
-		}
+		public bool? IsReferenceType => genericType.IsReferenceType;
+		public bool IsByRefLike => genericType.IsByRefLike;
 
 		public IType DeclaringType {
 			get {
@@ -204,7 +199,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetNestedTypes(this, typeArguments, filter, options);
 		}
 
-		public IEnumerable<IMethod> GetConstructors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers)
+		public IEnumerable<IMethod> GetConstructors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetConstructors(filter, options);
@@ -212,7 +207,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetConstructors(this, filter, options);
 		}
 
-		public IEnumerable<IMethod> GetMethods(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IMethod> GetMethods(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetMethods(filter, options);
@@ -220,7 +215,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetMethods(this, filter, options);
 		}
 
-		public IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetMethods(typeArguments, filter, options);
@@ -228,7 +223,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetMethods(this, typeArguments, filter, options);
 		}
 
-		public IEnumerable<IProperty> GetProperties(Predicate<IUnresolvedProperty> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IProperty> GetProperties(Predicate<IProperty> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetProperties(filter, options);
@@ -236,7 +231,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetProperties(this, filter, options);
 		}
 
-		public IEnumerable<IField> GetFields(Predicate<IUnresolvedField> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IField> GetFields(Predicate<IField> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetFields(filter, options);
@@ -244,7 +239,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetFields(this, filter, options);
 		}
 
-		public IEnumerable<IEvent> GetEvents(Predicate<IUnresolvedEvent> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IEvent> GetEvents(Predicate<IEvent> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetEvents(filter, options);
@@ -252,7 +247,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetEvents(this, filter, options);
 		}
 
-		public IEnumerable<IMember> GetMembers(Predicate<IUnresolvedMember> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IMember> GetMembers(Predicate<IMember> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetMembers(filter, options);
@@ -260,7 +255,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return GetMembersHelper.GetMembers(this, filter, options);
 		}
 
-		public IEnumerable<IMethod> GetAccessors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public IEnumerable<IMethod> GetAccessors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			if ((options & GetMemberOptions.ReturnMemberDefinitions) == GetMemberOptions.ReturnMemberDefinitions)
 				return genericType.GetAccessors(filter, options);

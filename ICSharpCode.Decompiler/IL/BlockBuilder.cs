@@ -30,7 +30,6 @@ namespace ICSharpCode.Decompiler.IL
 	class BlockBuilder
 	{
 		readonly CilBody body;
-		readonly IDecompilerTypeSystem typeSystem;
 		readonly Dictionary<ExceptionHandler, ILVariable> variableByExceptionHandler;
 
 		/// <summary>
@@ -39,14 +38,11 @@ namespace ICSharpCode.Decompiler.IL
 		/// </summary>
 		public bool CreateExtendedBlocks;
 
-		internal BlockBuilder(CilBody body, IDecompilerTypeSystem typeSystem,
-		                      Dictionary<ExceptionHandler, ILVariable> variableByExceptionHandler)
+		internal BlockBuilder(CilBody body, Dictionary<ExceptionHandler, ILVariable> variableByExceptionHandler)
 		{
 			Debug.Assert(body != null);
-			Debug.Assert(typeSystem != null);
 			Debug.Assert(variableByExceptionHandler != null);
 			this.body = body;
-			this.typeSystem = typeSystem;
 			this.variableByExceptionHandler = variableByExceptionHandler;
 		}
 

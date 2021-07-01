@@ -488,7 +488,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				{
 					// initInst is dead store
 					body.EntryPoint.Instructions.RemoveAt(0);
-					var charPtr = new PointerType(context.TypeSystem.Compilation.FindType(KnownTypeCode.Char));
+					var charPtr = new PointerType(context.TypeSystem.FindType(KnownTypeCode.Char));
 					newVar = new ILVariable(VariableKind.PinnedLocal, charPtr, pinnedRegion.Variable.Index);
 					newVar.Name = pinnedRegion.Variable.Name;
 					newVar.HasGeneratedName = pinnedRegion.Variable.HasGeneratedName;

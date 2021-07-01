@@ -17,22 +17,11 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using ICSharpCode.Decompiler.Semantics;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
-	/// <summary>
-	/// Represents an unresolved attribute.
-	/// </summary>
-	[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix")]
-	public interface IUnresolvedAttribute : ISupportsInterning
-	{
-		/// <summary>
-		/// Resolves the attribute.
-		/// </summary>
-		IAttribute CreateResolvedAttribute(ITypeResolveContext context);
-	}
-
 	/// <summary>
 	/// Represents an attribute.
 	/// </summary>
@@ -51,13 +40,94 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		IMethod Constructor { get; }
 
 		/// <summary>
+		/// Gets whether there were errors decoding the attribute.
+		/// </summary>
+		bool HasDecodeErrors { get; }
+
+		/// <summary>
 		/// Gets the positional arguments.
 		/// </summary>
-		IReadOnlyList<ResolveResult> PositionalArguments { get; }
+		ImmutableArray<CustomAttributeTypedArgument<IType>> FixedArguments { get; }
 
 		/// <summary>
 		/// Gets the named arguments passed to the attribute.
 		/// </summary>
-		IReadOnlyList<KeyValuePair<IMember, ResolveResult>> NamedArguments { get; }
+		ImmutableArray<CustomAttributeNamedArgument<IType>> NamedArguments { get; }
 	}
+
+	public struct CustomAttributeTypedArgument<TType>
+	{
+		public TType Type
+		{
+			get;
+		}
+
+		public object Value
+		{
+			get;
+		}
+
+		public CustomAttributeTypedArgument(TType type, object value)
+		{
+			Type = type;
+			Value = value;
+		}
+	}
+
+	public enum CustomAttributeNamedArgumentKind : byte
+	{
+		Field = 83,
+		Property
+	}
+
+	public struct CustomAttributeNamedArgument<TType>
+	{
+		public string Name
+		{
+			get;
+		}
+
+		public CustomAttributeNamedArgumentKind Kind
+		{
+			get;
+		}
+
+		public TType Type
+		{
+			get;
+		}
+
+		public object Value
+		{
+			get;
+		}
+
+		public CustomAttributeNamedArgument(string name, CustomAttributeNamedArgumentKind kind, TType type, object value)
+		{
+			Name = name;
+			Kind = kind;
+			Type = type;
+			Value = value;
+		}
+	}
+
+	public struct CustomAttributeValue<TType>
+	{
+		public ImmutableArray<CustomAttributeTypedArgument<TType>> FixedArguments
+		{
+			get;
+		}
+
+		public ImmutableArray<CustomAttributeNamedArgument<TType>> NamedArguments
+		{
+			get;
+		}
+
+		public CustomAttributeValue(ImmutableArray<CustomAttributeTypedArgument<TType>> fixedArguments, ImmutableArray<CustomAttributeNamedArgument<TType>> namedArguments)
+		{
+			FixedArguments = fixedArguments;
+			NamedArguments = namedArguments;
+		}
+	}
+
 }

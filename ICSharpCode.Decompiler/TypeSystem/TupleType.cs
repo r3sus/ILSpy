@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2018 Daniel Grunwald
-//
+// 
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-//
+// 
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-//
+// 
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -48,10 +48,10 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Gets the names of the tuple elements.
 		/// </summary>
 		public ImmutableArray<string> ElementNames { get; }
-
+		
 		public TupleType(ICompilation compilation, ImmutableArray<IType> elementTypes,
 			ImmutableArray<string> elementNames = default(ImmutableArray<string>),
-			IAssembly valueTupleAssembly = null)
+			IModule valueTupleAssembly = null)
 		{
 			this.Compilation = compilation;
 			this.UnderlyingType = CreateUnderlyingType(compilation, elementTypes, valueTupleAssembly);
@@ -64,7 +64,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 		}
 
-		static ParameterizedType CreateUnderlyingType(ICompilation compilation, ImmutableArray<IType> elementTypes, IAssembly valueTupleAssembly)
+		static ParameterizedType CreateUnderlyingType(ICompilation compilation, ImmutableArray<IType> elementTypes, IModule valueTupleAssembly)
 		{
 			int remainder = (elementTypes.Length - 1) % (RestPosition - 1) + 1;
 			Debug.Assert(remainder >= 1 && remainder < RestPosition);
@@ -82,7 +82,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return type;
 		}
 
-		private static IType FindValueTupleType(ICompilation compilation, IAssembly valueTupleAssembly, int tpc)
+		private static IType FindValueTupleType(ICompilation compilation, IModule valueTupleAssembly, int tpc)
 		{
 			FullTypeName typeName = new TopLevelTypeName("System", "ValueTuple", tpc);
 			if (valueTupleAssembly != null) {
@@ -134,7 +134,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return new TupleType(
 					compilation,
 					elementTypes,
-					valueTupleAssembly: type.GetDefinition()?.ParentAssembly
+					valueTupleAssembly: type.GetDefinition()?.ParentModule
 				);
 			} else {
 				return null;
@@ -252,18 +252,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 			if (newElementTypes != null) {
 				return new TupleType(this.Compilation, newElementTypes.ToImmutableArray(), this.ElementNames,
-					this.GetDefinition()?.ParentAssembly);
+					this.GetDefinition()?.ParentModule);
 			} else {
 				return this;
 			}
 		}
 
-		public override IEnumerable<IMethod> GetAccessors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IMethod> GetAccessors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return UnderlyingType.GetAccessors(filter, options);
 		}
 
-		public override IEnumerable<IMethod> GetConstructors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers)
+		public override IEnumerable<IMethod> GetConstructors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers)
 		{
 			// CS8181 'new' cannot be used with tuple type. Use a tuple literal expression instead.
 			return EmptyList<IMethod>.Instance;
@@ -274,12 +274,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return UnderlyingType.GetDefinition();
 		}
 
-		public override IEnumerable<IEvent> GetEvents(Predicate<IUnresolvedEvent> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IEvent> GetEvents(Predicate<IEvent> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return UnderlyingType.GetEvents(filter, options);
 		}
 
-		public override IEnumerable<IField> GetFields(Predicate<IUnresolvedField> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IField> GetFields(Predicate<IField> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			// The fields from the underlying type (Item1..Item7 and Rest)
 			foreach (var field in UnderlyingType.GetFields(filter, options)) {
@@ -305,12 +305,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return new TupleElementField(f, Compilation.TypeResolveContext);
 		}*/
 
-		public override IEnumerable<IMethod> GetMethods(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IMethod> GetMethods(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return UnderlyingType.GetMethods(filter, options);
 		}
 
-		public override IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return UnderlyingType.GetMethods(typeArguments, filter, options);
 		}
@@ -325,7 +325,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return UnderlyingType.GetNestedTypes(typeArguments, filter, options);
 		}
 
-		public override IEnumerable<IProperty> GetProperties(Predicate<IUnresolvedProperty> filter = null, GetMemberOptions options = GetMemberOptions.None)
+		public override IEnumerable<IProperty> GetProperties(Predicate<IProperty> filter = null, GetMemberOptions options = GetMemberOptions.None)
 		{
 			return UnderlyingType.GetProperties(filter, options);
 		}
@@ -343,7 +343,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		public ImmutableArray<string> ElementNames { get; }
 
-		public IAssemblyReference ValueTupleAssembly { get; }
+		public IModuleReference ValueTupleAssembly { get; }
 
 		public TupleTypeReference(ImmutableArray<ITypeReference> elementTypes)
 		{
@@ -352,7 +352,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		public TupleTypeReference(ImmutableArray<ITypeReference> elementTypes,
 			ImmutableArray<string> elementNames = default(ImmutableArray<string>),
-			IAssemblyReference valueTupleAssembly = null)
+			IModuleReference valueTupleAssembly = null)
 		{
 			this.ValueTupleAssembly = valueTupleAssembly;
 			this.ElementTypes = elementTypes;

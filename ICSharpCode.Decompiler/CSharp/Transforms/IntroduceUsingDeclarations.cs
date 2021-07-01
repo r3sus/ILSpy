@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -38,7 +38,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			// First determine all the namespaces that need to be imported:
 			var requiredImports = new FindRequiredImports(context);
 			rootNode.AcceptVisitor(requiredImports);
-			
+
 			var usingScope = new UsingScope();
 			rootNode.AddAnnotation(usingScope);
 
@@ -70,19 +70,19 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			// verify that the SimpleTypes refer to the correct type (no ambiguities)
 			rootNode.AcceptVisitor(new FullyQualifyAmbiguousTypeNamesVisitor(context, usingScope));
 		}
-		
+
 		sealed class FindRequiredImports : DepthFirstAstVisitor
 		{
 			string currentNamespace;
 
 			public readonly HashSet<string> DeclaredNamespaces = new HashSet<string>() { string.Empty };
 			public readonly HashSet<string> ImportedNamespaces = new HashSet<string>();
-			
+
 			public FindRequiredImports(TransformContext context)
 			{
-				this.currentNamespace = context.DecompiledTypeDefinition?.Namespace ?? string.Empty;
+				this.currentNamespace = context.CurrentTypeDefinition?.Namespace ?? string.Empty;
 			}
-			
+
 			bool IsParentOfCurrentNamespace(string ns)
 			{
 				if (ns.Length == 0)
@@ -95,7 +95,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				}
 				return false;
 			}
-			
+
 			public override void VisitSimpleType(SimpleType simpleType)
 			{
 				var trr = simpleType.Annotation<TypeResolveResult>();
@@ -104,7 +104,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				}
 				base.VisitSimpleType(simpleType); // also visit type arguments
 			}
-			
+
 			public override void VisitNamespaceDeclaration(NamespaceDeclaration namespaceDeclaration)
 			{
 				string oldNamespace = currentNamespace;
@@ -116,21 +116,21 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				currentNamespace = oldNamespace;
 			}
 		}
-		
+
 		sealed class FullyQualifyAmbiguousTypeNamesVisitor : DepthFirstAstVisitor
 		{
 			Stack<CSharpTypeResolveContext> context;
 			TypeSystemAstBuilder astBuilder;
-			
+
 			public FullyQualifyAmbiguousTypeNamesVisitor(TransformContext context, UsingScope usingScope)
 			{
 				this.context = new Stack<CSharpTypeResolveContext>();
-				if (!string.IsNullOrEmpty(context.DecompiledTypeDefinition?.Namespace)) {
-					foreach (string ns in context.DecompiledTypeDefinition.Namespace.Split('.')) {
+				if (!string.IsNullOrEmpty(context.CurrentTypeDefinition?.Namespace)) {
+					foreach (string ns in context.CurrentTypeDefinition.Namespace.Split('.')) {
 						usingScope = new UsingScope(usingScope, ns);
 					}
 				}
-				var currentContext = new CSharpTypeResolveContext(context.TypeSystem.MainAssembly, usingScope.Resolve(context.TypeSystem.Compilation), context.DecompiledTypeDefinition);
+				var currentContext = new CSharpTypeResolveContext(context.TypeSystem.MainModule, usingScope.Resolve(context.TypeSystem), context.CurrentTypeDefinition);
 				this.context.Push(currentContext);
 				this.astBuilder = CreateAstBuilder(currentContext);
 			}
@@ -142,7 +142,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					UseAliases = true
 				};
 			}
-			
+
 			public override void VisitNamespaceDeclaration(NamespaceDeclaration namespaceDeclaration)
 			{
 				var previousContext = context.Peek();
@@ -150,7 +150,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				foreach (string ident in namespaceDeclaration.Identifiers) {
 					usingScope = new UsingScope(usingScope, ident);
 				}
-				var currentContext = new CSharpTypeResolveContext(previousContext.CurrentAssembly, usingScope.Resolve(previousContext.Compilation));
+				var currentContext = new CSharpTypeResolveContext(previousContext.CurrentModule, usingScope.Resolve(previousContext.Compilation));
 				context.Push(currentContext);
 				try {
 					astBuilder = CreateAstBuilder(currentContext);
@@ -160,7 +160,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					context.Pop();
 				}
 			}
-			
+
 			public override void VisitTypeDeclaration(TypeDeclaration typeDeclaration)
 			{
 				var previousContext = context.Peek();
@@ -179,7 +179,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			{
 				if (methodDeclaration.GetSymbol() is IMethod method && CSharpDecompiler.IsWindowsFormsInitializeComponentMethod(method)) {
 					var previousContext = context.Peek();
-					var currentContext = new CSharpTypeResolveContext(previousContext.CurrentAssembly);
+					var currentContext = new CSharpTypeResolveContext(previousContext.CurrentModule);
 					context.Push(currentContext);
 					try {
 						astBuilder = CreateAstBuilder(currentContext);

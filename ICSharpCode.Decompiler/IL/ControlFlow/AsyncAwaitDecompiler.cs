@@ -24,6 +24,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnlib.DotNet;
+using IField = ICSharpCode.Decompiler.TypeSystem.IField;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL.ControlFlow
 {
@@ -192,12 +195,12 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 					return false;
 			} else if (taskType.IsKnownType(KnownTypeCode.Task)) {
 				methodType = AsyncMethodType.Task;
-				underlyingReturnType = context.TypeSystem.Compilation.FindType(KnownTypeCode.Void);
+				underlyingReturnType = context.TypeSystem.FindType(KnownTypeCode.Void);
 				if (builderType?.FullTypeName != new TopLevelTypeName(ns, "AsyncTaskMethodBuilder", 0))
 					return false;
 			} else if (taskType.IsKnownType(KnownTypeCode.TaskOfT)) {
 				methodType = AsyncMethodType.TaskOfT;
-				underlyingReturnType = TaskType.UnpackTask(context.TypeSystem.Compilation, taskType);
+				underlyingReturnType = TaskType.UnpackTask(context.TypeSystem, taskType);
 				if (builderType?.FullTypeName != new TopLevelTypeName(ns, "AsyncTaskMethodBuilder", 1))
 					return false;
 			} else {
@@ -325,7 +328,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// </summary>
 		void AnalyzeMoveNext()
 		{
-			var moveNextMethod = context.TypeSystem.GetCecil(stateMachineType)?.Methods.FirstOrDefault(f => f.Name == "MoveNext");
+			var moveNextMethod = (stateMachineType.MetadataToken as TypeDef)?.Methods.FirstOrDefault(f => f.Name == "MoveNext");
 			if (moveNextMethod == null)
 				throw new SymbolicAnalysisFailedException();
 			moveNextFunction = YieldReturnDecompiler.CreateILAst(moveNextMethod, context);

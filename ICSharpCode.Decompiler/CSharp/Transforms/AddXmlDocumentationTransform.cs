@@ -36,7 +36,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			if (!context.Settings.ShowXmlDocumentation)
 				return;
 			try {
-				var xmldoc = XmlDocLoader.LoadDocumentation(context.TypeSystem.ModuleDefinition);
+				var xmldoc = XmlDocLoader.LoadDocumentation(context.TypeSystem.MainModule.metadata);
 				if (xmldoc == null)
 					return;
 				foreach (var entity in rootNode.DescendantsAndSelf.OfType<EntityDeclaration>()) {
@@ -44,10 +44,10 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					dnlib.DotNet.IMemberRef mr;
 					switch (symbol) {
 						case IMember member:
-							mr = context.TypeSystem.GetCecil(member);
+							mr = member.MetadataToken as dnlib.DotNet.IMemberRef;
 							break;
 						case IType type:
-							mr = context.TypeSystem.GetCecil(type.GetDefinition());
+							mr =type.GetDefinition().MetadataToken as dnlib.DotNet.IMemberRef;
 							break;
 						default:
 							continue;

@@ -314,10 +314,10 @@ namespace ICSharpCode.Decompiler.CSharp
 					newList.Add(sequencePoint);
 					pos = sequencePoint.EndOffset;
 				}
-				if (pos < function.CecilMethod.Body.GetCodeSize()) {
+				if (pos < function.CodeSize) {
 					var hidden = new SequencePoint();
 					hidden.Offset = pos;
-					hidden.EndOffset = function.CecilMethod.Body.GetCodeSize();
+					hidden.EndOffset = function.CodeSize;
 					hidden.SetHidden();
 					newList.Add(hidden);
 				}

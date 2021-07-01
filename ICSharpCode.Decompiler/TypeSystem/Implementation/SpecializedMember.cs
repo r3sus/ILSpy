@@ -112,10 +112,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get { return baseMember.MemberDefinition; }
 		}
 
-		public IUnresolvedMember UnresolvedMember {
-			get { return baseMember.UnresolvedMember; }
-		}
-
 		public IType ReturnType {
 			get {
 				var result = LazyInit.VolatileRead(ref this.returnType);
@@ -134,7 +130,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
-		public MDToken MetadataToken => baseMember.MetadataToken;
+		public IMDTokenProvider MetadataToken => baseMember.MetadataToken;
 
 		public bool IsVirtual {
 			get { return baseMember.IsVirtual; }
@@ -156,26 +152,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get { return baseMember.DeclaringTypeDefinition; }
 		}
 
-		public IReadOnlyList<IAttribute> Attributes {
-			get { return baseMember.Attributes; }
-		}
+		IEnumerable<IAttribute> IEntity.GetAttributes() => baseMember.GetAttributes();
 
-		IReadOnlyList<IMember> implementedInterfaceMembers;
-
-		public IReadOnlyList<IMember> ImplementedInterfaceMembers {
+		public IEnumerable<IMember> ExplicitlyImplementedInterfaceMembers {
 			get {
-				return LazyInitializer.EnsureInitialized(ref implementedInterfaceMembers, FindImplementedInterfaceMembers);
+				// Note: if the interface is generic, then the interface members should already be specialized,
+				// so we only need to append our substitution.
+				return baseMember.ExplicitlyImplementedInterfaceMembers.Select(m => m.Specialize(substitution));
 			}
-		}
-
-		IReadOnlyList<IMember> FindImplementedInterfaceMembers()
-		{
-			var definitionImplementations = baseMember.ImplementedInterfaceMembers;
-			IMember[] result = new IMember[definitionImplementations.Count];
-			for (int i = 0; i < result.Length; i++) {
-				result[i] = definitionImplementations[i].Specialize(substitution);
-			}
-			return result;
 		}
 
 		public bool IsExplicitInterfaceImplementation {
@@ -198,38 +182,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get { return baseMember.IsSealed; }
 		}
 
-		public bool IsShadowing {
-			get { return baseMember.IsShadowing; }
-		}
-
-		public bool IsSynthetic {
-			get { return baseMember.IsSynthetic; }
-		}
-
-		public bool IsPrivate {
-			get { return baseMember.IsPrivate; }
-		}
-
-		public bool IsPublic {
-			get { return baseMember.IsPublic; }
-		}
-
-		public bool IsProtected {
-			get { return baseMember.IsProtected; }
-		}
-
-		public bool IsInternal {
-			get { return baseMember.IsInternal; }
-		}
-
-		public bool IsProtectedOrInternal {
-			get { return baseMember.IsProtectedOrInternal; }
-		}
-
-		public bool IsProtectedAndInternal {
-			get { return baseMember.IsProtectedAndInternal; }
-		}
-
 		public string FullName {
 			get { return baseMember.FullName; }
 		}
@@ -250,8 +202,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get { return baseMember.Compilation; }
 		}
 
-		public IAssembly ParentAssembly {
-			get { return baseMember.ParentAssembly; }
+		public IModule ParentModule {
+			get { return baseMember.ParentModule; }
 		}
 
 		public virtual IMember Specialize(TypeParameterSubstitution newSubstitution)
@@ -335,11 +287,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				for (int i = 0; i < parameters.Length; i++) {
 					var p = paramDefs[i];
 					IType newType = substitution(p.Type);
-					parameters[i] = new DefaultParameter(
-						newType, p.Name, this,
-						p.Attributes, p.IsRef, p.IsOut,
-						p.IsParams, p.IsOptional, p.ConstantValue
-					);
+					parameters[i] = new SpecializedParameter(p, newType, this);
 				}
 				return parameters;
 			}

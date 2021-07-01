@@ -29,6 +29,7 @@ namespace ICSharpCode.Decompiler.IL
 	partial class ILFunction
 	{
 		public readonly IMethod Method;
+		public readonly GenericContext GenericContext;
 		public readonly dnlib.DotNet.MethodDef CecilMethod;
 		public readonly int CodeSize;
 		public readonly ILVariableCollection Variables;
@@ -73,22 +74,24 @@ namespace ICSharpCode.Decompiler.IL
 
 		public readonly IReadOnlyList<IParameter> Parameters;
 
-		public ILFunction(IMethod method, dnlib.DotNet.MethodDef cecilMethod, ILInstruction body) : base(OpCode.ILFunction)
+		public ILFunction(IMethod method, dnlib.DotNet.MethodDef cecilMethod, GenericContext genericContext, ILInstruction body) : base(OpCode.ILFunction)
 		{
 			this.Body = body;
 			this.Method = method;
 			this.CecilMethod = cecilMethod;
 			this.CodeSize = cecilMethod?.Body?.GetCodeSize() ?? 0;
+			this.GenericContext = genericContext;
 			this.ReturnType = Method?.ReturnType;
 			this.Parameters = Method?.Parameters;
 			this.Variables = new ILVariableCollection(this);
 		}
 
-		public ILFunction(IType returnType, IReadOnlyList<IParameter> parameters, ILInstruction body) : base(OpCode.ILFunction)
+		public ILFunction(IType returnType, IReadOnlyList<IParameter> parameters, GenericContext genericContext, ILInstruction body) : base(OpCode.ILFunction)
 		{
 			this.Body = body;
 			this.ReturnType = returnType;
 			this.Parameters = parameters;
+			this.GenericContext = genericContext;
 			this.Variables = new ILVariableCollection(this);
 		}
 

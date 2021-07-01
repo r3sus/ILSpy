@@ -301,7 +301,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						return Path.Combine(dir, file);
 					}
 				}, StringComparer.OrdinalIgnoreCase).ToList();
-			DecompilerTypeSystem ts = new DecompilerTypeSystem(module);
+			DecompilerTypeSystem ts = new DecompilerTypeSystem(new PEFile(module));
 			Parallel.ForEach(
 				files,
 				new ParallelOptions {

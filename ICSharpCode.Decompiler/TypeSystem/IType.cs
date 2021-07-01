@@ -128,15 +128,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		TypeParameterSubstitution GetSubstitution();
 
 		/// <summary>
-		/// Gets a type visitor that performs the substitution of class type parameters with the type arguments
-		/// of this parameterized type,
-		/// and also substitutes method type parameters with the specified method type arguments.
-		/// Returns TypeParameterSubstitution.Identity if the type is not parametrized.
-		/// </summary>
-		TypeParameterSubstitution GetSubstitution(IReadOnlyList<IType> methodTypeArguments);
-
-
-		/// <summary>
 		/// Gets inner classes (including inherited inner classes).
 		/// </summary>
 		/// <param name="filter">The filter used to select which types to return.
@@ -208,8 +199,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// and the appropriate <see cref="Implementation.SpecializedMethod"/> will be returned.
 		/// </para>
 		/// </remarks>
-		IEnumerable<IMethod> GetConstructors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers);
-
+		IEnumerable<IMethod> GetConstructors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.IgnoreInheritedMembers);
+		
 		/// <summary>
 		/// Gets all methods that can be called on this type.
 		/// </summary>
@@ -235,8 +226,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// the ambiguity can be avoided.
 		/// </para>
 		/// </remarks>
-		IEnumerable<IMethod> GetMethods(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IMethod> GetMethods(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all generic methods that can be called on this type with the specified type arguments.
 		/// </summary>
@@ -256,8 +247,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// and the other overload's remarks about ambiguous signatures apply here as well.
 		/// </para>
 		/// </remarks>
-		IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IMethod> GetMethods(IReadOnlyList<IType> typeArguments, Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all properties that can be called on this type.
 		/// </summary>
@@ -268,8 +259,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// For properties on parameterized types, type substitution will be performed on the property signature,
 		/// and the appropriate <see cref="Implementation.SpecializedProperty"/> will be returned.
 		/// </remarks>
-		IEnumerable<IProperty> GetProperties(Predicate<IUnresolvedProperty> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IProperty> GetProperties(Predicate<IProperty> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all fields that can be accessed on this type.
 		/// </summary>
@@ -280,8 +271,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// For fields on parameterized types, type substitution will be performed on the field's return type,
 		/// and the appropriate <see cref="Implementation.SpecializedField"/> will be returned.
 		/// </remarks>
-		IEnumerable<IField> GetFields(Predicate<IUnresolvedField> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IField> GetFields(Predicate<IField> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all events that can be accessed on this type.
 		/// </summary>
@@ -292,8 +283,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// For fields on parameterized types, type substitution will be performed on the event's return type,
 		/// and the appropriate <see cref="Implementation.SpecializedEvent"/> will be returned.
 		/// </remarks>
-		IEnumerable<IEvent> GetEvents(Predicate<IUnresolvedEvent> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IEvent> GetEvents(Predicate<IEvent> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all members that can be called on this type.
 		/// </summary>
@@ -308,11 +299,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </para>
 		/// <para>
 		/// For generic methods, the remarks about ambiguous signatures from the
-		/// <see cref="GetMethods(Predicate{IUnresolvedMethod}, GetMemberOptions)"/> method apply here as well.
+		/// <see cref="GetMethods(Predicate{IMethod}, GetMemberOptions)"/> method apply here as well.
 		/// </para>
 		/// </remarks>
-		IEnumerable<IMember> GetMembers(Predicate<IUnresolvedMember> filter = null, GetMemberOptions options = GetMemberOptions.None);
-
+		IEnumerable<IMember> GetMembers(Predicate<IMember> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		
 		/// <summary>
 		/// Gets all accessors belonging to properties or events on this type.
 		/// </summary>
@@ -322,7 +313,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// <remarks>
 		/// Accessors are not returned by GetMembers() or GetMethods().
 		/// </remarks>
-		IEnumerable<IMethod> GetAccessors(Predicate<IUnresolvedMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
+		IEnumerable<IMethod> GetAccessors(Predicate<IMethod> filter = null, GetMemberOptions options = GetMemberOptions.None);
 	}
 
 	[Flags]
