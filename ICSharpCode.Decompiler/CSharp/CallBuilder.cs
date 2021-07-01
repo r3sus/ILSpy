@@ -125,12 +125,12 @@ namespace ICSharpCode.Decompiler.CSharp
 			// We only allow removing optional arguments in the following cases:
 			// - call arguments are not in expanded form
 			// - there are no named arguments
-			// This value has the following following values:
+			// This value has the following values:
 			// -2 - there are no optional arguments
 			// -1 - optional arguments are forbidden
 			// >= 0 - the index of the first argument that can be removed, because it is optional
-			// and is the default value of the parameter. 
-			int firstOptionalArgumentIndex = -2;
+			// and is the default value of the parameter.
+			int firstOptionalArgumentIndex = expressionBuilder.settings.OptionalArguments ? -2 : -1;
 			for (int i = firstParamIndex; i < callArguments.Count; i++) {
 				IParameter parameter;
 				if (argumentToParameterMap != null) {
@@ -352,7 +352,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			var unused = new IdentifierExpression("initializedObject").WithRR(target).WithoutILInstruction();
 			var transform = GetRequiredTransformationsForCall(expectedTargetDetails, method, ref unused,
 				arguments, null, -1, expectedParameters, CallTransformation.None, out IParameterizedMember foundMethod);
-			Debug.Assert(transform == CallTransformation.None);
+			Debug.Assert(transform == CallTransformation.None || transform == CallTransformation.NoOptionalArgumentAllowed);
 
 			// Calls with only one argument do not need an array initializer expression to wrap them.
 			// Any special cases are handled by the caller (i.e., ExpressionBuilder.TranslateObjectAndCollectionInitializer)
@@ -393,8 +393,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			{
 				len = 0;
 				t = null;
-				if (arg.ResolveResult is CSharpInvocationResolveResult csirr && 
-					csirr.Arguments.Count == 0 && csirr.Member is IMethod emptyMethod && 
+				if (arg.ResolveResult is CSharpInvocationResolveResult csirr &&
+					csirr.Arguments.Count == 0 && csirr.Member is IMethod emptyMethod &&
 					emptyMethod.IsStatic &&
 					"System.Array.Empty" == emptyMethod.FullName &&
 					emptyMethod.TypeArguments.Count == 1)
@@ -419,6 +419,10 @@ namespace ICSharpCode.Decompiler.CSharp
 		bool IsOptionalArgument(IParameter parameter, TranslatedExpression arg)
 		{
 			if (!parameter.IsOptional || !arg.ResolveResult.IsCompileTimeConstant)
+				return false;
+			if (parameter.GetAttributes().Any(a => a.AttributeType.IsKnownType(KnownAttribute.CallerMemberName)
+												   || a.AttributeType.IsKnownType(KnownAttribute.CallerFilePath)
+												   || a.AttributeType.IsKnownType(KnownAttribute.CallerLineNumber)))
 				return false;
 			return (parameter.ConstantValue == null && arg.ResolveResult.ConstantValue == null)
 				|| (parameter.ConstantValue != null && parameter.ConstantValue.Equals(arg.ResolveResult.ConstantValue));
