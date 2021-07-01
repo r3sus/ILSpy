@@ -1054,7 +1054,7 @@ namespace ICSharpCode.Decompiler.IL
 		ILInstruction Pop(StackType expectedType)
 		{
 			ILInstruction inst = Pop();
-			return Cast(inst, expectedType, Warnings, reader.Offset);
+			return Cast(inst, expectedType, Warnings, (int)currentInstruction.Offset);
 		}
 
 		internal static ILInstruction Cast(ILInstruction inst, StackType expectedType, List<string> warnings, int ilOffset)

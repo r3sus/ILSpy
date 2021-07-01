@@ -442,7 +442,6 @@ namespace ICSharpCode.Decompiler.CSharp
 			var td = declaringType;
 
 			foreach (var method in td.Methods) {
-				var parent = method;
 				var part = method;
 
 				var connectedMethods = new Queue<MethodDef>();
@@ -451,53 +450,55 @@ namespace ICSharpCode.Decompiler.CSharp
 
 				while (connectedMethods.Count > 0) {
 					part = connectedMethods.Dequeue();
-					var md = part;
-
-					if (!md.HasBody) {
-						info.AddMapping(parent, part);
-					} else {
-						for (int i = 0; i < md.Body.Instructions.Count; i++) {
-							var instr = md.Body.Instructions[i];
-							switch (instr.OpCode.Code) {
-								case Code.Stfld:
-									// async and yield fsms:
-									if (instr.Operand is FieldDef fsmField) {
-										var fsmTypeDef = fsmField.DeclaringType;
-										if (fsmTypeDef != null) {
-											// Must be a nested type of the containing type.
-											if (fsmTypeDef.DeclaringType != declaringType)
-												break;
-											if (!processedNestedTypes.Add(fsmTypeDef))
-												break;
-											if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(fsmTypeDef)
-												|| AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(fsmTypeDef)) {
-												foreach (var h in fsmTypeDef.Methods) {
-													if (h.SemanticsAttributes != 0)
-														continue;
-													if (!h.CustomAttributes.HasKnownAttribute(KnownAttribute.DebuggerHidden)) {
-														connectedMethods.Enqueue(h);
-													}
-												}
-											}
-										}
-									}
-									break;
-								case Code.Ldftn:
-									// deal with ldftn instructions, i.e., lambdas
-									if (instr.Operand is MethodDef dnMethod) {
-										if (dnMethod.IsCompilerGenerated())
-											connectedMethods.Enqueue(dnMethod);
-									}
-									break;
-							}
-						}
-
-						info.AddMapping(parent, part);
-					}
+					ReadCodeMappingInfo(declaringType, info, method, part, connectedMethods, processedNestedTypes);
 				}
 			}
 
 			return info;
+		}
+
+		private static void ReadCodeMappingInfo(TypeDef declaringType, CodeMappingInfo info, MethodDef parent, MethodDef part, Queue<MethodDef> connectedMethods, HashSet<TypeDef> processedNestedTypes)
+		{
+			if (part.HasBody) {
+				for (int i = 0; i < part.Body.Instructions.Count; i++) {
+					var instr = part.Body.Instructions[i];
+					switch (instr.OpCode.Code) {
+						case Code.Stfld:
+							// async and yield fsms:
+							if (instr.Operand is FieldDef fsmField) {
+								var fsmTypeDef = fsmField.DeclaringType;
+								if (fsmTypeDef != null) {
+									// Must be a nested type of the containing type.
+									if (fsmTypeDef.DeclaringType != declaringType)
+										break;
+									if (!processedNestedTypes.Add(fsmTypeDef))
+										break;
+									if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(fsmTypeDef)
+										|| AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(fsmTypeDef)) {
+										foreach (var h in fsmTypeDef.Methods) {
+											if (h.SemanticsAttributes != 0)
+												continue;
+											if (!h.CustomAttributes.HasKnownAttribute(KnownAttribute.DebuggerHidden)) {
+												connectedMethods.Enqueue(h);
+											}
+										}
+									}
+								}
+							}
+
+							break;
+						case Code.Ldftn:
+							// deal with ldftn instructions, i.e., lambdas
+							if (instr.Operand is MethodDef dnMethod) {
+								if (dnMethod.IsCompilerGenerated())
+									connectedMethods.Enqueue(dnMethod);
+							}
+
+							break;
+					}
+				}
+			}
+			info.AddMapping(parent, part);
 		}
 
 
