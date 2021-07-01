@@ -324,6 +324,7 @@
     <Compile Include="IL\Transforms\StatementTransform.cs" />
     <Compile Include="IL\Transforms\TransformCollectionAndObjectInitializers.cs" />
     <Compile Include="Output\TextTokenWriter.cs" />
+    <Compile Include="Semantics\InterpolatedStringResolveResult.cs" />
     <Compile Include="TypeSystem\ApplyAttributeTypeVisitor.cs" />
     <Compile Include="TypeSystem\GenericArgumentResolver.cs" />
     <Compile Include="TypeSystem\GenericContext.cs" />
