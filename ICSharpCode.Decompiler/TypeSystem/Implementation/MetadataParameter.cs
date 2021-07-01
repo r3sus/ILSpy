@@ -72,11 +72,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 		#endregion
 
-		const ParamAttributes inOut = ParamAttributes.In | ParamAttributes.Out;
-		public bool IsRef => Type.Kind == TypeKind.ByReference && handle.HasParamDef && (handle.ParamDef.IsIn || !handle.ParamDef.IsOut);
-		public bool IsOut => Type.Kind == TypeKind.ByReference && handle.HasParamDef && !handle.ParamDef.IsIn && handle.ParamDef.IsOut;
-		public bool IsOptional => handle.HasParamDef && handle.ParamDef.IsOptional;
-
+		private const ParamAttributes inOut = ParamAttributes.In | ParamAttributes.Out;
+		public bool IsRef {
+			get {
+				if (!handle.HasParamDef)
+					return false;
+				if (!(Type.Kind == TypeKind.ByReference && (handle.ParamDef.Attributes & inOut) != ParamAttributes.Out))
+					return false;
+				if ((module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == 0)
+					return true;
+				return !handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+			}
+		}
+		public bool IsOut => Type.Kind == TypeKind.ByReference && handle.HasParamDef && (handle.ParamDef.Attributes & inOut) == ParamAttributes.Out;
+		public bool IsOptional => handle.HasParamDef && (handle.ParamDef.Attributes & ParamAttributes.Optional) != 0;
 		public bool IsIn {
 			get {
 				if (!handle.HasParamDef)
