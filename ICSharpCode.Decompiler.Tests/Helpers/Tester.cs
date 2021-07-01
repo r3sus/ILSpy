@@ -397,8 +397,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			var resolver = new AssemblyResolver();
 			resolver.DefaultModuleContext = new ModuleContext(resolver);
 			using (var module = ModuleDefMD.Load(assemblyFileName, resolver.DefaultModuleContext)) {
-				var typeSystem = new DecompilerTypeSystem(new PEFile(module));
-				CSharpDecompiler decompiler = new CSharpDecompiler(typeSystem, settings ?? new DecompilerSettings());
+				CSharpDecompiler decompiler = new CSharpDecompiler(new PEFile(module), settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAtttributes());
 				decompiler.AstTransforms.Insert(0, new RemoveCompilerAttribute());
 				decompiler.AstTransforms.Add(new EscapeInvalidIdentifiers());

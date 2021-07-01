@@ -40,7 +40,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		object constantValue;
 		IType type;
 		bool isVolatile; // initialized together with this.type
-		byte decimalConstant; // 0=no, 1=yes, 2=unknown
+		// this can't be bool? as bool? is not thread-safe from torn reads
+		ThreeState decimalConstantState;
 
 		internal MetadataField(MetadataModule module, FieldDef handle)
 		{
@@ -49,9 +50,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.module = module;
 			this.handle = handle;
 			this.attributes = handle.Attributes;
-			if ((attributes & (FieldAttributes.Static | FieldAttributes.InitOnly)) == (FieldAttributes.Static | FieldAttributes.InitOnly)) {
-				decimalConstant = 2; // may be decimal constant
-			}
+
+			if ((attributes & (FieldAttributes.Static | FieldAttributes.InitOnly)) != (FieldAttributes.Static | FieldAttributes.InitOnly))
+				decimalConstantState = ThreeState.False;
 		}
 
 		public IMDTokenProvider MetadataToken => handle;
@@ -175,17 +176,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return LazyInit.GetOrSet(ref this.type, ty);
 		}
 
-		public bool IsConst => (attributes & FieldAttributes.Literal) != 0 || IsDecimalConstant;
+		public bool IsConst => (attributes & FieldAttributes.Literal) != 0
+							|| (IsDecimalConstant && DecimalConstantHelper.AllowsDecimalConstants(module));
 
 		bool IsDecimalConstant {
 			get {
-				if (decimalConstant == 2) {
-					if (handle.CustomAttributes.HasKnownAttribute(KnownAttribute.DecimalConstant))
-						decimalConstant = 1;
-					else
-						decimalConstant = 0;
+				if (decimalConstantState == ThreeState.Unknown) {
+					decimalConstantState = DecimalConstantHelper.IsDecimalConstant(handle.CustomAttributes).ToThreeState();
 				}
-				return decimalConstant == 1;
+				return decimalConstantState == ThreeState.True;
 			}
 		}
 
@@ -194,43 +193,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				object val = LazyInit.VolatileRead(ref this.constantValue);
 				if (val != null)
 					return val;
-				var metadata = module.metadata;
-				if (IsDecimalConstant) {
-					foreach (var attribute in handle.CustomAttributes) {
-						if (attribute.IsKnownAttribute(KnownAttribute.DecimalConstant)) {
-							val = TryDecodeDecimalConstantAttribute(attribute);
-						}
-					}
+				if (IsDecimalConstant && DecimalConstantHelper.AllowsDecimalConstants(module)) {
+					val = DecimalConstantHelper.GetDecimalConstantValue(handle.CustomAttributes);
 				} else {
 					val = handle.HasConstant ? handle.Constant.Value : null;
 				}
 				return LazyInit.GetOrSet(ref this.constantValue, val);
 			}
-		}
-
-		decimal? TryDecodeDecimalConstantAttribute(dnlib.DotNet.CustomAttribute attribute)
-		{
-			if (attribute.ConstructorArguments.Count != 5)
-				return null;
-			// DecimalConstantAttribute has the arguments (byte scale, byte sign, uint hi, uint mid, uint low) or (byte scale, byte sign, int hi, int mid, int low)
-			// Both of these invoke the Decimal constructor (int lo, int mid, int hi, bool isNegative, byte scale) with explicit argument conversions if required.
-			if (!(attribute.ConstructorArguments[0].Value is byte scale && attribute.ConstructorArguments[1].Value is byte sign))
-				return null;
-			unchecked {
-				if (attribute.ConstructorArguments[2].Value is uint hi
-					&& attribute.ConstructorArguments[3].Value is uint mid
-					&& attribute.ConstructorArguments[4].Value is uint lo) {
-					return new decimal((int)lo, (int)mid, (int)hi, sign != 0, scale);
-				}
-			}
-			{
-				if (attribute.ConstructorArguments[2].Value is int hi
-					&& attribute.ConstructorArguments[3].Value is int mid
-					&& attribute.ConstructorArguments[4].Value is int lo) {
-					return new decimal(lo, mid, hi, sign != 0, scale);
-				}
-			}
-			return null;
 		}
 
 		public override bool Equals(object obj)

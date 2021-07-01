@@ -32,6 +32,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		// lazy-loaded:
 		string name;
+		// these can't be bool? as bool? is not thread-safe from torn reads
+		ThreeState constantValueInSignatureState;
+		ThreeState decimalConstantState;
 
 		internal MetadataParameter(MetadataModule module, IParameterizedMember owner, IType type, Parameter handle)
 		{
@@ -39,12 +42,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.Owner = owner;
 			this.Type = type;
 			this.handle = handle;
+			if (!IsOptional)
+				decimalConstantState = ThreeState.False; // only optional parameters can be constants
 		}
 
 		#region Attributes
 		public IEnumerable<IAttribute> GetAttributes()
 		{
 			var b = new AttributeListBuilder(module);
+
+			if (IsOptional && !HasConstantValueInSignature)
+				b.Add(KnownAttribute.Optional);
 
 			if (!IsOut) {
 				if (handle.HasParamDef) {
@@ -93,9 +101,38 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get {
 				if (!handle.HasParamDef)
 					return null;
+				if (IsDecimalConstant)
+					return DecimalConstantHelper.GetDecimalConstantValue(handle.ParamDef.CustomAttributes);
 				if (!handle.ParamDef.HasConstant)
 					return null;
 				return handle.ParamDef.Constant.Value;
+			}
+		}
+
+		public bool HasConstantValueInSignature {
+			get {
+				if (constantValueInSignatureState == ThreeState.Unknown) {
+					if (IsDecimalConstant) {
+						constantValueInSignatureState = DecimalConstantHelper.AllowsDecimalConstants(module).ToThreeState();
+					}
+					else if (handle.HasParamDef) {
+						constantValueInSignatureState = handle.ParamDef.HasConstant.ToThreeState();
+					} else {
+						decimalConstantState = ThreeState.False;
+					}
+				}
+				return constantValueInSignatureState == ThreeState.True;
+			}
+		}
+
+		bool IsDecimalConstant {
+			get {
+				if (decimalConstantState == ThreeState.Unknown) {
+					decimalConstantState = handle.HasParamDef
+						? DecimalConstantHelper.IsDecimalConstant(handle.ParamDef.CustomAttributes).ToThreeState()
+						: ThreeState.False;
+				}
+				return decimalConstantState == ThreeState.True;
 			}
 		}
 

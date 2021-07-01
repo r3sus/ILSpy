@@ -71,6 +71,8 @@
     <Compile Include="TestCases\Pretty\OptionalArguments.cs" />
     <Compile Include="TestCases\Pretty\CustomShortCircuitOperators.cs" />
     <Compile Include="TestCases\Pretty\TypeTests.cs" />
+    <None Include="TestCases\Ugly\NoDecimalConstants.Expected.cs" />
+    <Compile Include="TestCases\Ugly\NoDecimalConstants.cs" />
     <Compile Include="TestCases\Pretty\CustomAttributeConflicts.cs" />
     <Compile Include="TestCases\Pretty\DynamicTests.cs" />
     <Compile Include="TestCases\Pretty\Issue1080.cs" />

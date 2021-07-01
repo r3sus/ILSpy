@@ -46,9 +46,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				case ClassOrValueTypeSig classOrValueTypeSig:
 					ThreeState isVT = ThreeState.Unknown;
 					if (classOrValueTypeSig is ClassSig)
-						isVT = ThreeState.No;
+						isVT = ThreeState.False;
 					else if (classOrValueTypeSig is ValueTypeSig)
-						isVT = ThreeState.Yes;
+						isVT = ThreeState.True;
 
 					return classOrValueTypeSig.TypeDefOrRef.DecodeSignature(module, context, isVT);
 				default:
@@ -75,7 +75,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			} else {
 				bool? isReferenceType;
 				if (isVT != ThreeState.Unknown)
-					isReferenceType = isVT == ThreeState.No;
+					isReferenceType = isVT == ThreeState.False;
 				else
 					isReferenceType = null;
 				var gctr = new GetClassTypeReference(typeDefOrRef.GetFullTypeName(),

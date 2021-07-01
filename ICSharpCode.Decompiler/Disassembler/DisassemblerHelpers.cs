@@ -371,9 +371,9 @@ namespace ICSharpCode.Decompiler.Disassembler
 			} else if (type is TypeDefOrRefSig tdrs) {
 				ThreeState isVT;
 				if (tdrs is ClassSig)
-					isVT = ThreeState.No;
+					isVT = ThreeState.False;
 				else if (tdrs is ValueTypeSig)
-					isVT = ThreeState.Yes;
+					isVT = ThreeState.True;
 				else
 					isVT = ThreeState.Unknown;
 				WriteTo(tdrs.TypeDefOrRef, writer, syntax, isVT);
@@ -409,7 +409,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 				if (syntax == ILNameSyntax.Signature || syntax == ILNameSyntax.SignatureNoNamedTypeParameters) {
 					bool isVT;
 					if (isValueType != ThreeState.Unknown)
-						isVT = isValueType == ThreeState.Yes;
+						isVT = isValueType == ThreeState.True;
 					else
 						isVT = CecilExtensions.IsValueType(type);
 					writer.Write(isVT ? "valuetype" : "class");
