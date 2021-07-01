@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -45,12 +45,12 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			public bool HasIndex;
 			public int Field;
 		}
-		
+
 		public class MutableClass
 		{
 			public int Field;
 			public short ShortField;
-			
+
 			public int Property {
 				get;
 				set;
@@ -60,7 +60,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				get;
 				set;
 			}
-			
+
 			public uint this[string name] {
 				get {
 					return 0u;
@@ -117,6 +117,10 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				set;
 			}
 			public ulong UlongProp {
+				get;
+				set;
+			}
+			public string StringProp {
 				get;
 				set;
 			}
@@ -411,6 +415,11 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			set;
 		}
 
+		public static string StaticStringProperty {
+			get;
+			set;
+		}
+
 #if CS70
 		private static ref CustomStruct2 GetStruct()
 		{
@@ -482,27 +491,27 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			return new MutableClass();
 		}
-		
+
 		private int[,] Array()
 		{
 			return null;
 		}
-		
+
 		private unsafe int* GetPointer()
 		{
 			return null;
 		}
-		
+
 		public int GetIndex()
 		{
 			return new Random().Next(0, 100);
 		}
-		
+
 		public int[] GetArray()
 		{
 			throw new NotImplementedException();
 		}
-		
+
 		public int GetValue(int value)
 		{
 			return value;
@@ -512,7 +521,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			return a == 'A';
 		}
-		
+
 		public void Int32_Local_Add(int i)
 		{
 			i++;
@@ -521,7 +530,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			i += 5;
 			Console.WriteLine(i += 5);
 		}
-		
+
 		public void Int32_Local_Sub(int i)
 		{
 			i--;
@@ -530,61 +539,61 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			i -= 5;
 			Console.WriteLine(i -= 5);
 		}
-		
+
 		public void Int32_Local_Mul(int i)
 		{
 			i *= 5;
 			Console.WriteLine(i *= 5);
 		}
-		
+
 		public void Int32_Local_Div(int i)
 		{
 			i /= 5;
 			Console.WriteLine(i /= 5);
 		}
-		
+
 		public void Int32_Local_Rem(int i)
 		{
 			i %= 5;
 			Console.WriteLine(i %= 5);
 		}
-		
+
 		public void Int32_Local_BitAnd(int i)
 		{
 			i &= 5;
 			Console.WriteLine(i &= 5);
 		}
-		
+
 		public void Int32_Local_BitOr(int i)
 		{
 			i |= 5;
 			Console.WriteLine(i |= 5);
 		}
-		
+
 		public void Int32_Local_BitXor(int i)
 		{
 			i ^= 5;
 			Console.WriteLine(i ^= 5);
 		}
-		
+
 		public void Int32_Local_ShiftLeft(int i)
 		{
 			i <<= 5;
 			Console.WriteLine(i <<= 5);
 		}
-		
+
 		public void Int32_Local_ShiftRight(int i)
 		{
 			i >>= 5;
 			Console.WriteLine(i >>= 5);
 		}
-		
+
 		public void IntegerWithInline(int i)
 		{
 			Console.WriteLine(i += 5);
 			Console.WriteLine(i);
 		}
-		
+
 		public void IntegerField(int i)
 		{
 			Console.WriteLine(test1 += i);
@@ -592,18 +601,18 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			Console.WriteLine(test1 -= i);
 			Console.WriteLine(test1);
 		}
-		
+
 		public void Array(int i)
 		{
 			Console.WriteLine(array1[i] += i);
 			Console.WriteLine(array1[i * 2] += i * 2);
 		}
-		
+
 		public int ArrayUsageWithMethods()
 		{
 			return GetArray()[GetIndex()]++;
 		}
-		
+
 		public void NestedField()
 		{
 			if (field1.HasIndex) {
@@ -612,7 +621,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				Console.WriteLine(field1.Field++);
 			}
 		}
-		
+
 		public void Enum()
 		{
 			enumField |= MyEnum.Two;
@@ -633,7 +642,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			return i + ++j;
 		}
-		
+
 		public int PreIncrementArrayElement(int[] array, int pos)
 		{
 			return --array[pos];
@@ -688,7 +697,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			return ++M().Field;
 		}
-		
+
 		public int PostIncrementInstanceField()
 		{
 			return M().Field++;
@@ -713,7 +722,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			return ++m.Field;
 		}
-		
+
 		public int PostIncrementInstanceField2(MutableClass m)
 		{
 			return m.Field++;
@@ -4539,6 +4548,33 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			int num = startIndex;
 			items[num++] = item;
 			items[num++] = item;
+		}
+
+#if !LEGACY_CSC
+		// Legacy csc generates a slightly different pattern for string compound assignment
+		// as for all other compound assignments. We'll ignore that edge case.
+		// Note: it's possible that the pre-CopyPropagation run of TransformAssignments is causing trouble there,
+		// and that the compound assignment transform would be fine if it didn't get disrupted.
+
+		private static void Issue1082(string[] strings, List<char> chars, bool flag, int i)
+		{
+			// The 'chars[i]' result is stored in a temporary, and both branches use the
+			// same temporary. In order to inline the generated value-type temporary, we
+			// need to split it, even though it has the address taken for the ToString() call.
+			if (flag) {
+				strings[1] += chars[i].ToString();
+			} else {
+				strings[0] += chars[i].ToString();
+			}
+		}
+#endif
+
+		private static void StringPropertyCompoundAssign()
+		{
+			StaticStringProperty += "a";
+			StaticStringProperty += 1;
+			new CustomClass().StringProp += "a";
+			new CustomClass().StringProp += 1;
 		}
 	}
 }

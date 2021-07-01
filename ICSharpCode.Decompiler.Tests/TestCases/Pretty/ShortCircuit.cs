@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -31,37 +31,37 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		public abstract void M1();
 		public abstract void M2();
 		public abstract void E();
-		
+
 		public void ExprAnd()
 		{
 			B(F(0) && F(1));
 		}
-		
+
 		public void ExprOr()
 		{
 			B(F(0) || F(1));
 		}
-		
+
 		public void ExprCond()
 		{
 			B(F(0) ? F(1) : F(2));
 		}
-		
+
 		public void ExprCondAnd()
 		{
 			B((F(0) && F(1)) ? F(2) : F(3));
 		}
-		
+
 		public void ExprMix4A()
 		{
 			B(((F(0) || F(1)) && F(2)) || F(3));
 		}
-		
+
 		public void ExprMix4B()
 		{
 			B((F(0) || F(1)) && (F(2) || F(3)));
 		}
-		
+
 		public void ExprMix4C()
 		{
 			B((F(0) && F(1)) || (F(2) && F(3)));
@@ -83,7 +83,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				M1();
 			}
 		}
-		
+
 		public void StmtOr2B()
 		{
 			if (F(0) || F(1)) {
@@ -250,6 +250,32 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				}
 			}
 			return 2;
+		}
+
+#if !OPT
+		public void EmptyIf()
+		{
+			if (F(0)) {
+			}
+			if (!F(1)) {
+			}
+			if (F(2) && F(3)) {
+			}
+			if (F(4) || F(5)) {
+			}
+			if (F(0) && F(1) && !F(2) && (F(3) || F(4))) {
+			}
+			E();
+		}
+#endif
+
+		public void PreferLogicalToBitwise(bool a, bool b, int i, float f)
+		{
+			B(a && b);
+			B(a && i == 1);
+			B(i == 1 && a);
+			B(i > i - 3 && a);
+			B(f < 0.1f && a);
 		}
 	}
 }

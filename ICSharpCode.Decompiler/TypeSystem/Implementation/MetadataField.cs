@@ -48,8 +48,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			Debug.Assert(handle != null);
 			this.module = module;
 			this.handle = handle;
-			var def = handle;
-			this.attributes = def.Attributes;
+			this.attributes = handle.Attributes;
 			if ((attributes & (FieldAttributes.Static | FieldAttributes.InitOnly)) == (FieldAttributes.Static | FieldAttributes.InitOnly)) {
 				decimalConstant = 2; // may be decimal constant
 			}

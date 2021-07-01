@@ -36,9 +36,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				case PinnedSig pinnedSig:
 					return new PinnedType(pinnedSig.Next.DecodeSignature(module, context));
 				case CModOptSig cModOptSig:
-					return new ModifiedType(cModOptSig.Next.DecodeSignature(module, context), cModOptSig.Modifier.DecodeSignature(module, context), false);
+					return new ModifiedType(cModOptSig.Modifier.DecodeSignature(module, context), cModOptSig.Next.DecodeSignature(module, context), false);
 				case CModReqdSig cModReqdSig:
-					return new ModifiedType(cModReqdSig.Next.DecodeSignature(module, context), cModReqdSig.Modifier.DecodeSignature(module, context), true);
+					return new ModifiedType(cModReqdSig.Modifier.DecodeSignature(module, context), cModReqdSig.Next.DecodeSignature(module, context), true);
 				case PtrSig ptrSig:
 					return new PointerType(ptrSig.Next.DecodeSignature(module, context));
 				case ArraySigBase arraySigBase:

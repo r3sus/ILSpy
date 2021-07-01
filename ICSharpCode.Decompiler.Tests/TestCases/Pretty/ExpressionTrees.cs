@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -49,6 +49,18 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		}
 
 		private int field;
+
+		public static readonly object[] SupportedMethods = new object[2] {
+			ToCode(null, () => ((IQueryable<object>)null).Aggregate((object o1, object o2) => null)),
+			ToCode(null, () => ((IEnumerable<object>)null).Aggregate((object o1, object o2) => null))
+		};
+
+		public static readonly object[] SupportedMethods2 = new object[4] {
+			ToCode(null, () => ((IQueryable<object>)null).Aggregate(null, (object o1, object o2) => null)),
+			ToCode(null, () => ((IQueryable<object>)null).Aggregate((object)null, (Expression<Func<object, object, object>>)((object o1, object o2) => null), (Expression<Func<object, object>>)((object o) => null))),
+			ToCode(null, () => ((IEnumerable<object>)null).Aggregate(null, (object o1, object o2) => null)),
+			ToCode(null, () => ((IEnumerable<object>)null).Aggregate((object)null, (Func<object, object, object>)((object o1, object o2) => null), (Func<object, object>)((object o) => null)))
+		};
 
 		private static object ToCode<R>(object x, Expression<Action<R>> expr)
 		{

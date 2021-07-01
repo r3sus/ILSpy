@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -28,7 +28,7 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			public int X;
 			public double Y;
 		}
-		
+
 		public struct StructWithFixedSizeMembers
 		{
 			public unsafe fixed int Integers[100];
@@ -170,13 +170,19 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				PointerReferenceExpression(d);
 			}
 		}
-		
+
 		public unsafe void FixedStringAccess(string text)
 		{
 			fixed (char* ptr = text) {
 				for (char* ptr2 = ptr; *ptr2 == 'a'; ptr2++) {
 					*ptr2 = 'A';
 				}
+			}
+		}
+
+		public unsafe void FixedStringNoPointerUse(string text)
+		{
+			fixed (char* ptr = text) {
 			}
 		}
 
