@@ -598,7 +598,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			var b = new AttributeListBuilder(this);
 			b.Add(metadata.CustomAttributes);
-			if (metadata.Assembly != null) {
+			if (metadata.Assembly == null) {
 				AddTypeForwarderAttributes(ref b);
 			}
 			return b.Build();
