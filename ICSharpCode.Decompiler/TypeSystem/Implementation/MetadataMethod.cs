@@ -57,6 +57,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 			this.symbolKind = SymbolKind.Method;
 			var owner = FindOwner(handle);
+			const MethodAttributes finalizerAttributes = MethodAttributes.Virtual | MethodAttributes.Family | MethodAttributes.HideBySig;
 			if (handle.SemanticsAttributes != 0 && owner != null) {
 				this.symbolKind = SymbolKind.Accessor;
 				this.accessorOwner = owner;
@@ -66,6 +67,11 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.symbolKind = SymbolKind.Constructor;
 				else if (name.StartsWith("op_", StringComparison.Ordinal))
 					this.symbolKind = SymbolKind.Operator;
+			} else if ((attributes & finalizerAttributes) == finalizerAttributes) {
+				string name = this.Name;
+				if (name == "Finalize") {
+					this.symbolKind = SymbolKind.Destructor;
+				}
 			}
 			this.typeParameters = MetadataTypeParameter.Create(module, this, handle.GenericParameters);
 			this.IsExtensionMethod = (attributes & MethodAttributes.Static) == MethodAttributes.Static
