@@ -192,7 +192,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 
-			dnlib.DotNet.IMDTokenProvider IEntity.MetadataToken => null;
+			IMemberDef IEntity.MetadataToken => null;
 
 			public string Name => KnownTypeReference.Get(typeCode).Name;
 

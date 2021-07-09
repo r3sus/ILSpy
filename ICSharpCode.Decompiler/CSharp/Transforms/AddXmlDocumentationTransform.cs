@@ -44,10 +44,10 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					dnlib.DotNet.IMemberRef mr;
 					switch (symbol) {
 						case IMember member:
-							mr = member.MetadataToken as dnlib.DotNet.IMemberRef;
+							mr = member.MetadataToken;
 							break;
 						case IType type:
-							mr =type.GetDefinition().MetadataToken as dnlib.DotNet.IMemberRef;
+							mr = type.GetDefinition()?.MetadataToken;
 							break;
 						default:
 							continue;

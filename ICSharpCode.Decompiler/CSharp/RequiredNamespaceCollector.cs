@@ -190,7 +190,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			for (int i = 0; i < method.Instructions.Count; i++) {
 				var instr = method.Instructions[i];
 				switch (instr.OpCode.OperandType) {
-					case OperandType.InlineType: {
+					case OperandType.InlineType when instr.Operand != null: {
 						IType type;
 						try {
 							type = module.ResolveType(instr.Operand as dnlib.DotNet.IType, genericContext);
@@ -200,8 +200,8 @@ namespace ICSharpCode.Decompiler.CSharp
 						CollectNamespacesForTypeReference(type, namespaces);
 						break;
 					}
-					case OperandType.InlineField:
-					case OperandType.InlineMethod: {
+					case OperandType.InlineField when instr.Operand != null:
+					case OperandType.InlineMethod when instr.Operand != null: {
 						IMember member;
 						try {
 							member = module.ResolveEntity(instr.Operand as IMDTokenProvider, genericContext) as IMember;
@@ -211,7 +211,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						CollectNamespacesForMemberReference(member, namespaces);
 						break;
 					}
-					case OperandType.InlineSig:
+					case OperandType.InlineSig when instr.Operand != null:
 						if (instr.Operand is MethodBaseSig baseSig) {
 							try {
 								CollectNamespacesForTypeReference(baseSig.RetType.DecodeSignature(module, genericContext),
@@ -225,7 +225,7 @@ namespace ICSharpCode.Decompiler.CSharp
 							}
 						}
 						break;
-					case OperandType.InlineTok: {
+					case OperandType.InlineTok when instr.Operand != null: {
 						if (instr.Operand is dnlib.DotNet.IType dnType) {
 							IType type;
 							try {

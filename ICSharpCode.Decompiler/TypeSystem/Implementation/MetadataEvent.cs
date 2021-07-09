@@ -48,7 +48,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return $"{handle.MDToken.Raw:X8} {DeclaringType?.ReflectionName}.{Name}";
 		}
 
-		public dnlib.DotNet.IMDTokenProvider MetadataToken => handle;
+		public dnlib.DotNet.IMemberDef MetadataToken => handle;
 		public string Name => name;
 
 		SymbolKind ISymbol.SymbolKind => SymbolKind.Event;

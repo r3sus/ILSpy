@@ -210,7 +210,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 
 		#region IEntity implementation
 
-		public dnlib.DotNet.IMDTokenProvider MetadataToken => baseMethod.MetadataToken;
+		public dnlib.DotNet.IMemberDef MetadataToken => baseMethod.MetadataToken;
 
 		public SymbolKind SymbolKind {
 			get {

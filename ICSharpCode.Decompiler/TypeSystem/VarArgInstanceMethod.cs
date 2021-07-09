@@ -121,7 +121,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			get { return baseMethod.TypeArguments; }
 		}
 
-		public dnlib.DotNet.IMDTokenProvider MetadataToken => baseMethod.MetadataToken;
+		public dnlib.DotNet.IMemberDef MetadataToken => baseMethod.MetadataToken;
 
 		public bool IsExtensionMethod {
 			get { return baseMethod.IsExtensionMethod; }

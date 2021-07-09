@@ -55,7 +55,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				decimalConstantState = ThreeState.False;
 		}
 
-		public IMDTokenProvider MetadataToken => handle;
+		public IMemberDef MetadataToken => handle;
 
 		public override string ToString()
 		{

@@ -120,33 +120,37 @@ namespace ICSharpCode.Decompiler.IL
 
 		dnlib.DotNet.IMDTokenProvider ReadAndDecodeMetadataToken()
 		{
-			return (dnlib.DotNet.IMDTokenProvider)currentInstruction.Operand;
+			if (currentInstruction.Operand is dnlib.DotNet.IMDTokenProvider mdTokenProvider) {
+				return mdTokenProvider;
+			}
+			throw new BadImageFormatException("Invalid metadata token");
 		}
 
 		IType ReadAndDecodeTypeReference()
 		{
-			var typeReference = (dnlib.DotNet.ITypeDefOrRef)currentInstruction.Operand;
+			var typeReference = (dnlib.DotNet.IType)ReadAndDecodeMetadataToken();
 			return module.ResolveType(typeReference, genericContext);
 		}
 
 		IMethod ReadAndDecodeMethodReference()
 		{
-			var methodReference = (dnlib.DotNet.IMethod)currentInstruction.Operand;
+			var methodReference = (dnlib.DotNet.IMethod)ReadAndDecodeMetadataToken();
 			return module.ResolveMethod(methodReference, genericContext);
 		}
 
 		IField ReadAndDecodeFieldReference()
 		{
-			var fieldReference = (dnlib.DotNet.IField)currentInstruction.Operand;
-			return (IField)module.ResolveEntity(fieldReference, genericContext);
+			var fieldReference = (dnlib.DotNet.IField)ReadAndDecodeMetadataToken();
+			var f = module.ResolveEntity(fieldReference, genericContext) as IField;
+			if (f == null)
+				throw new BadImageFormatException("Invalid field token");
+			return f;
 		}
 
 		void InitParameterVariables()
 		{
 			parameterVariables = new ILVariable[GetPopCount(OpCode.Call, methodDef)];
 			int paramIndex = 0;
-			// if (methodDef.HasThis)
-			// 	parameterVariables[paramIndex++] = CreateILVariable(methodDef.Parameters[0]);
 			foreach (var p in methodDef.Parameters)
 				parameterVariables[paramIndex++] = CreateILVariable(p);
 			Debug.Assert(paramIndex == parameterVariables.Length);
@@ -686,7 +690,7 @@ namespace ICSharpCode.Decompiler.IL
 					return DecodeJmp();
 				case Code.Ldarg:
 				case Code.Ldarg_S:
-					return Push(Ldarg(((dnlib.DotNet.Parameter)cecilInst.Operand).Index));
+					return Push(Ldarg(((dnlib.DotNet.Parameter)cecilInst.Operand)?.Index ?? -1));
 				case Code.Ldarg_0:
 					return Push(Ldarg(0));
 				case Code.Ldarg_1:
@@ -697,7 +701,7 @@ namespace ICSharpCode.Decompiler.IL
 					return Push(Ldarg(3));
 				case Code.Ldarga:
 				case Code.Ldarga_S:
-					return Push(Ldarga(((dnlib.DotNet.Parameter)cecilInst.Operand).Index));
+					return Push(Ldarga(((dnlib.DotNet.Parameter)cecilInst.Operand)?.Index ?? -1));
 				case Code.Ldc_I4:
 					return Push(new LdcI4((int)cecilInst.Operand));
 				case Code.Ldc_I8:
@@ -758,7 +762,7 @@ namespace ICSharpCode.Decompiler.IL
 					return Push(new LdObj(PopPointer(), compilation.FindType(KnownTypeCode.Object)));
 				case Code.Ldloc:
 				case Code.Ldloc_S:
-					return Push(Ldloc(((Local)cecilInst.Operand).Index));
+					return Push(Ldloc(((Local)cecilInst.Operand)?.Index ?? -1));
 				case Code.Ldloc_0:
 					return Push(Ldloc(0));
 				case Code.Ldloc_1:
@@ -769,7 +773,7 @@ namespace ICSharpCode.Decompiler.IL
 					return Push(Ldloc(3));
 				case Code.Ldloca:
 				case Code.Ldloca_S:
-					return Push(Ldloca(((Local)cecilInst.Operand).Index));
+					return Push(Ldloca(((Local)cecilInst.Operand)?.Index ?? -1));
 				case Code.Leave:
 					return DecodeUnconditionalBranch(false, isLeave: true);
 				case Code.Leave_S:
@@ -809,7 +813,7 @@ namespace ICSharpCode.Decompiler.IL
 					return BinaryNumeric(BinaryNumericOperator.ShiftRight, false, Sign.Unsigned);
 				case Code.Starg:
 				case Code.Starg_S:
-					return Starg(((dnlib.DotNet.Parameter)cecilInst.Operand).Index);
+					return Starg(((dnlib.DotNet.Parameter)cecilInst.Operand)?.Index ?? -1);
 				case Code.Stind_I1:
 					return new StObj(value: Pop(StackType.I4), target: PopPointer(), type: compilation.FindType(KnownTypeCode.SByte));
 				case Code.Stind_I2:
@@ -828,7 +832,7 @@ namespace ICSharpCode.Decompiler.IL
 					return new StObj(value: Pop(StackType.O), target: PopPointer(), type: compilation.FindType(KnownTypeCode.Object));
 				case Code.Stloc:
 				case Code.Stloc_S:
-					return Stloc(((Local)cecilInst.Operand).Index);
+					return Stloc(((Local)cecilInst.Operand)?.Index ?? -1);
 				case Code.Stloc_0:
 					return Stloc(0);
 				case Code.Stloc_1:
@@ -1335,18 +1339,6 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			var method = ReadAndDecodeMethodReference();
 			int firstArgument = (opCode != OpCode.NewObj && !method.IsStatic) ? 1 : 0;
-			// var arguments = new ILInstruction[firstArgument + method.Parameters.Count];
-			// Console.WriteLine(method.FullName);
-			// Console.WriteLine(method.Parameters.Count);
-			// for (int i = method.Parameters.Count - 1; i >= firstArgument; i--) {
-			// 	Console.WriteLine(i);
-			// 	Console.WriteLine(method.Parameters[i].Type.FullName);
-			// 	arguments[i] = Pop(method.Parameters[i].Type.GetStackType());
-			// }
-			// if (firstArgument == 1) {
-			// 	Console.WriteLine("hidden this");
-			// 	arguments[0] = Pop(CallInstruction.ExpectedTypeForThisPointer(constrainedPrefix ?? method.DeclaringType));
-			// }
 			var arguments = new ILInstruction[firstArgument + method.Parameters.Count];
 			for (int i = method.Parameters.Count - 1; i >= 0; i--) {
 				arguments[firstArgument + i] = Pop(method.Parameters[i].Type.GetStackType());
@@ -1485,9 +1477,6 @@ namespace ICSharpCode.Decompiler.IL
 
 		int? DecodeBranchTarget(bool shortForm)
 		{
-//			int target = shortForm ? reader.ReadSByte() : reader.ReadInt32();
-//			target += reader.Position;
-//			return target;
 			return (int?)((Instruction)currentInstruction.Operand)?.Offset;
 		}
 
@@ -1575,15 +1564,13 @@ namespace ICSharpCode.Decompiler.IL
 
 		ILInstruction DecodeSwitch()
 		{
-//			uint length = reader.ReadUInt32();
-//			int baseOffset = 4 * (int)length + reader.Position;
 			var labels = (Instruction[])currentInstruction.Operand;
 			var instr = new SwitchInstruction(Pop(StackType.I4));
 
 			for (int i = 0; i < labels.Length; i++) {
 				var section = new SwitchSection();
 				section.Labels = new LongSet(i);
-				int? target = (int?)labels[i]?.Offset; // baseOffset + reader.ReadInt32();
+				int? target = (int?)labels[i]?.Offset;
 				if (target != null) {
 					MarkBranchTarget(target.Value);
 					section.Body = new Branch(target.Value);
@@ -1652,7 +1639,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		ILInstruction LdToken(dnlib.DotNet.IMDTokenProvider token)
 		{
-			if (token is dnlib.DotNet.ITypeDefOrRef s) {
+			if (token is dnlib.DotNet.IType s) {
 				return new LdTypeToken(module.ResolveType(s, genericContext));
 			}
 			return new LdMemberToken((IMember)module.ResolveEntity(token, genericContext));

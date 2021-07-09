@@ -267,7 +267,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
-		public IMDTokenProvider MetadataToken => handle;
+		public IMemberDef MetadataToken => handle;
 
 		public FullTypeName FullTypeName => fullTypeName;
 		public string Name => fullTypeName.Name;

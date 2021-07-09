@@ -35,7 +35,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Token may be 0 if this is a generated member.
 		/// Note: specialized members will return the token of the member definition.
 		/// </remarks>
-		IMDTokenProvider MetadataToken { get; }
+		IMemberDef MetadataToken { get; }
 
 		/// <summary>
 		/// Gets the short name of the entity.

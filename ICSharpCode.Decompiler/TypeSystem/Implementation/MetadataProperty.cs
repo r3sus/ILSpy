@@ -74,7 +74,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			return $"{propertyHandle.MDToken.Raw:X8} {DeclaringType?.ReflectionName}.{Name}";
 		}
 
-		public IMDTokenProvider MetadataToken => propertyHandle;
+		public IMemberDef MetadataToken => propertyHandle;
 		public string Name => name;
 
 		public bool CanGet => getter != null;
