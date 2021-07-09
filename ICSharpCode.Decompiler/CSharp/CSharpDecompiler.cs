@@ -379,7 +379,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			string currentNamespace = null;
 			AstNode groupNode = null;
 			foreach (var cecilType in types) {
-				var typeDef = typeSystem.MainModule.GetDefinition(cecilType).GetDefinition();
+				var typeDef = module.GetDefinition(cecilType);
 				if (typeDef.Name == "<Module>" && typeDef.Members.Count == 0)
 					continue;
 				if (MemberIsHidden(cecilType, settings))
@@ -606,13 +606,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			bool first = true;
 			ITypeDefinition parentTypeDef = null;
 			foreach (var def in definitions) {
-				if (def == null)
-					throw new ArgumentException("definitions contains null element");
 				switch (def) {
 					case TypeDef typeDefinition:
-						ITypeDefinition typeDef = typeSystem.MainModule.GetDefinition(typeDefinition).GetDefinition();
-						if (typeDef == null)
-							throw new InvalidOperationException("Could not find type definition in NR type system");
+						ITypeDefinition typeDef = module.GetDefinition(typeDefinition);
 						syntaxTree.Members.Add(DoDecompile(typeDef, decompileRun, new SimpleTypeResolveContext(typeDef)));
 						if (first) {
 							parentTypeDef = typeDef.DeclaringTypeDefinition;
@@ -621,9 +617,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						}
 						break;
 					case MethodDef methodDefinition:
-						Decompiler.TypeSystem.IMethod method = typeSystem.MainModule.GetDefinition(methodDefinition);
-						if (method == null)
-							throw new InvalidOperationException("Could not find method definition in NR type system");
+						Decompiler.TypeSystem.IMethod method = module.GetDefinition(methodDefinition);
 						syntaxTree.Members.Add(DoDecompile(methodDefinition, method, decompileRun, new SimpleTypeResolveContext(method)));
 						if (first) {
 							parentTypeDef = method.DeclaringTypeDefinition;
@@ -632,16 +626,12 @@ namespace ICSharpCode.Decompiler.CSharp
 						}
 						break;
 					case FieldDef fieldDefinition:
-						Decompiler.TypeSystem.IField field = typeSystem.MainModule.GetDefinition(fieldDefinition);
-						if (field == null)
-							throw new InvalidOperationException("Could not find field definition in NR type system");
+						Decompiler.TypeSystem.IField field = module.GetDefinition(fieldDefinition);
 						syntaxTree.Members.Add(DoDecompile(fieldDefinition, field, decompileRun, new SimpleTypeResolveContext(field)));
 						parentTypeDef = field.DeclaringTypeDefinition;
 						break;
 					case PropertyDef propertyDefinition:
-						IProperty property = typeSystem.MainModule.GetDefinition(propertyDefinition);
-						if (property == null)
-							throw new InvalidOperationException("Could not find property definition in NR type system");
+						IProperty property = module.GetDefinition(propertyDefinition);
 						syntaxTree.Members.Add(DoDecompile(propertyDefinition, property, decompileRun, new SimpleTypeResolveContext(property)));
 						if (first) {
 							parentTypeDef = property.DeclaringTypeDefinition;
@@ -650,9 +640,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						}
 						break;
 					case EventDef eventDefinition:
-						IEvent ev = typeSystem.MainModule.GetDefinition(eventDefinition);
-						if (ev == null)
-							throw new InvalidOperationException("Could not find event definition in NR type system");
+						IEvent ev = module.GetDefinition(eventDefinition);
 						syntaxTree.Members.Add(DoDecompile(eventDefinition, ev, decompileRun, new SimpleTypeResolveContext(ev)));
 						if (first) {
 							parentTypeDef = ev.DeclaringTypeDefinition;
@@ -702,7 +690,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			var genericContext = new Decompiler.TypeSystem.GenericContext(method);
 			var methodHandle = (MethodDef)method.MetadataToken;
 			foreach (var h in methodHandle.Overrides) {
-				ICSharpCode.Decompiler.TypeSystem.IMethod m = typeSystem.MainModule.ResolveMethod(h.MethodDeclaration, genericContext);
+				ICSharpCode.Decompiler.TypeSystem.IMethod m = module.ResolveMethod(h.MethodDeclaration, genericContext);
 				if (m == null || m.DeclaringType.Kind != TypeKind.Interface)
 					continue;
 				var methodDecl = new MethodDeclaration();
@@ -772,7 +760,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						addNewModifier = members.Any(m => SignatureComparer.Ordinal.Equals(m, (IMember)entity));
 						break;
 					default:
-						throw new NotSupportedException();
+						throw new ArgumentOutOfRangeException();
 				}
 			}
 

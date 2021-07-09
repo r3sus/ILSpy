@@ -5,7 +5,7 @@
 	<Color name="Keywords" foreground="Blue" fontWeight="bold" exampleText="true" />
 	<Color name="Directives" foreground="Green" fontWeight="bold" exampleText=".class" />
 	<Color name="Security" foreground="Red" exampleText="request" />
-	
+
 	<RuleSet ignoreCase="false">
 		<Keywords color="Instructions">
 			<Word>nop</Word>
@@ -332,6 +332,7 @@
 			<Word>forwardref</Word>
 			<Word>internalcall</Word>
 			<Word>noinlining</Word>
+			<Word>aggressiveinlining</Word>
 			<Word>nomangle</Word>
 			<Word>lasterr</Word>
 			<Word>winapi</Word>
@@ -424,7 +425,7 @@
 			<Word>.manifestres</Word>
 			<Word>.mresource</Word>
 			<Word>.localized</Word>
-			
+
 			<!-- Field marshaling keywords -->
 			<Word>.module</Word>
 			<Word>marshal</Word>
@@ -451,13 +452,13 @@
 			<Word>any</Word>
 			<Word>array</Word>
 			<Word>lpstruct</Word>
-			
+
 			<!-- VTable fixup keywords  -->
 			<Word>.vtfixup</Word>
 			<Word>fromunmanaged</Word>
 			<Word>callmostderived</Word>
 			<Word>.vtentry</Word>
-			
+
 			<!-- Parameter attributes  -->
 			<Word>in</Word>
 			<Word>out</Word>
@@ -465,11 +466,11 @@
 			<Word>lcid</Word>
 			<Word>retval</Word>
 			<Word>.param</Word>
-			
+
 			<!-- Method implementations  -->
 			<Word>.override</Word>
 			<Word>with</Word>
-			
+
 			<!-- VariantType keywords  -->
 			<Word>null</Word>
 			<Word>error</Word>
@@ -487,18 +488,23 @@
 			<Word>cf</Word>
 			<Word>clsid</Word>
 			<Word>vector</Word>
-			
+
 			<!-- Null reference keyword for InitOpt  -->
 			<Word>nullref</Word>
-			
+
 			<!-- Header flags keywords  -->
 			<Word>.subsystem</Word>
 			<Word>.corflags</Word>
+			<Word>.stackreserve</Word>
 			<Word>alignment</Word>
 			<Word>.imagebase</Word>
 		</Keywords>
 		<Span color="Comment" ruleSet="CommentMarkerSet">
 			<Begin>//</Begin>
+		</Span>
+		<Span color="Comment" ruleSet="CommentMarkerSet">
+			<Begin>/\*</Begin>
+			<End>\*/</End>
 		</Span>
 		<Span color="String">
 			<Begin>"</Begin>

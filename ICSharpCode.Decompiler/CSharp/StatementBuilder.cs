@@ -891,8 +891,9 @@ namespace ICSharpCode.Decompiler.CSharp
 					if (continueTarget.IncomingEdgeCount > continueCount)
 						blockStatement.Add(new LabelStatement { Label = continueTarget.Label });
 					return forStmt;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
-			throw new NotSupportedException();
 		}
 
 		BlockStatement ConvertBlockContainer(BlockContainer container, bool isLoop)

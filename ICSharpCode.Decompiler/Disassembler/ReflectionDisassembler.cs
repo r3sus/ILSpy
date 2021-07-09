@@ -1179,7 +1179,15 @@ namespace ICSharpCode.Decompiler.Disassembler
 			if (!skipMVID) {
 				output.WriteLine("// MVID: {0}", module.Mvid?.ToString("B").ToUpperInvariant());
 			}
-			// TODO: imagebase, file alignment, stackreserve, subsystem
+
+			if (module is ModuleDefMD moduleDefMd) {
+				output.WriteLine(".imagebase 0x{0:x8}", moduleDefMd.Metadata.PEImage.ImageNTHeaders.OptionalHeader.ImageBase);
+				output.WriteLine(".file alignment 0x{0:x8}", moduleDefMd.Metadata.PEImage.ImageNTHeaders.OptionalHeader.FileAlignment);
+				output.WriteLine(".stackreserve 0x{0:x8}", moduleDefMd.Metadata.PEImage.ImageNTHeaders.OptionalHeader.SizeOfStackReserve);
+				output.WriteLine(".subsystem 0x{0:x} // {1}",
+					moduleDefMd.Metadata.PEImage.ImageNTHeaders.OptionalHeader.Subsystem,
+					moduleDefMd.Metadata.PEImage.ImageNTHeaders.OptionalHeader.Subsystem.ToString());
+			}
 			output.WriteLine(".corflags 0x{0:x} // {1}", module.Cor20HeaderFlags, module.Cor20HeaderFlags.ToString());
 
 			WriteAttributes(module.CustomAttributes);

@@ -132,9 +132,8 @@ namespace ICSharpCode.Decompiler.Util
 		{
 			U[] result = new U[collection.Count];
 			int index = 0;
-			foreach (T item in collection)
-			{
-				result[index++] = func(item);
+			foreach (var element in collection) {
+				result[index++] = func(element);
 			}
 			return result;
 		}
