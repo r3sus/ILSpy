@@ -464,27 +464,54 @@ namespace ICSharpCode.Decompiler.CSharp
 					switch (instr.OpCode.Code) {
 						case Code.Stfld:
 							// async and yield fsms:
-							if (instr.Operand is FieldDef fsmField) {
-								var fsmTypeDef = fsmField.DeclaringType;
-								if (fsmTypeDef != null) {
-									// Must be a nested type of the containing type.
-									if (fsmTypeDef.DeclaringType != declaringType)
-										break;
-									if (!processedNestedTypes.Add(fsmTypeDef))
-										break;
-									if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(fsmTypeDef)
-										|| AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(fsmTypeDef)) {
-										foreach (var h in fsmTypeDef.Methods) {
-											if (h.SemanticsAttributes != 0)
+							TypeDef fsmTypeDef;
+							switch (instr.Operand) {
+								case FieldDef fsmField: {
+									fsmTypeDef = fsmField.DeclaringType;
+									break;
+								}
+								case MemberRef memberRef when memberRef.IsFieldRef: {
+									switch (memberRef.Class) {
+										case TypeDef typeDef:
+											fsmTypeDef = typeDef;
+											break;
+										case TypeRef _:
+											// This should never happen in normal code, because we are looking at nested types
+											// If it's not a nested type, it can't be a reference to the statem machine anyway, and
+											// those should be either TypeDef or TypeSpec.
+											continue;
+										case TypeSpec typeSpec when typeSpec.TypeSig is GenericInstSig genericInstSig: {
+											if (!genericInstSig.GenericType.IsTypeDef)
 												continue;
-											if (!h.CustomAttributes.HasKnownAttribute(KnownAttribute.DebuggerHidden)) {
-												connectedMethods.Enqueue(h);
-											}
+											fsmTypeDef = genericInstSig.GenericType.TypeDef;
+											break;
+										}
+										default:
+											continue;
+									}
+									break;
+								}
+								default:
+									continue;
+							}
+
+							if (fsmTypeDef != null) {
+								// Must be a nested type of the containing type.
+								if (fsmTypeDef.DeclaringType != declaringType)
+									break;
+								if (!processedNestedTypes.Add(fsmTypeDef))
+									break;
+								if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(fsmTypeDef)
+									|| AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(fsmTypeDef)) {
+									foreach (var h in fsmTypeDef.Methods) {
+										if (h.SemanticsAttributes != 0)
+											continue;
+										if (!h.CustomAttributes.HasKnownAttribute(KnownAttribute.DebuggerHidden)) {
+											connectedMethods.Enqueue(h);
 										}
 									}
 								}
 							}
-
 							break;
 						case Code.Ldftn:
 							// deal with ldftn instructions, i.e., lambdas
