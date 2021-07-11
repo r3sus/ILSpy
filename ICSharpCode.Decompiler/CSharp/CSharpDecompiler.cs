@@ -224,6 +224,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (method != null) {
 				if (method.IsGetter || method.IsSetter || method.IsAddOn || method.IsRemoveOn)
 					return true;
+				if (LocalFunctionDecompiler.IsLocalFunctionMethod(method))
+					return settings.LocalFunctions;
 				if (settings.AnonymousMethods && method.HasGeneratedName() && method.IsCompilerGenerated())
 					return true;
 				if (settings.AsyncAwait && AsyncAwaitDecompiler.IsCompilerGeneratedMainMethod(method))
@@ -233,6 +235,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			TypeDef type = member as TypeDef;
 			if (type != null) {
 				if (type.DeclaringType != null) {
+					if (LocalFunctionDecompiler.IsLocalFunctionDisplayClass(type))
+						return settings.LocalFunctions;
 					if (settings.AnonymousMethods && IsClosureType(type))
 						return true;
 					if (settings.YieldReturn && YieldReturnDecompiler.IsCompilerGeneratorEnumerator(type))
@@ -966,6 +970,14 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			FixParameterNames(methodDecl);
 			var methodDefinition = (MethodDef)method.MetadataToken;
+			if (!settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionMethod(methodDefinition)) {
+				// if local functions are not active and we're dealing with a local function,
+				// reduce the visibility of the method to private,
+				// otherwise this leads to compile errors because the display classes have lesser accessibility.
+				// Note: removing and then adding the static modifier again is necessary to set the private modifier before all other modifiers.
+				methodDecl.Modifiers &= ~(Modifiers.Internal | Modifiers.Static);
+				methodDecl.Modifiers |= Modifiers.Private | (method.IsStatic ? Modifiers.Static : 0);
+			}
 			if (methodDefinition.HasBody) {
 				DecompileBody(method, methodDecl, decompileRun, decompilationContext);
 			} else if (!method.IsAbstract && method.DeclaringType.Kind != TypeKind.Interface) {
