@@ -26,6 +26,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	{
 		readonly MetadataModule module;
 		readonly Parameter handle;
+		readonly ParamAttributes attributes;
 
 		public IType Type { get; }
 		public IParameterizedMember Owner { get; }
@@ -42,6 +43,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.Owner = owner;
 			this.Type = type;
 			this.handle = handle;
+			attributes = handle.ParamDef?.Attributes ?? 0;
 			if (!IsOptional)
 				decimalConstantState = ThreeState.False; // only optional parameters can be constants
 		}
@@ -75,25 +77,23 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		private const ParamAttributes inOut = ParamAttributes.In | ParamAttributes.Out;
 		public bool IsRef {
 			get {
-				if (!handle.HasParamDef)
-					return false;
-				if (!(Type.Kind == TypeKind.ByReference && (handle.ParamDef.Attributes & inOut) != ParamAttributes.Out))
+				if (!(Type.Kind == TypeKind.ByReference && (attributes & inOut) != ParamAttributes.Out))
 					return false;
 				if ((module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == 0)
 					return true;
-				return !handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+				if (handle.HasParamDef)
+					return !handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+				return true;
 			}
 		}
-		public bool IsOut => Type.Kind == TypeKind.ByReference && handle.HasParamDef && (handle.ParamDef.Attributes & inOut) == ParamAttributes.Out;
-		public bool IsOptional => handle.HasParamDef && (handle.ParamDef.Attributes & ParamAttributes.Optional) != 0;
+		public bool IsOut => Type.Kind == TypeKind.ByReference && (attributes & inOut) == ParamAttributes.Out;
+		public bool IsOptional => (attributes & ParamAttributes.Optional) != 0;
 		public bool IsIn {
 			get {
-				if (!handle.HasParamDef)
-					return false;
 				if ((module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == 0 ||
-					Type.Kind != TypeKind.ByReference || (handle.ParamDef.Attributes & inOut) != ParamAttributes.In)
+					Type.Kind != TypeKind.ByReference || (attributes & inOut) != ParamAttributes.In)
 					return false;
-				return handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+				return handle.HasParamDef && handle.ParamDef.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
 			}
 		}
 

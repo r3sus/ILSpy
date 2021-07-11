@@ -213,7 +213,7 @@ namespace ICSharpCode.Decompiler.IL
 			if (p.IsHiddenThisParameter)
 				ilVar.Name = "this";
 			else if (string.IsNullOrEmpty(p.Name))
-				ilVar.Name = "P_" + p.Index;
+				ilVar.Name = "P_" + p.MethodSigIndex;
 			else
 				ilVar.Name = p.Name;
 			return ilVar;
