@@ -44,6 +44,29 @@ namespace ICSharpCode.Decompiler
 			return string.Format("IL_{0:x4}", offset);
 		}
 
+		public static HashSet<MethodDef> GetAccessorMethods(this TypeDef type)
+		{
+			HashSet<MethodDef> accessorMethods = new HashSet<MethodDef>();
+			foreach (var property in type.Properties) {
+				accessorMethods.Add(property.GetMethod);
+				accessorMethods.Add(property.SetMethod);
+				if (property.HasOtherMethods) {
+					foreach (var m in property.OtherMethods)
+						accessorMethods.Add(m);
+				}
+			}
+			foreach (var ev in type.Events) {
+				accessorMethods.Add(ev.AddMethod);
+				accessorMethods.Add(ev.RemoveMethod);
+				accessorMethods.Add(ev.InvokeMethod);
+				if (ev.HasOtherMethods) {
+					foreach (var m in ev.OtherMethods)
+						accessorMethods.Add(m);
+				}
+			}
+			return accessorMethods;
+		}
+
 		public static FieldDef ResolveFieldWithinSameModule(this IField field)
 		{
 			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
@@ -60,6 +83,14 @@ namespace ICSharpCode.Decompiler
 				return ((MemberRef)method).ResolveMethod();
 			else
 				return (MethodDef)method;
+		}
+
+		public static FieldDef Resolve(this IField field)
+		{
+			if (field is MemberRef)
+				return ((MemberRef)field).ResolveField();
+			else
+				return (FieldDef)field;
 		}
 
 		public static TypeDef Resolve(this IType type)
