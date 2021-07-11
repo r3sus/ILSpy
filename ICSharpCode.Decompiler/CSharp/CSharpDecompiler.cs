@@ -520,7 +520,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						case Code.Ldftn:
 							// deal with ldftn instructions, i.e., lambdas
 							if (instr.Operand is MethodDef dnMethod) {
-								if (dnMethod.IsCompilerGenerated())
+								if (dnMethod.IsCompilerGeneratedOrIsInCompilerGeneratedClass())
 									connectedMethods.Enqueue(dnMethod);
 							}
 
