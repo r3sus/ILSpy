@@ -674,6 +674,26 @@ namespace ICSharpCode.Decompiler.Tests.TypeSystem
 		}
 
 		[Test]
+		public void DllImportAttributeWithPreserveSigFalse()
+		{
+			IMethod method = GetTypeDefinition(typeof(NonCustomAttributes)).Methods.Single(m => m.Name == "DoNotPreserveSig");
+			IAttribute dllImport = method.GetAttributes().Single();
+			Assert.AreEqual("System.Runtime.InteropServices.DllImportAttribute", dllImport.AttributeType.FullName);
+			Assert.AreEqual("unmanaged.dll", dllImport.FixedArguments[0].Value);
+			Assert.AreEqual(false, dllImport.NamedArguments.Single().Value);
+		}
+
+		[Test]
+		public void PreserveSigAttribute()
+		{
+			IMethod method = GetTypeDefinition(typeof(NonCustomAttributes)).Methods.Single(m => m.Name == "PreserveSigAsAttribute");
+			IAttribute preserveSig = method.GetAttributes().Single();
+			Assert.AreEqual("System.Runtime.InteropServices.PreserveSigAttribute", preserveSig.AttributeType.FullName);
+			Assert.IsTrue(preserveSig.FixedArguments.Length == 0);
+			Assert.IsTrue(preserveSig.NamedArguments.Length == 0);
+		}
+
+		[Test]
 		public void InOutParametersOnRefMethod()
 		{
 			IParameter p = GetTypeDefinition(typeof(NonCustomAttributes)).Methods.Single(m => m.Name == "DllMethod").Parameters.Single();
