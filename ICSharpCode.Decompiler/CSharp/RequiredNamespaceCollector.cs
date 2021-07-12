@@ -80,11 +80,12 @@ namespace ICSharpCode.Decompiler.CSharp
 						CollectNamespacesForTypeReference(param.Type, namespaces);
 					}
 					HandleTypeParameters(method.TypeParameters, namespaces);
-					if (method.MetadataToken != null && method.HasBody) {
+					if (method.MetadataToken != null) {
 						if (mappingInfo == null)
 							mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 						var parts = mappingInfo.GetMethodParts((MethodDef)method.MetadataToken).ToList();
 						foreach (var methodDef in parts) {
+							HandleOverrides(methodDef.Overrides, module, namespaces);
 							if (methodDef.HasBody)
 								CollectNamespacesFromMethodBody(methodDef.Body, module, namespaces);
 						}
@@ -100,6 +101,15 @@ namespace ICSharpCode.Decompiler.CSharp
 					CollectNamespaces(@event.AddAccessor, module, namespaces);
 					CollectNamespaces(@event.RemoveAccessor, module, namespaces);
 					break;
+			}
+		}
+
+		static void HandleOverrides(IList<MethodOverride> immutableArray, MetadataModule module, HashSet<string> namespaces)
+		{
+			foreach (var methodImpl in immutableArray) {
+				CollectNamespacesForTypeReference(module.ResolveType(methodImpl.MethodBody.DeclaringType, genericContext), namespaces);
+				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodBody, genericContext), namespaces);
+				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodDeclaration, genericContext), namespaces);
 			}
 		}
 
