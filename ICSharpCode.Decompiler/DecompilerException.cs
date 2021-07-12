@@ -43,7 +43,7 @@ namespace ICSharpCode.Decompiler
 		public IMemberDef DecompiledEntity { get; }
 
 		public DecompilerException(IMemberDef decompiledEntity, Exception innerException, string message = null)
-			: base(message ?? "Error decompiling " + decompiledEntity.FullName + Environment.NewLine, innerException)
+			: base((message ?? "Error decompiling " + decompiledEntity?.FullName) + Environment.NewLine, innerException)
 		{
 			this.DecompiledEntity = decompiledEntity;
 		}
