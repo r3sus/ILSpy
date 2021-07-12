@@ -184,9 +184,11 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "mscorlib.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "System.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "System.Core.dll")),
+					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, @"Facades\System.Runtime.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "System.Xml.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "Microsoft.CSharp.dll")),
-					MetadataReference.CreateFromFile(typeof(ValueTuple).Assembly.Location)
+					MetadataReference.CreateFromFile(typeof(ValueTuple).Assembly.Location),
+					MetadataReference.CreateFromFile(typeof(Span<>).Assembly.Location),
 			};
 		});
 
@@ -396,6 +398,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 		{
 			var resolver = new AssemblyResolver();
 			resolver.DefaultModuleContext = new ModuleContext(resolver);
+			resolver.PostSearchPaths.Add(Path.GetDirectoryName(typeof(Span<>).Assembly.Location));
 			using (var module = ModuleDefMD.Load(assemblyFileName, resolver.DefaultModuleContext)) {
 				CSharpDecompiler decompiler = new CSharpDecompiler(new PEFile(module), settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAtttributes());
