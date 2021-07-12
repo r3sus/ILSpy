@@ -107,7 +107,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		static void HandleOverrides(IList<MethodOverride> immutableArray, MetadataModule module, HashSet<string> namespaces)
 		{
 			foreach (var methodImpl in immutableArray) {
-				CollectNamespacesForTypeReference(module.ResolveType(methodImpl.MethodBody.DeclaringType, genericContext), namespaces);
+				CollectNamespacesForTypeReference(module.ResolveType(methodImpl.MethodDeclaration.DeclaringType, genericContext), namespaces);
 				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodBody, genericContext), namespaces);
 				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodDeclaration, genericContext), namespaces);
 			}
