@@ -188,18 +188,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
-		public object ConstantValue {
-			get {
-				object val = LazyInit.VolatileRead(ref this.constantValue);
-				if (val != null)
-					return val;
-				if (IsDecimalConstant && DecimalConstantHelper.AllowsDecimalConstants(module)) {
-					val = DecimalConstantHelper.GetDecimalConstantValue(handle.CustomAttributes);
-				} else {
-					val = handle.HasConstant ? handle.Constant.Value : null;
-				}
-				return LazyInit.GetOrSet(ref this.constantValue, val);
+		public object GetConstantValue(bool throwOnInvalidMetadata)
+		{
+			object val = LazyInit.VolatileRead(ref this.constantValue);
+			if (val != null)
+				return val;
+			if (IsDecimalConstant && DecimalConstantHelper.AllowsDecimalConstants(module)) {
+				val = DecimalConstantHelper.GetDecimalConstantValue(handle.CustomAttributes);
+			} else {
+				val = handle.HasConstant ? handle.Constant.Value : null;
 			}
+			return LazyInit.GetOrSet(ref this.constantValue, val);
 		}
 
 		public override bool Equals(object obj)

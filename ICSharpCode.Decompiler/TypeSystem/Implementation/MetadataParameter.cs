@@ -118,16 +118,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		bool IVariable.IsConst => false;
 
-		public object ConstantValue {
-			get {
-				if (!handle.HasParamDef)
-					return null;
-				if (IsDecimalConstant)
-					return DecimalConstantHelper.GetDecimalConstantValue(handle.ParamDef.CustomAttributes);
-				if (!handle.ParamDef.HasConstant)
-					return null;
-				return handle.ParamDef.Constant.Value;
-			}
+		public object GetConstantValue(bool throwOnInvalidMetadata)
+		{
+			if (!handle.HasParamDef)
+				return null;
+			if (IsDecimalConstant)
+				return DecimalConstantHelper.GetDecimalConstantValue(handle.ParamDef.CustomAttributes);
+			if (!handle.ParamDef.HasConstant)
+				return null;
+			return handle.ParamDef.Constant.Value;
 		}
 
 		public bool HasConstantValueInSignature {
