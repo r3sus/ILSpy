@@ -209,10 +209,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			} else {
 				// for backward compatibility with .NET 1.0: XML-encoded attribute
-				var b = new AttributeBuilder(module, KnownAttribute.PermissionSet);
-				b.AddFixedArg(securityAction);
-				b.AddNamedArg("XML", KnownTypeCode.String, secDecl.GetNet1xXmlString());
+				Add(ReadXmlSecurityAttribute(secDecl, securityAction));
 			}
+		}
+
+		private IAttribute ReadXmlSecurityAttribute(DeclSecurity secDecl, CustomAttributeTypedArgument<IType> securityAction)
+		{
+			string xml = secDecl.GetNet1xXmlString();
+			var b = new AttributeBuilder(module, KnownAttribute.PermissionSet);
+			b.AddFixedArg(securityAction);
+			b.AddNamedArg("XML", KnownTypeCode.String, xml);
+			return b.Build();
 		}
 
 		private IAttribute ReadBinarySecurityAttribute(SecurityAttribute secDecl, CustomAttributeTypedArgument<IType> securityAction)
