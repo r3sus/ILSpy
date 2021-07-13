@@ -37,7 +37,9 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 	{
 		public static bool IsCompilerGeneratedStateMachine(dnlib.DotNet.TypeDef type)
 		{
-			if (!(type.DeclaringType != null && type.IsCompilerGenerated()))
+			if (type is null || type.DeclaringType is null)
+				return false;
+			if (!(type.IsCompilerGenerated() || type.DeclaringType.IsCompilerGenerated()))
 				return false;
 			foreach (var i in type.Interfaces) {
 				var iface = i.Interface;

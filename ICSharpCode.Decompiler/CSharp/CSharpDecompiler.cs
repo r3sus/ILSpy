@@ -461,16 +461,17 @@ namespace ICSharpCode.Decompiler.CSharp
 					part = connectedMethods.Dequeue();
 					if (!processedMethods.Add(part))
 						continue;
-					ReadCodeMappingInfo(declaringType, info, method, part, connectedMethods, processedNestedTypes);
+					ReadCodeMappingInfo(info, method, part, connectedMethods, processedNestedTypes);
 				}
 			}
 
 			return info;
 		}
 
-		private static void ReadCodeMappingInfo(TypeDef declaringType, CodeMappingInfo info, MethodDef parent, MethodDef part, Queue<MethodDef> connectedMethods, HashSet<TypeDef> processedNestedTypes)
+		private static void ReadCodeMappingInfo(CodeMappingInfo info, MethodDef parent, MethodDef part, Queue<MethodDef> connectedMethods, HashSet<TypeDef> processedNestedTypes)
 		{
 			if (part.HasBody) {
+				var declaringType = parent.DeclaringType;
 				for (int i = 0; i < part.Body.Instructions.Count; i++) {
 					var instr = part.Body.Instructions[i];
 					switch (instr.OpCode.Code) {
