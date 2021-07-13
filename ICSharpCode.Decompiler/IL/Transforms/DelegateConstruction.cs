@@ -158,6 +158,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var targetMethod = ((IInstructionWithMethodOperand)value.Arguments[1]).Method;
 			if (!IsAnonymousMethod(decompilationContext.CurrentTypeDefinition, targetMethod))
 				return null;
+			if (LocalFunctionDecompiler.IsLocalFunctionMethod((MethodDef)targetMethod.MetadataToken))
+				return null;
 			target = value.Arguments[0];
 			var methodDefinition = targetMethod.MetadataToken as dnlib.DotNet.MethodDef;
 			if (methodDefinition == null || !methodDefinition.HasBody)

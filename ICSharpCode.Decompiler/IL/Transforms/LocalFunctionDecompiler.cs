@@ -13,7 +13,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 		public static bool IsLocalFunctionMethod(MethodDef method)
 		{
-			if ((method.Attributes & MethodAttributes.Assembly) == 0 || !method.IsCompilerGenerated())
+			var declaringType = method.DeclaringType;
+			if ((method.Attributes & MethodAttributes.Assembly) == 0 || !(method.IsCompilerGenerated() || declaringType.IsCompilerGenerated()))
 				return false;
 
 			if (!ParseLocalFunctionName(method.Name, out _, out _))

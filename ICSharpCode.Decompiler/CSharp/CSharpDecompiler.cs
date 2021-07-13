@@ -453,11 +453,14 @@ namespace ICSharpCode.Decompiler.CSharp
 				var part = method;
 
 				var connectedMethods = new Queue<MethodDef>();
+				var processedMethods = new HashSet<MethodDef>();
 				var processedNestedTypes = new HashSet<TypeDef>();
 				connectedMethods.Enqueue(part);
 
 				while (connectedMethods.Count > 0) {
 					part = connectedMethods.Dequeue();
+					if (!processedMethods.Add(part))
+						continue;
 					ReadCodeMappingInfo(declaringType, info, method, part, connectedMethods, processedNestedTypes);
 				}
 			}
