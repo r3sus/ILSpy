@@ -91,9 +91,9 @@ namespace ICSharpCode.ILSpy
 				base.DecompileMethod(method, output, options);
 				if (!method.HasBody)
 					return;
-				var typeSystem = new DecompilerTypeSystem(method.Module);
-				ILReader reader = new ILReader(typeSystem);
-				reader.WriteTypedIL(method, method.Body, typeSystem.Resolve(method), output, options.CancellationToken);
+				var typeSystem = new DecompilerTypeSystem(new PEFile(method.Module));
+				ILReader reader = new ILReader(typeSystem.MainModule);
+				reader.WriteTypedIL(method, output, cancellationToken: options.CancellationToken);
 			}
 		}
 
@@ -111,11 +111,10 @@ namespace ICSharpCode.ILSpy
 				base.DecompileMethod(method, output, options);
 				if (!method.HasBody)
 					return;
-				var typeSystem = new DecompilerTypeSystem(method.Module);
-				var specializingTypeSystem = typeSystem.GetSpecializingTypeSystem(new SimpleTypeResolveContext(typeSystem.Resolve(method)));
-				var reader = new ILReader(specializingTypeSystem);
+				var typeSystem = new DecompilerTypeSystem(new PEFile(method.Module));
+				var reader = new ILReader(typeSystem.MainModule);
 				reader.UseDebugSymbols = options.DecompilerSettings.UseDebugSymbols;
-				ILFunction il = reader.ReadIL(method, method.Body, options.CancellationToken);
+				ILFunction il = reader.ReadIL(method, cancellationToken: options.CancellationToken);
 				var namespaces = new HashSet<string>();
 				var decompiler = new CSharpDecompiler(typeSystem, options.DecompilerSettings) { CancellationToken = options.CancellationToken };
 				ILTransformContext context = decompiler.CreateILTransformContext(il);
