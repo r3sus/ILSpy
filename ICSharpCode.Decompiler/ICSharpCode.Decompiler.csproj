@@ -67,7 +67,7 @@
     <Compile Include="CSharp\Syntax\ErrorNode.cs" />
     <Compile Include="CSharp\Syntax\Expressions\AnonymousMethodExpression.cs" />
     <Compile Include="CSharp\Syntax\Expressions\AnonymousTypeCreateExpression.cs" />
-    <Compile Include="CSharp\Syntax\Expressions\ArrayCreateExpression.cs"  />
+    <Compile Include="CSharp\Syntax\Expressions\ArrayCreateExpression.cs" />
     <Compile Include="CSharp\Syntax\Expressions\ArrayInitializerExpression.cs" />
     <Compile Include="CSharp\Syntax\Expressions\AsExpression.cs" />
     <Compile Include="CSharp\Syntax\Expressions\AssignmentExpression.cs" />
@@ -322,6 +322,7 @@
     <Compile Include="IL\Transforms\NullCoalescingTransform.cs" />
     <Compile Include="IL\Transforms\StatementTransform.cs" />
     <Compile Include="IL\Transforms\TransformCollectionAndObjectInitializers.cs" />
+    <Compile Include="Output\IAmbience.cs" />
     <Compile Include="Output\TextTokenWriter.cs" />
     <Compile Include="Semantics\InterpolatedStringResolveResult.cs" />
     <Compile Include="TypeSystem\ApplyAttributeTypeVisitor.cs" />
@@ -468,7 +469,6 @@
     <Compile Include="TypeSystem\ComHelper.cs" />
     <Compile Include="TypeSystem\DecompilerTypeSystem.cs" />
     <Compile Include="TypeSystem\FullTypeName.cs" />
-    <Compile Include="TypeSystem\IAmbience.cs" />
     <Compile Include="TypeSystem\IModule.cs" />
     <Compile Include="TypeSystem\IAttribute.cs" />
     <Compile Include="TypeSystem\ICodeContext.cs" />

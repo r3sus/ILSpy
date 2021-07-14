@@ -35,6 +35,7 @@ using dnlib.DotNet.MD;
 using dnlib.PE;
 using ICSharpCode.ILSpy.TreeNodes;
 using ICSharpCode.Decompiler.CSharp.Transforms;
+using ICSharpCode.Decompiler.Output;
 using ICSharpCode.Decompiler.Util;
 using IField = ICSharpCode.Decompiler.TypeSystem.IField;
 using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
@@ -544,7 +545,7 @@ namespace ICSharpCode.ILSpy
 				default:
 					return base.GetTooltip(member);
 			}
-			var flags = ConversionFlags.All & ~ConversionFlags.ShowBody;
+			var flags = ConversionFlags.All & ~(ConversionFlags.ShowBody | ConversionFlags.PlaceReturnTypeAfterParameterList);
 			return new CSharpAmbience() { ConversionFlags = flags }.ConvertSymbol(symbol);
 		}
 	}
