@@ -113,6 +113,12 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		public bool ShowTypeParameters { get; set; }
 
 		/// <summary>
+		/// Controls whether type parameter names are shown for unbound types.
+		/// The default value is <c>false</c>.
+		/// </summary>
+		public bool ShowTypeParametersForUnboundTypes { get; set; }
+		
+		/// <summary>
 		/// Controls whether constraints on type parameter declarations are shown.
 		/// Has no effect if ShowTypeParameters is false.
 		/// The default value is <c>true</c>.
@@ -262,6 +268,8 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				return astType;
 			}
 			if (type is ITypeDefinition typeDef) {
+				if (ShowTypeParametersForUnboundTypes)
+					return ConvertTypeHelper(typeDef, typeDef.TypeArguments);
 				if (typeDef.TypeParameterCount > 0) {
 					// Unbound type
 					IType[] typeArguments = new IType[typeDef.TypeParameterCount];
@@ -272,6 +280,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				} else {
 					return ConvertTypeHelper(typeDef, EmptyList<IType>.Instance);
 				}
+
 			}
 			return new SimpleType(type.Name);
 		}
