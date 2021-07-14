@@ -325,14 +325,14 @@ namespace ICSharpCode.Decompiler.IL
 			foreach (var eh in body.ExceptionHandlers) {
 				ImmutableStack<ILVariable> ehStack = null;
 				if (eh.HandlerType == ExceptionHandlerType.Catch) {
-					var v = new ILVariable(VariableKind.Exception, module.ResolveType(eh.CatchType, genericContext), (int)eh.HandlerStart.Offset) {
+					var v = new ILVariable(VariableKind.ExceptionStackSlot, module.ResolveType(eh.CatchType, genericContext), (int)eh.HandlerStart.Offset) {
 						Name = "E_" + eh.HandlerStart.Offset,
 						HasGeneratedName = true
 					};
 					variableByExceptionHandler.Add(eh, v);
 					ehStack = ImmutableStack.Create(v);
 				} else if (eh.HandlerType == ExceptionHandlerType.Filter) {
-					var v = new ILVariable(VariableKind.Exception, compilation.FindType(KnownTypeCode.Object), (int)eh.HandlerStart.Offset) {
+					var v = new ILVariable(VariableKind.ExceptionStackSlot, compilation.FindType(KnownTypeCode.Object), (int)eh.HandlerStart.Offset) {
 						Name = "E_" + eh.HandlerStart.Offset,
 						HasGeneratedName = true
 					};
@@ -1033,7 +1033,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			Debug.Assert(inst.ResultType != StackType.Void);
 			IType type = compilation.FindType(inst.ResultType.ToKnownTypeCode());
-			var v = new ILVariable(VariableKind.StackSlot, type, inst.ResultType, inst.ILRange.Start);
+			var v = new ILVariable(VariableKind.StackSlot, type, inst.ResultType);
 			v.HasGeneratedName = true;
 			currentStack = currentStack.Push(v);
 			return new StLoc(v, inst);
