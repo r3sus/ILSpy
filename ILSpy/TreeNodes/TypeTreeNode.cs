@@ -81,8 +81,16 @@ namespace ICSharpCode.ILSpy.TreeNodes
 			foreach (TypeDef nestedType in TypeDefinition.NestedTypes.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
 				this.Children.Add(new TypeTreeNode(nestedType, ParentAssemblyNode));
 			}
-			foreach (FieldDef field in TypeDefinition.Fields.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
-				this.Children.Add(new FieldTreeNode(field));
+
+			if (TypeDefinition.IsEnum) {
+				// if the type is an enum, it's better to not sort by field name.
+				foreach (var field in TypeDefinition.Fields) {
+					this.Children.Add(new FieldTreeNode(field));
+				}
+			} else {
+				foreach (FieldDef field in TypeDefinition.Fields.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {
+					this.Children.Add(new FieldTreeNode(field));
+				}
 			}
 
 			foreach (PropertyDef property in TypeDefinition.Properties.OrderBy(m => m.Name.String, NaturalStringComparer.Instance)) {

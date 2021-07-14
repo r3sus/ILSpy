@@ -152,7 +152,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var fieldList = new List<IField>(fieldCollection.Count);
 				foreach (FieldDef field in fieldCollection) {
 					var attr = field.Attributes;
-					if (module.IsVisible(attr) && (attr & FieldAttributes.SpecialName) == 0) {
+					if (module.IsVisible(attr)) {
 						fieldList.Add(module.GetDefinition(field));
 					}
 				}

@@ -842,6 +842,8 @@ namespace ICSharpCode.Decompiler.CSharp
 				}
 				foreach (var field in typeDef.Fields) {
 					if (field.MetadataToken != null && !MemberIsHidden(field.MetadataToken, settings)) {
+						if (typeDef.Kind == TypeKind.Enum && !field.IsConst)
+							continue;
 						var memberDecl = DoDecompile(field, decompileRun, decompilationContext.WithCurrentMember(field));
 						typeDecl.Members.Add(memberDecl);
 					}
@@ -1143,7 +1145,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			Debug.Assert(decompilationContext.CurrentMember == field);
 			try {
 				var typeSystemAstBuilder = CreateAstBuilder(decompilationContext);
-				if (decompilationContext.CurrentTypeDefinition.Kind == TypeKind.Enum) {
+				if (decompilationContext.CurrentTypeDefinition.Kind == TypeKind.Enum && field.IsConst) {
 					var enumDec = new EnumMemberDeclaration { Name = field.Name };
 					object constantValue = field.GetConstantValue();
 					if (constantValue != null) {
