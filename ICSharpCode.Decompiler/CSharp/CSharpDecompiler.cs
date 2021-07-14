@@ -627,13 +627,13 @@ namespace ICSharpCode.Decompiler.CSharp
 		/// </summary>
 		public SyntaxTree Decompile(params IMemberDef[] definitions)
 		{
-			return Decompile((IList<IMemberDef>)definitions);
+			return Decompile((IEnumerable<IMemberDef>)definitions);
 		}
 
 		/// <summary>
 		/// Decompile the specified types and/or members.
 		/// </summary>
-		public SyntaxTree Decompile(IList<IMemberDef> definitions)
+		public SyntaxTree Decompile(IEnumerable<IMemberDef> definitions)
 		{
 			if (definitions == null)
 				throw new ArgumentNullException(nameof(definitions));
@@ -719,7 +719,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		/// <summary>
 		/// Decompile the specified types and/or members.
 		/// </summary>
-		public string DecompileAsString(IList<IMemberDef> definitions)
+		public string DecompileAsString(IEnumerable<IMemberDef> definitions)
 		{
 			return SyntaxTreeToString(Decompile(definitions));
 		}
