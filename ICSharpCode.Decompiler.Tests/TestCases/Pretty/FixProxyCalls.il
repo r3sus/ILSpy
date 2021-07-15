@@ -1075,8 +1075,8 @@
     IL_0024:  brtrue.s   IL_0032
 
     IL_0026:  nop
-    IL_0027:  ldstr      "roslyn optimize is inlining the assignment which l"
-    + "ets the test fail"
+    IL_0027:  ldstr      "roslyn optimizes is inlining the assignment which "
+    + "lets the test fail"
     IL_002c:  newobj     instance void [mscorlib]System.Exception::.ctor(string)
     IL_0031:  throw
 

@@ -923,8 +923,8 @@
     IL_0019:  callvirt   instance bool [mscorlib]System.Object::Equals(object)
     IL_001e:  brfalse.s  IL_002b
 
-    IL_0020:  ldstr      "roslyn optimize is inlining the assignment which l"
-    + "ets the test fail"
+    IL_0020:  ldstr      "roslyn optimizes is inlining the assignment which "
+    + "lets the test fail"
     IL_0025:  newobj     instance void [mscorlib]System.Exception::.ctor(string)
     IL_002a:  throw
 
