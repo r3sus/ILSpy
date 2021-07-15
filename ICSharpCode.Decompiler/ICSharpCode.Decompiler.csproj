@@ -257,6 +257,7 @@
     <Compile Include="CSharp\WholeProjectDecompiler.cs" />
     <Compile Include="CSharp\Transforms\AddXmlDocumentationTransform.cs" />
     <Compile Include="DecompileRun.cs" />
+    <Compile Include="IL\ILInstructionExtensions.cs" />
     <Compile Include="IL\Transforms\CombineExitsTransform.cs" />
     <Compile Include="IL\Transforms\ReduceNestingTransform.cs" />
     <Compile Include="IL\Transforms\LocalFunctionDecompiler.cs" />

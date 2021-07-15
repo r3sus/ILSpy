@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -30,7 +30,7 @@ namespace ICSharpCode.Decompiler.IL
 	/// and only branches within this container may reference the blocks in this container.
 	/// That means that viewed from the outside, the block container has a single entry point (but possibly multiple exit points),
 	/// and the same holds for every block within the container.
-	/// 
+	///
 	/// All blocks in the container must perform unconditional control flow (falling through to the block end is not allowed).
 	/// To exit the block container, use the 'leave' instruction.
 	/// </summary>
@@ -54,7 +54,7 @@ namespace ICSharpCode.Decompiler.IL
 				InvalidateFlags();
 			}
 		}
-		
+
 		Block entryPoint;
 
 		/// <summary>
@@ -81,7 +81,7 @@ namespace ICSharpCode.Decompiler.IL
 		public override ILInstruction Clone()
 		{
 			BlockContainer clone = new BlockContainer();
-			clone.ILRange = this.ILRange;
+			clone.AddILRange(this);
 			clone.Blocks.AddRange(this.Blocks.Select(block => (Block)block.Clone()));
 			// Adjust branch instructions to point to the new container
 			foreach (var branch in clone.Descendants.OfType<Branch>()) {
@@ -94,30 +94,30 @@ namespace ICSharpCode.Decompiler.IL
 			}
 			return clone;
 		}
-		
+
 		protected internal override void InstructionCollectionUpdateComplete()
 		{
 			base.InstructionCollectionUpdateComplete();
 			this.EntryPoint = this.Blocks.FirstOrDefault();
 		}
-		
+
 		protected override void Connected()
 		{
 			base.Connected();
 			if (entryPoint != null)
 				entryPoint.IncomingEdgeCount++;
 		}
-		
+
 		protected override void Disconnected()
 		{
 			base.Disconnected();
 			if (entryPoint != null)
 				entryPoint.IncomingEdgeCount--;
 		}
-		
+
 		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
 		{
-			ILRange.WriteTo(output, options);
+			WriteILRange(output, options);
 			output.WriteDefinition("BlockContainer", this);
 			output.Write(' ');
 			switch (Kind) {
@@ -154,17 +154,17 @@ namespace ICSharpCode.Decompiler.IL
 			output.Write("}");
 			output.MarkFoldEnd();
 		}
-		
+
 		protected override int GetChildCount()
 		{
 			return Blocks.Count;
 		}
-		
+
 		protected override ILInstruction GetChild(int index)
 		{
 			return Blocks[index];
 		}
-		
+
 		protected override void SetChild(int index, ILInstruction value)
 		{
 			if (Blocks[index] != value)
@@ -181,7 +181,7 @@ namespace ICSharpCode.Decompiler.IL
 			base.CheckInvariant(phase);
 			Debug.Assert(Blocks.Count > 0 && EntryPoint == Blocks[0]);
 			Debug.Assert(!IsConnected || EntryPoint?.IncomingEdgeCount >= 1);
-			Debug.Assert(EntryPoint == null || Parent is ILFunction || !ILRange.IsEmpty);
+			Debug.Assert(EntryPoint == null || Parent is ILFunction || !HasILRange);
 			Debug.Assert(Blocks.All(b => b.HasFlag(InstructionFlags.EndPointUnreachable)));
 			Debug.Assert(Blocks.All(b => b.Kind == BlockKind.ControlFlow)); // this also implies that the blocks don't use FinalInstruction
 			Block bodyStartBlock;
@@ -231,13 +231,13 @@ namespace ICSharpCode.Decompiler.IL
 				flags &= ~InstructionFlags.EndPointUnreachable;
 			return flags;
 		}
-		
+
 		public override InstructionFlags DirectFlags {
 			get {
 				return InstructionFlags.ControlFlow;
 			}
 		}
-		
+
 		/// <summary>
 		/// Sort the blocks in reverse post-order over the control flow graph between the blocks.
 		/// </summary>
@@ -249,7 +249,7 @@ namespace ICSharpCode.Decompiler.IL
 			// Visit blocks in post-order
 			BitSet visited = new BitSet(Blocks.Count);
 			List<Block> postOrder = new List<Block>();
-			
+
 			Action<Block> visit = null;
 			visit = delegate(Block block) {
 				Debug.Assert(block.Parent == this);
@@ -266,7 +266,7 @@ namespace ICSharpCode.Decompiler.IL
 				}
 			};
 			visit(EntryPoint);
-			
+
 			postOrder.Reverse();
 			if (!deleteUnreachableBlocks) {
 				for (int i = 0; i < Blocks.Count; i++) {
