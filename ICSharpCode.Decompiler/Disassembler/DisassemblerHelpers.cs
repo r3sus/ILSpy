@@ -402,7 +402,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 				if (name != null)
 					WriteKeyword(writer, name, typeSig.ToTypeDefOrRef());
 				else
-					writer.Write(Escape(typeName), type);
+					writer.WriteReference(Escape(typeName), type);
 			} else if ((syntax == ILNameSyntax.Signature || syntax == ILNameSyntax.SignatureNoNamedTypeParameters) && name != null) {
 				WriteKeyword(writer, name, typeSig.ToTypeDefOrRef());
 			} else {
@@ -419,21 +419,21 @@ namespace ICSharpCode.Decompiler.Disassembler
 				if (type.DeclaringType != null) {
 					type.DeclaringType.WriteTo(writer, ILNameSyntax.TypeName, ThreeState.Unknown);
 					writer.Write("/");
-					writer.Write(Escape(typeName), type);
+					writer.WriteReference(Escape(typeName), type);
 				} else {
 					if (!(type is TypeDef) && type.Scope != null && !(type is TypeSpec)) {
 						writer.Write("[");
-						writer.Write(Escape(type.Scope.GetScopeName()), type.Scope);
+						writer.WriteReference(Escape(type.Scope.GetScopeName()), type.Scope);
 						writer.Write("]");
 					}
 
 					if (ts != null || !IsValidIdentifier(typeFullName))
-						writer.Write(Escape(typeFullName), type);
+						writer.WriteReference(Escape(typeFullName), type);
 					else {
 						WriteNamespace(writer, type.Namespace, type.DefinitionAssembly);
 						if (!string.IsNullOrEmpty(type.Namespace))
 							writer.Write(".");
-						writer.Write(Escape(type.Name), type);
+						writer.WriteReference(Escape(type.Name), type);
 					}
 				}
 			}
