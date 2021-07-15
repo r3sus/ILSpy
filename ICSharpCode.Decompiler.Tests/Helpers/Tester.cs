@@ -183,7 +183,6 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			return new[]
 			{
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "mscorlib.dll")),
-					MetadataReference.CreateFromFile(Path.Combine(thisAsmPath, "netstandard.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "System.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, "System.Core.dll")),
 					MetadataReference.CreateFromFile(Path.Combine(refAsmPath, @"Facades\System.Runtime.dll")),
