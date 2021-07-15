@@ -10,9 +10,9 @@
 }
 .assembly FixProxyCalls.opt
 {
+  .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilationRelaxationsAttribute::.ctor(int32) = ( 01 00 08 00 00 00 00 00 ) 
   .custom instance void [mscorlib]System.Runtime.CompilerServices.RuntimeCompatibilityAttribute::.ctor() = ( 01 00 01 00 54 02 16 57 72 61 70 4E 6F 6E 45 78   // ....T..WrapNonEx
                                                                                                              63 65 70 74 69 6F 6E 54 68 72 6F 77 73 01 )       // ceptionThrows.
-  .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilationRelaxationsAttribute::.ctor(int32) = ( 01 00 08 00 00 00 00 00 ) 
   .permissionset reqmin
              = {[mscorlib]System.Security.Permissions.SecurityPermissionAttribute = {property bool 'SkipVerification' = bool(true)}}
   .hash algorithm 0x00008004
@@ -822,6 +822,50 @@
 
 } // end of class ICSharpCode.Decompiler.Tests.TestCases.ILPretty.F
 
+.class private auto ansi beforefieldinit ICSharpCode.Decompiler.Tests.TestCases.ILPretty.FalsePositive_Issue1443
+       extends [mscorlib]System.Object
+{
+  .custom instance void [mscorlib]System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() = ( 01 00 00 00 ) 
+  .method private hidebysig static void  WrongMethod() cil managed
+  {
+    // Code size       11 (0xb)
+    .maxstack  8
+    IL_0000:  ldstr      "Wrong!"
+    IL_0005:  call       void [mscorlib]System.Console::WriteLine(string)
+    IL_000a:  ret
+  } // end of method FalsePositive_Issue1443::WrongMethod
+
+  .method private hidebysig instance void 
+          CorrectMethod() cil managed
+  {
+    // Code size       6 (0x6)
+    .maxstack  8
+    IL_0000:  call       void ICSharpCode.Decompiler.Tests.TestCases.ILPretty.FalsePositive_Issue1443::WrongMethod()
+    IL_0005:  ret
+  } // end of method FalsePositive_Issue1443::CorrectMethod
+
+  .method private hidebysig instance void 
+          Use() cil managed
+  {
+    // Code size       7 (0x7)
+    .maxstack  8
+    IL_0000:  ldarg.0
+    IL_0001:  call       instance void ICSharpCode.Decompiler.Tests.TestCases.ILPretty.FalsePositive_Issue1443::CorrectMethod()
+    IL_0006:  ret
+  } // end of method FalsePositive_Issue1443::Use
+
+  .method public hidebysig specialname rtspecialname 
+          instance void  .ctor() cil managed
+  {
+    // Code size       7 (0x7)
+    .maxstack  8
+    IL_0000:  ldarg.0
+    IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
+    IL_0006:  ret
+  } // end of method FalsePositive_Issue1443::.ctor
+
+} // end of class ICSharpCode.Decompiler.Tests.TestCases.ILPretty.FalsePositive_Issue1443
+
 .class private auto ansi beforefieldinit ICSharpCode.Decompiler.Tests.TestCases.ILPretty.G
        extends [mscorlib]System.Object
 {
@@ -861,32 +905,34 @@
 .class private auto ansi beforefieldinit ICSharpCode.Decompiler.Tests.TestCases.ILPretty.H
        extends ICSharpCode.Decompiler.Tests.TestCases.ILPretty.G
 {
+  .field private class [mscorlib]System.Action`1<string> action
   .method famorassem hidebysig virtual instance void 
           Test(string test) cil managed
   {
-    // Code size       46 (0x2e)
-    .maxstack  2
-    .locals init (class [mscorlib]System.Action`1<string> V_0)
+    // Code size       56 (0x38)
+    .maxstack  8
     IL_0000:  ldarg.0
-    IL_0001:  ldftn      instance void ICSharpCode.Decompiler.Tests.TestCases.ILPretty.H::'<Test>b__0'(string)
-    IL_0007:  newobj     instance void class [mscorlib]System.Action`1<string>::.ctor(object,
+    IL_0001:  ldarg.0
+    IL_0002:  ldftn      instance void ICSharpCode.Decompiler.Tests.TestCases.ILPretty.H::'<Test>b__0'(string)
+    IL_0008:  newobj     instance void class [mscorlib]System.Action`1<string>::.ctor(object,
                                                                                       native int)
-    IL_000c:  stloc.0
-    IL_000d:  ldarg.1
-    IL_000e:  ldc.i4.1
-    IL_000f:  box        [mscorlib]System.Int32
-    IL_0014:  callvirt   instance bool [mscorlib]System.Object::Equals(object)
-    IL_0019:  brfalse.s  IL_0026
+    IL_000d:  stfld      class [mscorlib]System.Action`1<string> ICSharpCode.Decompiler.Tests.TestCases.ILPretty.H::action
+    IL_0012:  ldarg.1
+    IL_0013:  ldc.i4.1
+    IL_0014:  box        [mscorlib]System.Int32
+    IL_0019:  callvirt   instance bool [mscorlib]System.Object::Equals(object)
+    IL_001e:  brfalse.s  IL_002b
 
-    IL_001b:  ldstr      "roslyn optimize is inlining the assignment which l"
+    IL_0020:  ldstr      "roslyn optimize is inlining the assignment which l"
     + "ets the test fail"
-    IL_0020:  newobj     instance void [mscorlib]System.Exception::.ctor(string)
-    IL_0025:  throw
+    IL_0025:  newobj     instance void [mscorlib]System.Exception::.ctor(string)
+    IL_002a:  throw
 
-    IL_0026:  ldloc.0
-    IL_0027:  ldarg.1
-    IL_0028:  callvirt   instance void class [mscorlib]System.Action`1<string>::Invoke(!0)
-    IL_002d:  ret
+    IL_002b:  ldarg.0
+    IL_002c:  ldfld      class [mscorlib]System.Action`1<string> ICSharpCode.Decompiler.Tests.TestCases.ILPretty.H::action
+    IL_0031:  ldarg.1
+    IL_0032:  callvirt   instance void class [mscorlib]System.Action`1<string>::Invoke(!0)
+    IL_0037:  ret
   } // end of method H::Test
 
   .method public hidebysig specialname rtspecialname 
