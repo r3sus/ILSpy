@@ -145,7 +145,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			if (IsIndexer && Name != "Item" && !IsExplicitInterfaceImplementation) {
 				b.Add(KnownAttribute.IndexerName, KnownTypeCode.String, Name);
 			}
-			b.Add(propertyHandle.CustomAttributes);
+			b.Add(propertyHandle.CustomAttributes, symbolKind);
 			return b.Build();
 		}
 		#endregion

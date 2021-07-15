@@ -158,6 +158,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public abstract bool HasDefaultConstructorConstraint { get; }
 		public abstract bool HasReferenceTypeConstraint { get; }
 		public abstract bool HasValueTypeConstraint { get; }
+		public abstract bool HasUnmanagedConstraint { get; }
+		public abstract Nullability NullabilityConstraint { get; }
 
 		public TypeKind Kind {
 			get { return TypeKind.TypeParameter; }
@@ -192,6 +194,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 
 		bool IType.IsByRefLike => false;
+		Nullability IType.Nullability => NullabilityConstraint;
+
+		public IType ChangeNullability(Nullability nullability)
+		{
+			if (nullability == NullabilityConstraint)
+				return this;
+			else
+				return new NullabilityAnnotatedTypeParameter(this, nullability);
+		}
 
 		IType IType.DeclaringType {
 			get { return null; }

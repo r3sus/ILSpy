@@ -32,6 +32,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		// lazy-loaded:
 		IReadOnlyList<IType> constraints;
+		ThreeState unmanagedConstraint = ThreeState.Unknown;
+		const byte nullabilityNotYetLoaded = 255;
+		byte nullabilityConstraint = nullabilityNotYetLoaded;
 
 		public static ITypeParameter[] Create(MetadataModule module, ITypeDefinition copyFromOuter, IEntity owner, IList<GenericParam> handles)
 		{
@@ -94,13 +97,55 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		{
 			var attributes = handle.CustomAttributes;
 			var b = new AttributeListBuilder(module, attributes.Count);
-			b.Add(attributes);
+			b.Add(attributes, SymbolKind.TypeParameter);
 			return b.Build();
 		}
 
 		public override bool HasDefaultConstructorConstraint => (attr & GenericParamAttributes.DefaultConstructorConstraint) != 0;
 		public override bool HasReferenceTypeConstraint => (attr & GenericParamAttributes.ReferenceTypeConstraint) != 0;
 		public override bool HasValueTypeConstraint => (attr & GenericParamAttributes.NotNullableValueTypeConstraint) != 0;
+
+		public override bool HasUnmanagedConstraint {
+			get {
+				if (unmanagedConstraint == ThreeState.Unknown) {
+					unmanagedConstraint = LoadUnmanagedConstraint().ToThreeState();
+				}
+				return unmanagedConstraint == ThreeState.True;
+			}
+		}
+
+		private bool LoadUnmanagedConstraint()
+		{
+			if ((module.TypeSystemOptions & TypeSystemOptions.UnmanagedConstraints) == 0)
+				return false;
+			return handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsUnmanaged);
+		}
+
+		public override Nullability NullabilityConstraint {
+			get {
+				if (nullabilityConstraint == nullabilityNotYetLoaded) {
+					nullabilityConstraint = (byte)LoadNullabilityConstraint();
+				}
+				return (Nullability)nullabilityConstraint;
+			}
+		}
+
+		Nullability LoadNullabilityConstraint()
+		{
+			if ((module.TypeSystemOptions & TypeSystemOptions.NullabilityAnnotations) == 0)
+				return Nullability.Oblivious;
+
+			foreach (var customAttribute in handle.CustomAttributes) {
+				if (customAttribute.IsKnownAttribute(KnownAttribute.Nullable)) {
+					if (customAttribute.ConstructorArguments.Count == 1) {
+						if (customAttribute.ConstructorArguments[0].Value is byte b && b <= 2) {
+							return (Nullability)b;
+						}
+					}
+				}
+			}
+			return Nullability.Oblivious;
+		}
 
 		public override IEnumerable<IType> DirectBaseTypes {
 			get {

@@ -66,7 +66,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 
 			if (handle.HasParamDef) {
-				b.Add(handle.ParamDef.CustomAttributes);
+				b.Add(handle.ParamDef.CustomAttributes, SymbolKind.Parameter);
 				b.AddMarshalInfo(handle.ParamDef.MarshalType);
 			}
 

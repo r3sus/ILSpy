@@ -319,7 +319,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			// resolve without substituting dynamic/tuple types
 			var ty = ResolveType(declaringTypeReference, context,
-				options & ~(TypeSystemOptions.Dynamic | TypeSystemOptions.Tuple));
+				options & ~(TypeSystemOptions.Dynamic | TypeSystemOptions.Tuple | TypeSystemOptions.NullabilityAnnotations));
 			// but substitute tuple types in type arguments:
 			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, typeChildrenOnly: true);
 			return ty;
@@ -589,7 +589,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var b = new AttributeListBuilder(this);
 			if (metadata.Assembly != null) {
 				var assembly = metadata.Assembly;
-				b.Add(assembly.CustomAttributes);
+				b.Add(assembly.CustomAttributes, SymbolKind.Module);
 				b.AddSecurityAttributes(assembly.DeclSecurities);
 
 				// AssemblyVersionAttribute
@@ -608,7 +608,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public IEnumerable<IAttribute> GetModuleAttributes()
 		{
 			var b = new AttributeListBuilder(this);
-			b.Add(metadata.CustomAttributes);
+			b.Add(metadata.CustomAttributes, SymbolKind.Module);
 			if (metadata.Assembly == null) {
 				AddTypeForwarderAttributes(ref b);
 			}

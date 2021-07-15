@@ -244,6 +244,16 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		IReadOnlyList<IType> IType.TypeArguments => TypeParameters;
 
+		Nullability IType.Nullability => Nullability.Oblivious;
+
+		public IType ChangeNullability(Nullability nullability)
+		{
+			if (nullability == Nullability.Oblivious)
+				return this;
+			else
+				return new NullabilityAnnotatedType(this, nullability);
+		}
+
 		public IEnumerable<IType> DirectBaseTypes {
 			get {
 				var baseTypes = LazyInit.VolatileRead(ref this.directBaseTypes);
@@ -331,7 +341,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 			#endregion
 
-			b.Add(handle.CustomAttributes);
+			b.Add(handle.CustomAttributes, SymbolKind.TypeDefinition);
 			b.AddSecurityAttributes(handle.DeclSecurities);
 
 			return b.Build();

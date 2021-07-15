@@ -143,20 +143,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		#endregion
 
 		#region Custom Attributes (ReadAttribute)
-		public void Add(CustomAttributeCollection attributes)
+		public void Add(CustomAttributeCollection attributes, SymbolKind target)
 		{
 			foreach (var handle in attributes) {
 				// Attribute types shouldn't be generic (and certainly not open), so we don't need a generic context.
 				var ctor = module.ResolveMethod(handle.Constructor, new GenericContext());
 				var type = ctor.DeclaringType;
-				if (IgnoreAttribute(type)) {
+				if (IgnoreAttribute(type, target)) {
 					continue;
 				}
 				Add(new CustomAttribute(module, ctor, handle));
 			}
 		}
 
-		bool IgnoreAttribute(IType attributeType)
+		bool IgnoreAttribute(IType attributeType, SymbolKind target)
 		{
 			if (attributeType.DeclaringType != null || attributeType.TypeParameterCount != 0)
 				return false;
@@ -171,16 +171,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						case "ExtensionAttribute":
 							return (options & TypeSystemOptions.ExtensionMethods) != 0;
 						case "DecimalConstantAttribute":
-							return (options & TypeSystemOptions.DecimalConstants) != 0;
+							return (options & TypeSystemOptions.DecimalConstants) != 0 && (target == SymbolKind.Field || target == SymbolKind.Parameter);
 						case "IsReadOnlyAttribute":
 							return (options & TypeSystemOptions.ReadOnlyStructsAndParameters) != 0;
 						case "IsByRefLikeAttribute":
-							return (options & TypeSystemOptions.RefStructs) != 0;
+							return (options & TypeSystemOptions.RefStructs) != 0 && target == SymbolKind.TypeDefinition;
+						case "IsUnmanagedAttribute":
+							return (options & TypeSystemOptions.UnmanagedConstraints) != 0 && target == SymbolKind.TypeParameter;
+						case "NullableAttribute":
+							return (options & TypeSystemOptions.NullabilityAnnotations) != 0;
 						default:
 							return false;
 					}
 				case "System":
-					return attributeType.Name == "ParamArrayAttribute";
+					return attributeType.Name == "ParamArrayAttribute" && target == SymbolKind.Parameter;
 				default:
 					return false;
 			}

@@ -93,7 +93,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public IEnumerable<IAttribute> GetAttributes()
 		{
 			var b = new AttributeListBuilder(module);
-			b.Add(handle.CustomAttributes);
+			b.Add(handle.CustomAttributes, SymbolKind.Event);
 			return b.Build();
 		}
 		#endregion

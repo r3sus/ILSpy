@@ -350,7 +350,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 			#endregion
 
-			b.Add(handle.CustomAttributes);
+			b.Add(handle.CustomAttributes, symbolKind);
 			b.AddSecurityAttributes(handle.DeclSecurities);
 
 			return b.Build();
@@ -363,7 +363,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var b = new AttributeListBuilder(module);
 			if (handle.Parameters.ReturnParameter.HasParamDef) {
 				b.AddMarshalInfo(handle.Parameters.ReturnParameter.ParamDef.MarshalType);
-				b.Add(handle.Parameters.ReturnParameter.ParamDef.CustomAttributes);
+				b.Add(handle.Parameters.ReturnParameter.ParamDef.CustomAttributes, symbolKind);
 			}
 			return b.Build();
 		}

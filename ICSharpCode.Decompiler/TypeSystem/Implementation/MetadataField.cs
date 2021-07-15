@@ -136,7 +136,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 
 			b.AddMarshalInfo(handle.MarshalType);
-			b.Add(handle.CustomAttributes);
+			b.Add(handle.CustomAttributes, SymbolKind.Field);
 
 			return b.Build();
 		}
