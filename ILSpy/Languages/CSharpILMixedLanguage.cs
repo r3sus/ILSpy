@@ -53,7 +53,7 @@ namespace ICSharpCode.ILSpy
 		{
 			readonly DecompilationOptions options;
 			// list sorted by IL offset
-			IList<Decompiler.IL.SequencePoint> sequencePoints;
+			IList<Decompiler.DebugInfo.SequencePoint> sequencePoints;
 			// lines of raw c# source code
 			string[] codeLines;
 
@@ -70,8 +70,8 @@ namespace ICSharpCode.ILSpy
 					CSharpDecompiler decompiler = CreateDecompiler(method.Module, options);
 					var st = decompiler.Decompile(method);
 					WriteCode(csharpOutput, options.DecompilerSettings, st, decompiler.TypeSystem);
-					var mapping = decompiler.CreateSequencePoints(st).FirstOrDefault(kvp => kvp.Key.CecilMethod == method);
-					this.sequencePoints = mapping.Value ?? (IList<Decompiler.IL.SequencePoint>)EmptyList<Decompiler.IL.SequencePoint>.Instance;
+					var mapping = decompiler.CreateSequencePoints(st).FirstOrDefault(kvp => (kvp.Key.MoveNextMethod ?? kvp.Key.Method).MetadataToken == method);
+					this.sequencePoints = mapping.Value ?? (IList<Decompiler.DebugInfo.SequencePoint>)EmptyList<Decompiler.DebugInfo.SequencePoint>.Instance;
 					this.codeLines = csharpOutput.ToString().Split(new[] { Environment.NewLine }, StringSplitOptions.None);
 					base.Disassemble(method, body);
 				} finally {

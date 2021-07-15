@@ -31,7 +31,11 @@ namespace ICSharpCode.Decompiler.IL
 		public readonly IMethod Method;
 		public readonly GenericContext GenericContext;
 		public readonly dnlib.DotNet.MethodDef CecilMethod;
-		public readonly int CodeSize;
+		/// <summary>
+		/// Size of the IL code in this function.
+		/// Note: after async/await transform, this is the code size of the MoveNext function.
+		/// </summary>
+		public int CodeSize;
 		public readonly ILVariableCollection Variables;
 
 		/// <summary>
@@ -61,6 +65,13 @@ namespace ICSharpCode.Decompiler.IL
 		/// If the async method returns Task or void, this field stores void.
 		/// </summary>
 		public IType AsyncReturnType;
+
+		/// <summary>
+		/// If this function is an iterator/async, this field stores the compiler-generated MoveNext() method.
+		/// </summary>
+		public IMethod MoveNextMethod;
+
+		internal DebugInfo.AsyncDebugInfo AsyncDebugInfo;
 
 		/// <summary>
 		/// If this is an expression tree or delegate, returns the expression tree type Expression{T} or T.

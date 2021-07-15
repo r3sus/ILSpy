@@ -234,6 +234,8 @@
     <Compile Include="CSharp\TypeSystem\SimpleTypeOrNamespaceReference.cs" />
     <Compile Include="CSharp\TypeSystem\TypeOrNamespaceReference.cs" />
     <Compile Include="CSharp\TypeSystem\UsingScope.cs" />
+    <Compile Include="DebugInfo\AsyncDebugInfo.cs" />
+    <Compile Include="DebugInfo\SequencePoint.cs" />
     <Compile Include="DecompilerException.cs" />
     <Compile Include="DecompilerSettings.cs" />
     <Compile Include="CSharp\Transforms\ContextTrackingVisitor.cs" />
@@ -287,7 +289,6 @@
     <Compile Include="IL\Instructions\LdFlda.cs" />
     <Compile Include="IL\Instructions\NullableInstructions.cs" />
     <Compile Include="IL\Instructions\StLoc.cs" />
-    <Compile Include="IL\SequencePoint.cs" />
     <Compile Include="IL\Instructions\CallIndirect.cs" />
     <Compile Include="IL\Instructions\DefaultValue.cs" />
     <Compile Include="IL\Transforms\DynamicCallSiteTransform.cs" />
