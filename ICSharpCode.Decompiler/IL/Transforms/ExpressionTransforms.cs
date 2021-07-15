@@ -17,6 +17,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -267,9 +268,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				inst.ReplaceWith(decimalConstant);
 				return;
 			}
+			Block block;
 			if (TransformSpanTCtorContainingStackAlloc(inst, out ILInstruction locallocSpan)) {
 				inst.ReplaceWith(locallocSpan);
-				Block block = null;
+				block = null;
 				ILInstruction stmt = locallocSpan;
 				while (stmt.Parent != null) {
 					if (stmt.Parent is Block b) {
@@ -279,6 +281,11 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					stmt = stmt.Parent;
 				}
 				//ILInlining.InlineIfPossible(block, stmt.ChildIndex - 1, context);
+				return;
+			}
+			if (TransformArrayInitializers.TransformSpanTArrayInitialization(inst, context, out block)) {
+				context.Step("TransformSpanTArrayInitialization: single-dim", inst);
+				inst.ReplaceWith(block);
 				return;
 			}
 			base.VisitNewObj(inst);
