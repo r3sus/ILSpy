@@ -17,7 +17,8 @@ namespace ICSharpCode.Decompiler.Tests.Util
 		{
 			TestCreateSequencePoints(@"class C { void M() { int i = 0; int j = 1; } }",
 				"int num = 0;",
-				"int num2 = 1;");
+				"int num2 = 1;",
+				"}");
 		}
 
 		private void TestCreateSequencePoints(string code, params string[] expectedSequencePoints)
