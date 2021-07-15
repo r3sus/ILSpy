@@ -66,6 +66,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="TestCases\Pretty\MultidimensionalArray.cs" />
     <Compile Include="Semantics\ConversionTests.cs" />
     <Compile Include="Semantics\ExplicitConversionTest.cs" />
     <Compile Include="Semantics\OverloadResolutionTests.cs" />
