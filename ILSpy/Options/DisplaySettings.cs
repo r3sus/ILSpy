@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -30,23 +30,23 @@ namespace ICSharpCode.ILSpy.Options
 		public DisplaySettings()
 		{
 		}
-		
+
 		#region INotifyPropertyChanged implementation
 		public event PropertyChangedEventHandler PropertyChanged;
-		
+
 		protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
 		{
 			PropertyChanged?.Invoke(this, e);
 		}
-		
+
 		protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
 		{
 			OnPropertyChanged(new PropertyChangedEventArgs(propertyName));
 		}
 		#endregion
-		
+
 		FontFamily selectedFont;
-		
+
 		public FontFamily SelectedFont {
 			get { return selectedFont; }
 			set {
@@ -56,9 +56,9 @@ namespace ICSharpCode.ILSpy.Options
 				}
 			}
 		}
-		
+
 		double selectedFontSize;
-		
+
 		public double SelectedFontSize {
 			get { return selectedFontSize; }
 			set {
@@ -68,9 +68,9 @@ namespace ICSharpCode.ILSpy.Options
 				}
 			}
 		}
-		
+
 		bool showLineNumbers;
-		
+
 		public bool ShowLineNumbers {
 			get { return showLineNumbers; }
 			set {
@@ -120,14 +120,105 @@ namespace ICSharpCode.ILSpy.Options
 			}
 		}
 
+		bool foldBraces = false;
+
+		public bool FoldBraces {
+			get { return foldBraces; }
+			set {
+				if (foldBraces != value) {
+					foldBraces = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool expandMemberDefinitions = false;
+
+		public bool ExpandMemberDefinitions {
+			get { return expandMemberDefinitions; }
+			set {
+				if (expandMemberDefinitions != value) {
+					expandMemberDefinitions = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool expandUsingDeclarations = false;
+
+		public bool ExpandUsingDeclarations {
+			get { return expandUsingDeclarations; }
+			set {
+				if (expandUsingDeclarations != value) {
+					expandUsingDeclarations = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool showDebugInfo;
+
+		public bool ShowDebugInfo {
+			get { return showDebugInfo; }
+			set {
+				if (showDebugInfo != value) {
+					showDebugInfo = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool indentationUseTabs = true;
+
+		public bool IndentationUseTabs {
+			get { return indentationUseTabs; }
+			set {
+				if (indentationUseTabs != value) {
+					indentationUseTabs = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		int indentationTabSize = 4;
+
+		public int IndentationTabSize {
+			get { return indentationTabSize; }
+			set {
+				if (indentationTabSize != value) {
+					indentationTabSize = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		int indentationSize = 4;
+
+		public int IndentationSize {
+			get { return indentationSize; }
+			set {
+				if (indentationSize != value) {
+					indentationSize = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
 		public void CopyValues(DisplaySettings s)
 		{
 			this.SelectedFont = s.selectedFont;
 			this.SelectedFontSize = s.selectedFontSize;
 			this.ShowLineNumbers = s.showLineNumbers;
 			this.ShowMetadataTokens = s.showMetadataTokens;
+			this.ShowDebugInfo = s.showDebugInfo;
 			this.EnableWordWrap = s.enableWordWrap;
 			this.SortResults = s.sortResults;
+			this.FoldBraces = s.foldBraces;
+			this.ExpandMemberDefinitions = s.expandMemberDefinitions;
+			this.ExpandUsingDeclarations = s.expandUsingDeclarations;
+			this.IndentationUseTabs = s.indentationUseTabs;
+			this.IndentationTabSize = s.indentationTabSize;
+			this.IndentationSize = s.indentationSize;
 		}
 	}
 }

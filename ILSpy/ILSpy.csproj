@@ -125,6 +125,7 @@
     <Compile Include="Languages\IResourceFileHandler.cs" />
     <Compile Include="Languages\Language.cs" />
     <Compile Include="Languages\Languages.cs" />
+    <Compile Include="Options\DecompilerSettingsPanel.xaml.cs" />
     <Compile Include="LoadedAssembly.cs" />
     <Compile Include="LoadedNugetPackage.cs" />
     <Compile Include="NativeMethods.cs" />
@@ -146,10 +147,6 @@
     </Compile>
     <Compile Include="OpenListDialog.xaml.cs">
       <DependentUpon>OpenListDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Options\DecompilerSettingsPanel.xaml.cs">
-      <DependentUpon>DecompilerSettingsPanel.xaml</DependentUpon>
-      <SubType>Code</SubType>
     </Compile>
     <Compile Include="Options\DisplaySettings.cs" />
     <Compile Include="Options\DisplaySettingsPanel.xaml.cs">
@@ -372,6 +369,9 @@
 
   <ItemGroup>
     <Page Update="@(Page)" SubType="Designer" Generator="MSBuild:Compile" />
+    <Page Update="Options\DecompilerSettingsPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <ItemGroup>

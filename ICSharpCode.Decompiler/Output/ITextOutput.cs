@@ -21,6 +21,7 @@ namespace ICSharpCode.Decompiler
 {
 	public interface ITextOutput
 	{
+		string IndentationString { get; set; }
 		void Indent();
 		void Unindent();
 		void Write(char ch);

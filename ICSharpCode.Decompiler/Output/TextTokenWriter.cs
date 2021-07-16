@@ -38,9 +38,6 @@ namespace ICSharpCode.Decompiler
 		bool firstUsingDeclaration;
 		bool lastUsingDeclaration;
 
-		public bool FoldBraces = false;
-		public bool ExpandMemberDefinitions = false;
-
 		public TextTokenWriter(ITextOutput output, DecompilerSettings settings, IDecompilerTypeSystem typeSystem)
 		{
 			if (output == null)
@@ -91,7 +88,7 @@ namespace ICSharpCode.Decompiler
 			}
 
 			if (firstUsingDeclaration) {
-				output.MarkFoldStart(defaultCollapsed: true);
+				output.MarkFoldStart(defaultCollapsed: !settings.ExpandUsingDeclarations);
 				firstUsingDeclaration = false;
 			}
 
@@ -229,15 +226,15 @@ namespace ICSharpCode.Decompiler
 					}
 					if (braceLevelWithinType >= 0 || nodeStack.Peek() is TypeDeclaration)
 						braceLevelWithinType++;
-					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || FoldBraces) {
-						output.MarkFoldStart(defaultCollapsed: !ExpandMemberDefinitions && braceLevelWithinType == 1);
+					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || settings.FoldBraces) {
+						output.MarkFoldStart(defaultCollapsed: !settings.ExpandMemberDefinitions && braceLevelWithinType == 1);
 					}
 					output.Write("{");
 					break;
 				case "}":
 					output.Write('}');
 					if (role != Roles.RBrace) break;
-					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || FoldBraces)
+					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || settings.FoldBraces)
 						output.MarkFoldEnd();
 					if (braceLevelWithinType >= 0)
 						braceLevelWithinType--;
