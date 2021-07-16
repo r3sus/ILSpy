@@ -69,6 +69,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			};
 		}
 
+		/// <summary>
+		/// Returns all built-in transforms of the ILAst pipeline.
+		/// </summary>
 		public static List<IILTransform> GetILTransforms()
 		{
 			return new List<IILTransform> {
@@ -154,6 +157,9 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		List<IAstTransform> astTransforms = GetAstTransforms();
 
+		/// <summary>
+		/// Returns all built-in transforms of the C# AST pipeline.
+		/// </summary>
 		public static List<IAstTransform> GetAstTransforms()
 		{
 			return new List<IAstTransform> {
@@ -176,8 +182,14 @@ namespace ICSharpCode.Decompiler.CSharp
 			};
 		}
 
+		/// <summary>
+		/// Token to check for requested cancellation of the decompilation.
+		/// </summary>
 		public CancellationToken CancellationToken { get; set; }
 
+		/// <summary>
+		/// The type system created from the main module and referenced modules.
+		/// </summary>
 		public IDecompilerTypeSystem TypeSystem => typeSystem;
 
 		/// <summary>
@@ -194,21 +206,33 @@ namespace ICSharpCode.Decompiler.CSharp
 			get { return astTransforms; }
 		}
 
+		/// <summary>
+		/// Creates a new <see cref="CSharpDecompiler"/> instance from the given <paramref name="fileName"/> using the given <paramref name="settings"/>.
+		/// </summary>
 		public CSharpDecompiler(string fileName, DecompilerSettings settings)
 			: this(UniversalAssemblyResolver.LoadMainModule(fileName, settings.ThrowOnAssemblyResolveErrors, settings.LoadInMemory), settings)
 		{
 		}
 
+		/// <summary>
+		/// Creates a new <see cref="CSharpDecompiler"/> instance from the given <paramref name="module"/> and <paramref name="settings"/>.
+		/// </summary>
 		public CSharpDecompiler(ModuleDef module, DecompilerSettings settings)
 			: this(new PEFile(module), settings)
 		{
 		}
 
+		/// <summary>
+		/// Creates a new <see cref="CSharpDecompiler"/> instance from the given <paramref name="module"/> and <paramref name="settings"/>.
+		/// </summary>
 		public CSharpDecompiler(PEFile module, DecompilerSettings settings)
 			: this(new DecompilerTypeSystem(module, settings), settings)
 		{
 		}
 
+		/// <summary>
+		/// Creates a new <see cref="CSharpDecompiler"/> instance from the given <paramref name="typeSystem"/> and the given <paramref name="settings"/>.
+		/// </summary>
 		public CSharpDecompiler(DecompilerTypeSystem typeSystem, DecompilerSettings settings)
 		{
 			this.typeSystem = typeSystem ?? throw new ArgumentNullException(nameof(typeSystem));
@@ -220,6 +244,11 @@ namespace ICSharpCode.Decompiler.CSharp
 		}
 
 		#region MemberIsHidden
+		/// <summary>
+		/// Determines whether a <paramref name="member"/> should be hidden from the decompiled code. This is used to exclude compiler-generated code that is handled by transforms from the output.
+		/// </summary>
+		/// <param name="member">The member. Can be a TypeDef, MethodDef or FieldDef.</param>
+		/// <param name="settings">THe settings used to determine whether code should be hidden. E.g. if async methods are not transformed, async state machines are included in the decompiled code.</param>
 		public static bool MemberIsHidden(IMemberRef member, DecompilerSettings settings)
 		{
 			MethodDef method = member as MethodDef;
@@ -438,6 +467,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			return syntaxTree;
 		}
 
+		/// <summary>
+		/// Creates an <see cref="ILTransformContext"/> for the given <paramref name="function"/>.
+		/// </summary>
 		public ILTransformContext CreateILTransformContext(ILFunction function)
 		{
 			var decompileRun = new DecompileRun(settings) { CancellationToken = CancellationToken };
@@ -448,7 +480,10 @@ namespace ICSharpCode.Decompiler.CSharp
 			};
 		}
 
-		public static CodeMappingInfo GetCodeMappingInfo(PEFile module, IMDTokenProvider member)
+		/// <summary>
+		/// Determines the "code-mappings" for a given TypeDef or MethodDef. See <see cref="CodeMappingInfo"/> for more information.
+		/// </summary>
+		public static CodeMappingInfo GetCodeMappingInfo(PEFile module, IMemberDef member)
 		{
 			TypeDef declaringType;
 			if (member is MethodDef mDef)
@@ -505,7 +540,7 @@ namespace ICSharpCode.Decompiler.CSharp
 											break;
 										case TypeRef _:
 											// This should never happen in normal code, because we are looking at nested types
-											// If it's not a nested type, it can't be a reference to the statem machine anyway, and
+											// If it's not a nested type, it can't be a reference to the state machine anyway, and
 											// those should be either TypeDef or TypeSpec.
 											continue;
 										case TypeSpec typeSpec when typeSpec.TypeSig is GenericInstSig genericInstSig: {
