@@ -564,7 +564,6 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Instructions.cs</LastGenOutput>
     </None>
-    <None Include="Properties\AssemblyInfo.template.cs" />
   </ItemGroup>
 
   <ItemGroup>

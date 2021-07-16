@@ -26,11 +26,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILSpy.BamlDecompiler.Tests"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILSpy.AddIn", "ILSpy.AddIn\ILSpy.AddIn.csproj", "{9D7BE6C0-B7B3-4A50-A54E-18A2D84A3384}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0A344E19-D1FC-4F4C-8883-0844AC669113}"
-	ProjectSection(SolutionItems) = preProject
-		Rebracer.xml = Rebracer.xml
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICSharpCode.Decompiler.Console", "ICSharpCode.Decompiler.Console\ICSharpCode.Decompiler.Console.csproj", "{03B1ABDB-843B-40CC-BA61-0854BEAB96B0}"
 EndProject
 Global

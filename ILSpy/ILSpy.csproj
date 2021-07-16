@@ -240,8 +240,6 @@
     <Resource Include="Images\DisabledBreakpoint.png" />
     <None Include="app.manifest" />
     <None Include="Images\ResourceXsl.png" />
-    <None Include="Properties\app.config.template" />
-    <None Include="Properties\AssemblyInfo.template.cs" />
     <None Include="Properties\launchSettings.json" />
     <Compile Include="Properties\WPFAssemblyInfo.cs" />
     <Compile Include="MainWindow.xaml.cs">
