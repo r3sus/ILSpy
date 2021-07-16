@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011-2017 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,6 +19,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL.Transforms
@@ -137,7 +138,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return count;
 		}
-		
+
 		/// <summary>
 		/// Aggressively inlines the stloc instruction at block.Body[pos] into the next instruction, if possible.
 		/// </summary>
@@ -167,10 +168,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			//	return false; // stloc might perform implicit truncation
 			return InlineOne(stloc, options, context);
 		}
-		
+
 		/// <summary>
 		/// Inlines the stloc instruction at block.Instructions[pos] into the next instruction.
-		/// 
+		///
 		/// Note that this method does not check whether 'v' has only one use;
 		/// the caller is expected to validate whether inlining 'v' has any effects on other uses of 'v'.
 		/// </summary>
@@ -205,10 +206,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return false;
 		}
-		
+
 		/// <summary>
 		/// Inlines 'expr' into 'next', if possible.
-		/// 
+		///
 		/// Note that this method does not check whether 'v' has only one use;
 		/// the caller is expected to validate whether inlining 'v' has any effects on other uses of 'v'.
 		/// </summary>
@@ -237,7 +238,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				context.Step($"Inline variable '{v.Name}'", inlinedExpression);
 				// Assign the ranges of the ldloc instruction:
 				inlinedExpression.AddILRange(loadInst);
-				
+
 				if (loadInst.OpCode == OpCode.LdLoca) {
 					// it was an ldloca instruction, so we need to use the pseudo-opcode 'addressof'
 					// to preserve the semantics of the compiler-generated temporary
@@ -275,14 +276,19 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			switch (ldloca.Parent.OpCode) {
 				case OpCode.Call:
 				case OpCode.CallVirt:
-					return !((CallInstruction)ldloca.Parent).Method.IsStatic;
+					var method = ((CallInstruction)ldloca.Parent).Method;
+					if (method.IsAccessor && method.AccessorKind != dnlib.DotNet.MethodSemanticsAttributes.Getter) {
+						// C# doesn't allow calling setters on temporary structs
+						return false;
+					}
+					return !method.IsStatic;
 				case OpCode.Await:
 					return true;
 				default:
 					return false;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets whether the instruction, when converted into C#, turns into an l-value that can
 		/// be used to mutate a value-type.
@@ -330,7 +336,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 			var loadInst = findResult.LoadInst;
 			Debug.Assert(loadInst.IsDescendantOf(next));
-			
+
 			// decide based on the source expression being inlined
 			switch (inlinedExpression.OpCode) {
 				case OpCode.DefaultValue:
@@ -347,7 +353,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					}
 					break;
 			}
-			
+
 			var parent = loadInst.Parent;
 			if (NullableLiftingTransform.MatchNullableCtor(parent, out _, out _)) {
 				// inline into nullable ctor call in lifted operator
@@ -406,7 +412,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					return false;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets whether 'expressionBeingMoved' can be inlined into 'expr'.
 		/// </summary>
@@ -511,7 +517,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			foreach (var child in expr.Children) {
 				if (!child.SlotInfo.CanInlineInto)
 					return FindResult.Stop;
-				
+
 				// Recursively try to find the load instruction
 				FindResult r = FindLoadInNext(child, v, expressionBeingMoved, options);
 				if (r.Type != FindResultType.Continue) {
