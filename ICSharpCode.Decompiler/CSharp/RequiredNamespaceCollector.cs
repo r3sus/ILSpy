@@ -14,24 +14,44 @@ namespace ICSharpCode.Decompiler.CSharp
 {
 	class RequiredNamespaceCollector
 	{
+		static readonly GenericContext genericContext = default;
+
+		readonly HashSet<string> namespaces;
+
+		public RequiredNamespaceCollector(HashSet<string> namespaces)
+		{
+			this.namespaces = namespaces;
+			for (int i = 0; i < KnownTypeReference.KnownTypeCodeCount; i++) {
+				var ktr = KnownTypeReference.Get((KnownTypeCode)i);
+				if (ktr == null) continue;
+				namespaces.Add(ktr.Namespace);
+			}
+		}
+
 		public static void CollectNamespaces(MetadataModule module, HashSet<string> namespaces)
 		{
+			var collector = new RequiredNamespaceCollector(namespaces);
 			foreach (var type in module.TypeDefinitions) {
-				CollectNamespaces(type, module, namespaces);
+				collector.CollectNamespaces(type, module);
 			}
-			CollectAttributeNamespaces(module, namespaces);
+			collector.HandleAttributes(module.GetAssemblyAttributes());
+			collector.HandleAttributes(module.GetModuleAttributes());
 		}
 
 		public static void CollectAttributeNamespaces(MetadataModule module, HashSet<string> namespaces)
 		{
-			HandleAttributes(module.GetAssemblyAttributes(), namespaces);
-			HandleAttributes(module.GetModuleAttributes(), namespaces);
+			var collector = new RequiredNamespaceCollector(namespaces);
+			collector.HandleAttributes(module.GetAssemblyAttributes());
+			collector.HandleAttributes(module.GetModuleAttributes());
 		}
 
-		static readonly GenericContext genericContext = default;
+		public static void CollectNamespaces(IEntity entity, MetadataModule module, HashSet<string> namespaces)
+		{
+			var collector = new RequiredNamespaceCollector(namespaces);
+			collector.CollectNamespaces(entity, module);
+		}
 
-		public static void CollectNamespaces(IEntity entity, MetadataModule module,
-			HashSet<string> namespaces, CodeMappingInfo mappingInfo = null)
+		void CollectNamespaces(IEntity entity, MetadataModule module, CodeMappingInfo mappingInfo = null)
 		{
 			if (entity == null || entity.MetadataToken is null)
 				return;
@@ -40,94 +60,94 @@ namespace ICSharpCode.Decompiler.CSharp
 					if (mappingInfo == null)
 						mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 					namespaces.Add(td.Namespace);
-					HandleAttributes(td.GetAttributes(), namespaces);
-					HandleTypeParameters(td.TypeParameters, namespaces);
+					HandleAttributes(td.GetAttributes());
+					HandleTypeParameters(td.TypeParameters);
 
 					foreach (var baseType in td.DirectBaseTypes) {
-						CollectNamespacesForTypeReference(baseType, namespaces);
+						CollectNamespacesForTypeReference(baseType);
 					}
 
 					foreach (var nestedType in td.NestedTypes) {
-						CollectNamespaces(nestedType, module, namespaces, mappingInfo);
+						CollectNamespaces(nestedType, module, mappingInfo);
 					}
 
 					foreach (var field in td.Fields) {
-						CollectNamespaces(field, module, namespaces, mappingInfo);
+						CollectNamespaces(field, module, mappingInfo);
 					}
 
 					foreach (var property in td.Properties) {
-						CollectNamespaces(property, module, namespaces, mappingInfo);
+						CollectNamespaces(property, module, mappingInfo);
 					}
 
 					foreach (var @event in td.Events) {
-						CollectNamespaces(@event, module, namespaces, mappingInfo);
+						CollectNamespaces(@event, module, mappingInfo);
 					}
 
 					foreach (var method in td.Methods) {
-						CollectNamespaces(method, module, namespaces, mappingInfo);
+						CollectNamespaces(method, module, mappingInfo);
 					}
 					break;
 				case IField field:
-					HandleAttributes(field.GetAttributes(), namespaces);
-					CollectNamespacesForTypeReference(field.ReturnType, namespaces);
+					HandleAttributes(field.GetAttributes());
+					CollectNamespacesForTypeReference(field.ReturnType);
 					break;
 				case IMethod method:
-					HandleAttributes(method.GetAttributes(), namespaces);
-					HandleAttributes(method.GetReturnTypeAttributes(), namespaces);
-					CollectNamespacesForTypeReference(method.ReturnType, namespaces);
+					HandleAttributes(method.GetAttributes());
+					HandleAttributes(method.GetReturnTypeAttributes());
+					CollectNamespacesForTypeReference(method.ReturnType);
 					foreach (var param in method.Parameters) {
-						HandleAttributes(param.GetAttributes(), namespaces);
-						CollectNamespacesForTypeReference(param.Type, namespaces);
+						HandleAttributes(param.GetAttributes());
+						CollectNamespacesForTypeReference(param.Type);
 					}
-					HandleTypeParameters(method.TypeParameters, namespaces);
+					HandleTypeParameters(method.TypeParameters);
 					if (method.MetadataToken != null) {
 						if (mappingInfo == null)
 							mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 						var parts = mappingInfo.GetMethodParts((MethodDef)method.MetadataToken).ToList();
 						foreach (var methodDef in parts) {
-							HandleOverrides(methodDef.Overrides, module, namespaces);
+							HandleOverrides(methodDef.Overrides, module);
 							if (methodDef.HasBody)
-								CollectNamespacesFromMethodBody(methodDef.Body, module, namespaces);
+								CollectNamespacesFromMethodBody(methodDef.Body, module);
 						}
 					}
 					break;
 				case IProperty property:
-					HandleAttributes(property.GetAttributes(), namespaces);
-					CollectNamespaces(property.Getter, module, namespaces);
-					CollectNamespaces(property.Setter, module, namespaces);
+					HandleAttributes(property.GetAttributes());
+					CollectNamespaces(property.Getter, module);
+					CollectNamespaces(property.Setter, module);
 					break;
 				case IEvent @event:
-					HandleAttributes(@event.GetAttributes(), namespaces);
-					CollectNamespaces(@event.AddAccessor, module, namespaces);
-					CollectNamespaces(@event.RemoveAccessor, module, namespaces);
+					HandleAttributes(@event.GetAttributes());
+					CollectNamespaces(@event.AddAccessor, module);
+					CollectNamespaces(@event.RemoveAccessor, module);
 					break;
 			}
 		}
 
-		static void HandleOverrides(IList<MethodOverride> immutableArray, MetadataModule module, HashSet<string> namespaces)
+		void HandleOverrides(IList<MethodOverride> immutableArray, MetadataModule module)
 		{
 			foreach (var methodImpl in immutableArray) {
-				CollectNamespacesForTypeReference(module.ResolveType(methodImpl.MethodDeclaration.DeclaringType, genericContext), namespaces);
-				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodBody, genericContext), namespaces);
-				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodDeclaration, genericContext), namespaces);
+				CollectNamespacesForTypeReference(module.ResolveType(methodImpl.MethodDeclaration.DeclaringType, genericContext));
+				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodBody, genericContext));
+				CollectNamespacesForMemberReference(module.ResolveMethod(methodImpl.MethodDeclaration, genericContext));
 			}
 		}
 
-		static void CollectNamespacesForTypeReference(IType type, HashSet<string> namespaces)
+		void CollectNamespacesForTypeReference(IType type)
 		{
 			switch (type) {
 				case ParameterizedType parameterizedType:
 					namespaces.Add(parameterizedType.Namespace);
-					CollectNamespacesForTypeReference(parameterizedType.GenericType, namespaces);
+					CollectNamespacesForTypeReference(parameterizedType.GenericType);
 					foreach (var arg in parameterizedType.TypeArguments)
-						CollectNamespacesForTypeReference(arg, namespaces);
+						CollectNamespacesForTypeReference(arg);
 					break;
 				case TypeWithElementType typeWithElementType:
-					CollectNamespacesForTypeReference(typeWithElementType.ElementType, namespaces);
+					CollectNamespacesForTypeReference(typeWithElementType.ElementType);
 					break;
 				case TupleType tupleType:
 					foreach (var elementType in tupleType.ElementTypes) {
-						CollectNamespacesForTypeReference(elementType, namespaces);
+						CollectNamespacesForTypeReference(elementType);
 					}
 					break;
 				default:
@@ -145,47 +165,47 @@ namespace ICSharpCode.Decompiler.CSharp
 			CollectNamespaces(module.ResolveEntity(entity, genericContext), module, namespaces);
 		}
 
-		public static void HandleAttributes(IEnumerable<IAttribute> attributes, HashSet<string> namespaces)
+		void HandleAttributes(IEnumerable<IAttribute> attributes)
 		{
 			foreach (var attr in attributes) {
 				namespaces.Add(attr.AttributeType.Namespace);
 				foreach (var arg in attr.FixedArguments) {
-					HandleAttributeValue(arg.Type, arg.Value, namespaces);
+					HandleAttributeValue(arg.Type, arg.Value);
 				}
 				foreach (var arg in attr.NamedArguments) {
-					HandleAttributeValue(arg.Type, arg.Value, namespaces);
+					HandleAttributeValue(arg.Type, arg.Value);
 				}
 			}
 		}
 
-		static void HandleAttributeValue(IType type, object value, HashSet<string> namespaces)
+		void HandleAttributeValue(IType type, object value)
 		{
-			CollectNamespacesForTypeReference(type, namespaces);
+			CollectNamespacesForTypeReference(type);
 			if (value is IType typeofType)
-				CollectNamespacesForTypeReference(typeofType, namespaces);
+				CollectNamespacesForTypeReference(typeofType);
 			if (value is ImmutableArray<CustomAttributeTypedArgument<IType>> arr) {
 				foreach (var element in arr) {
-					HandleAttributeValue(element.Type, element.Value, namespaces);
+					HandleAttributeValue(element.Type, element.Value);
 				}
 			}
 		}
 
-		static void HandleTypeParameters(IEnumerable<ITypeParameter> typeParameters, HashSet<string> namespaces)
+		void HandleTypeParameters(IEnumerable<ITypeParameter> typeParameters)
 		{
 			foreach (var typeParam in typeParameters) {
-				HandleAttributes(typeParam.GetAttributes(), namespaces);
+				HandleAttributes(typeParam.GetAttributes());
 
 				foreach (var constraint in typeParam.DirectBaseTypes) {
-					CollectNamespacesForTypeReference(constraint, namespaces);
+					CollectNamespacesForTypeReference(constraint);
 				}
 			}
 		}
 
-		static void CollectNamespacesFromMethodBody(CilBody method, MetadataModule module, HashSet<string> namespaces)
+		void CollectNamespacesFromMethodBody(CilBody method, MetadataModule module)
 		{
 			foreach (Local local in method.Variables) {
 				var decoded = local.Type.DecodeSignature(module, genericContext);
-				CollectNamespacesForTypeReference(decoded, namespaces);
+				CollectNamespacesForTypeReference(decoded);
 			}
 
 			foreach (var region in method.ExceptionHandlers) {
@@ -197,7 +217,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				} catch (BadImageFormatException) {
 					continue;
 				}
-				CollectNamespacesForTypeReference(ty, namespaces);
+				CollectNamespacesForTypeReference(ty);
 			}
 
 			for (int i = 0; i < method.Instructions.Count; i++) {
@@ -210,7 +230,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						} catch (BadImageFormatException) {
 							break;
 						}
-						CollectNamespacesForTypeReference(type, namespaces);
+						CollectNamespacesForTypeReference(type);
 						break;
 					}
 					case OperandType.InlineField when instr.Operand != null:
@@ -221,17 +241,15 @@ namespace ICSharpCode.Decompiler.CSharp
 						} catch (BadImageFormatException) {
 							break;
 						}
-						CollectNamespacesForMemberReference(member, namespaces);
+						CollectNamespacesForMemberReference(member);
 						break;
 					}
 					case OperandType.InlineSig when instr.Operand != null:
 						if (instr.Operand is MethodBaseSig baseSig) {
 							try {
-								CollectNamespacesForTypeReference(baseSig.RetType.DecodeSignature(module, genericContext),
-									namespaces);
+								CollectNamespacesForTypeReference(baseSig.RetType.DecodeSignature(module, genericContext));
 								foreach (var paramType in baseSig.Params) {
-									CollectNamespacesForTypeReference(paramType.DecodeSignature(module, genericContext),
-										namespaces);
+									CollectNamespacesForTypeReference(paramType.DecodeSignature(module, genericContext));
 								}
 							} catch (BadImageFormatException) {
 
@@ -246,7 +264,7 @@ namespace ICSharpCode.Decompiler.CSharp
 							} catch (BadImageFormatException) {
 								break;
 							}
-							CollectNamespacesForTypeReference(type, namespaces);
+							CollectNamespacesForTypeReference(type);
 						}
 						else if (instr.Operand is IMemberRef dnMemberRef) {
 							IMember member;
@@ -255,7 +273,7 @@ namespace ICSharpCode.Decompiler.CSharp
 							} catch (BadImageFormatException) {
 								break;
 							}
-							CollectNamespacesForMemberReference(member, namespaces);
+							CollectNamespacesForMemberReference(member);
 						}
 						break;
 					}
@@ -263,20 +281,20 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 		}
 
-		static void CollectNamespacesForMemberReference(IMember member, HashSet<string> namespaces)
+		void CollectNamespacesForMemberReference(IMember member)
 		{
 			switch (member) {
 				case IField field:
-					CollectNamespacesForTypeReference(field.DeclaringType, namespaces);
-					CollectNamespacesForTypeReference(field.ReturnType, namespaces);
+					CollectNamespacesForTypeReference(field.DeclaringType);
+					CollectNamespacesForTypeReference(field.ReturnType);
 					break;
 				case IMethod method:
-					CollectNamespacesForTypeReference(method.DeclaringType, namespaces);
-					CollectNamespacesForTypeReference(method.ReturnType, namespaces);
+					CollectNamespacesForTypeReference(method.DeclaringType);
+					CollectNamespacesForTypeReference(method.ReturnType);
 					foreach (var param in method.Parameters)
-						CollectNamespacesForTypeReference(param.Type, namespaces);
+						CollectNamespacesForTypeReference(param.Type);
 					foreach (var arg in method.TypeArguments)
-						CollectNamespacesForTypeReference(arg, namespaces);
+						CollectNamespacesForTypeReference(arg);
 					break;
 			}
 		}
