@@ -95,6 +95,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		}
 
 		public IEnumerable<IAttribute> GetReturnTypeAttributes() => methodDefinition.GetReturnTypeAttributes();
+		public bool ReturnTypeIsRefReadOnly => methodDefinition.ReturnTypeIsRefReadOnly;
 
 		public IReadOnlyList<ITypeParameter> TypeParameters {
 			get {
