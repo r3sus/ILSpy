@@ -147,6 +147,9 @@ namespace ICSharpCode.Decompiler.Tests
 					resolver.DefaultModuleContext = new ModuleContext(resolver);
 					var module = ModuleDefMD.Load(file, resolver.DefaultModuleContext );
 					var decompiler = new TestProjectDecompiler(inputDir);
+					// Let's limit the roundtrip tests to C# 7.3 for now; because 8.0 is still in preview
+					// and the generated project doesn't build as-is.
+					decompiler.Settings = new DecompilerSettings(LanguageVersion.CSharp7_3);
 					// use a fixed GUID so that we can diff the output between different ILSpy runs without spurious changes
 					decompiler.ProjectGuid = Guid.Parse("{127C83E4-4587-4CF9-ADCA-799875F3DFE6}");
 					decompiler.DecompileProject(module, decompiledDir);
