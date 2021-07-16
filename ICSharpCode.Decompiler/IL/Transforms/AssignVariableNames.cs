@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Humanizer;
@@ -71,7 +72,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 						var lastParameter = f.Method.Parameters.Last();
 						switch (f.Method.AccessorOwner) {
 							case IProperty prop:
-								if (prop.Setter == f.Method) {
+								if (f.Method.AccessorKind == dnlib.DotNet.MethodSemanticsAttributes.Setter) {
 									if (prop.Parameters.Any(p => p.Name == "value")) {
 										f.Warnings.Add("Parameter named \"value\" already present in property signature!");
 										break;
@@ -90,7 +91,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 								}
 								break;
 							case IEvent ev:
-								if (f.Method != ev.InvokeAccessor) {
+								if (f.Method.AccessorKind != dnlib.DotNet.MethodSemanticsAttributes.Fire) {
 									var variableForLastParameter = f.Variables.FirstOrDefault(v => v.Function == f
 										&& v.Kind == VariableKind.Parameter
 										&& v.Index == f.Method.Parameters.Count - 1);
@@ -124,11 +125,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 		bool IsSetOrEventAccessor(IMethod method)
 		{
-			if (method.AccessorOwner is IProperty p)
-				return p.Setter == method;
-			if (method.AccessorOwner is IEvent e)
-				return e.InvokeAccessor != method;
-			return false;
+			switch (method.AccessorKind) {
+				case dnlib.DotNet.MethodSemanticsAttributes.Setter:
+				case dnlib.DotNet.MethodSemanticsAttributes.AddOn:
+				case dnlib.DotNet.MethodSemanticsAttributes.RemoveOn:
+					return true;
+				default:
+					return false;
+			}
 		}
 
 		void PerformAssignment(ILFunction function)

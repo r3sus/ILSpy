@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using ICSharpCode.Decompiler.Util;
 
@@ -48,7 +49,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		readonly ITypeParameter[] specializedTypeParameters;
 		readonly bool isParameterized;
 		readonly TypeParameterSubstitution substitutionWithoutSpecializedTypeParameters;
-		
+
 		public SpecializedMethod(IMethod methodDefinition, TypeParameterSubstitution substitution)
 			: base(methodDefinition)
 		{
@@ -88,49 +89,51 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 		}
-		
+
 		public IReadOnlyList<IType> TypeArguments {
 			get { return this.Substitution.MethodTypeArguments ?? EmptyList<IType>.Instance; }
 		}
 
 		public IEnumerable<IAttribute> GetReturnTypeAttributes() => methodDefinition.GetReturnTypeAttributes();
-		
+
 		public IReadOnlyList<ITypeParameter> TypeParameters {
 			get {
 				return specializedTypeParameters ?? methodDefinition.TypeParameters;
 			}
 		}
-		
+
 		public bool IsExtensionMethod {
 			get { return methodDefinition.IsExtensionMethod; }
 		}
-		
+
 		public bool IsConstructor {
 			get { return methodDefinition.IsConstructor; }
 		}
-		
+
 		public bool IsDestructor {
 			get { return methodDefinition.IsDestructor; }
 		}
-		
+
 		public bool IsOperator {
 			get { return methodDefinition.IsOperator; }
 		}
-		
+
 		public bool HasBody {
 			get { return methodDefinition.HasBody; }
 		}
-		
+
 		public bool IsAccessor {
 			get { return methodDefinition.IsAccessor; }
 		}
+
+		public dnlib.DotNet.MethodSemanticsAttributes AccessorKind => methodDefinition.AccessorKind;
 
 		public IMethod ReducedFrom {
 			get { return null; }
 		}
 
 		IMember accessorOwner;
-		
+
 		public IMember AccessorOwner {
 			get {
 				var result = LazyInit.VolatileRead(ref accessorOwner);
@@ -165,7 +168,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return false;
 			return this.baseMember.Equals(other.baseMember) && this.substitutionWithoutSpecializedTypeParameters.Equals(other.substitutionWithoutSpecializedTypeParameters);
 		}
-		
+
 		public override int GetHashCode()
 		{
 			unchecked {
@@ -177,12 +180,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		{
 			return methodDefinition.Specialize(TypeParameterSubstitution.Compose(newSubstitution, substitutionWithoutSpecializedTypeParameters));
 		}
-		
+
 		IMethod IMethod.Specialize(TypeParameterSubstitution newSubstitution)
 		{
 			return methodDefinition.Specialize(TypeParameterSubstitution.Compose(newSubstitution, substitutionWithoutSpecializedTypeParameters));
 		}
-		
+
 		public override string ToString()
 		{
 			StringBuilder b = new StringBuilder("[");
@@ -212,14 +215,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			b.Append(']');
 			return b.ToString();
 		}
-		
+
 		sealed class SpecializedTypeParameter : AbstractTypeParameter
 		{
 			readonly ITypeParameter baseTp;
-			
+
 			// The substition is set at the end of SpecializedMethod constructor
 			internal TypeVisitor substitution;
-			
+
 			public SpecializedTypeParameter(ITypeParameter baseTp, IMethod specializedOwner)
 				: base(specializedOwner, baseTp.Index, baseTp.Name, baseTp.Variance)
 			{
@@ -234,14 +237,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			{
 				return baseTp.GetHashCode() ^ this.Owner.GetHashCode();
 			}
-			
+
 			public override bool Equals(IType other)
 			{
 				// Compare the owner, not the substitution, because the substitution may contain this specialized type parameter recursively
 				SpecializedTypeParameter o = other as SpecializedTypeParameter;
 				return o != null && baseTp.Equals(o.baseTp) && this.Owner.Equals(o.Owner);
 			}
-			
+
 			public override bool HasValueTypeConstraint => baseTp.HasValueTypeConstraint;
 			public override bool HasReferenceTypeConstraint => baseTp.HasReferenceTypeConstraint;
 			public override bool HasDefaultConstructorConstraint => baseTp.HasDefaultConstructorConstraint;

@@ -143,6 +143,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		bool IMethod.HasBody => false;
 		bool IMethod.IsAccessor => false;
 		IMember IMethod.AccessorOwner => null;
+		dnlib.DotNet.MethodSemanticsAttributes IMethod.AccessorKind => 0;
 
 		IMethod IMethod.ReducedFrom => null;
 

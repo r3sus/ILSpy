@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
@@ -50,19 +51,19 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		bool IsConstructor { get; }
 		bool IsDestructor { get; }
 		bool IsOperator { get; }
-		
+
 		/// <summary>
 		/// Gets whether the method has a body.
 		/// This property returns <c>false</c> for <c>abstract</c> or <c>extern</c> methods,
 		/// or for <c>partial</c> methods without implementation.
 		/// </summary>
 		bool HasBody { get; }
-		
+
 		/// <summary>
 		/// Gets whether the method is a property/event accessor.
 		/// </summary>
 		bool IsAccessor { get; }
-		
+
 		/// <summary>
 		/// If this method is an accessor, returns the corresponding property/event.
 		/// Otherwise, returns null.
@@ -70,11 +71,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		IMember AccessorOwner { get; }
 
 		/// <summary>
+		/// Gets the kind of accessor this is.
+		/// </summary>
+		MethodSemanticsAttributes AccessorKind { get; }
+
+		/// <summary>
 		/// If this method is reduced from an extension method return the original method, <c>null</c> otherwise.
 		/// A reduced method doesn't contain the extension method parameter. That means that has one parameter less than it's definition.
 		/// </summary>
 		IMethod ReducedFrom { get; }
-		
+
 		/// <summary>
 		/// Specializes this method with the given substitution.
 		/// If this method is already specialized, the new substitution is composed with the existing substition.

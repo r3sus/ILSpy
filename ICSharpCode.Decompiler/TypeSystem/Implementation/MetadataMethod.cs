@@ -39,6 +39,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		readonly SymbolKind symbolKind;
 		readonly ITypeParameter[] typeParameters;
 		readonly IHasSemantic accessorOwner;
+		public MethodSemanticsAttributes AccessorKind { get; }
 		public bool IsExtensionMethod { get; }
 
 		// lazy-loaded fields:
@@ -61,6 +62,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			if (handle.SemanticsAttributes != 0 && owner != null) {
 				this.symbolKind = SymbolKind.Accessor;
 				this.accessorOwner = owner;
+				this.AccessorKind = handle.SemanticsAttributes;
 			} else if ((attributes & (MethodAttributes.SpecialName | MethodAttributes.RTSpecialName)) != 0) {
 				string name = this.Name;
 				if (name == ".cctor" || name == ".ctor")
