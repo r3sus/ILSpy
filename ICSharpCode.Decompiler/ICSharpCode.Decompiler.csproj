@@ -263,6 +263,7 @@
     <Compile Include="IL\Transforms\DynamicIsEventAssignmentTransform.cs" />
     <Compile Include="IL\Transforms\ReduceNestingTransform.cs" />
     <Compile Include="IL\Transforms\LocalFunctionDecompiler.cs" />
+    <Compile Include="IL\Transforms\TransformDisplayClassUsage.cs" />
     <Compile Include="IL\Transforms\UserDefinedLogicTransform.cs" />
     <Compile Include="Documentation\GetPotentiallyNestedClassTypeReference.cs" />
     <Compile Include="Documentation\IdStringMemberReference.cs" />
