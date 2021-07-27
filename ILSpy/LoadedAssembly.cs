@@ -32,6 +32,7 @@ namespace ICSharpCode.ILSpy
 	/// <summary>
 	/// Represents an assembly loaded into ILSpy.
 	/// </summary>
+	[DebuggerDisplay("[LoadedAssembly {shortName}]")]
 	public sealed class LoadedAssembly
 	{
 		readonly Task<dnlib.DotNet.ModuleDef> assemblyTask;
