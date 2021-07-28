@@ -1384,13 +1384,19 @@ namespace ICSharpCode.Decompiler.IL
 			var functionPointer = Pop(StackType.I);
 			var signature = (dnlib.DotNet.MethodSig)currentInstruction.Operand;
 			Debug.Assert(!signature.HasThis);
+			int firstArgument = signature.HasThis ? 1 : 0;
 			var parameterTypes = new IType[signature.Params.Count];
-			var arguments = new ILInstruction[parameterTypes.Length];
+			var arguments = new ILInstruction[firstArgument + parameterTypes.Length];
 			for (int i = signature.Params.Count - 1; i >= 0; i--) {
 				parameterTypes[i] = module.ResolveType(signature.Params[i], genericContext);
-				arguments[i] = Pop(parameterTypes[i].GetStackType());
+				arguments[firstArgument + i] = Pop(parameterTypes[i].GetStackType());
+			}
+			if (firstArgument == 1) {
+				arguments[0] = Pop();
 			}
 			var call = new CallIndirect(
+				signature.HasThis,
+				signature.ExplicitThis,
 				signature.CallingConvention,
 				module.ResolveType(signature.RetType, genericContext),
 				parameterTypes.ToImmutableArray(),
