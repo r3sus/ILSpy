@@ -117,7 +117,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// The default value is <c>false</c>.
 		/// </summary>
 		public bool ShowTypeParametersForUnboundTypes { get; set; }
-		
+
 		/// <summary>
 		/// Controls whether constraints on type parameter declarations are shown.
 		/// Has no effect if ShowTypeParameters is false.
@@ -1182,18 +1182,18 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		// based on https://www.ics.uci.edu/~eppstein/numth/frap.c
 		// find rational approximation to given real number
 		// David Eppstein / UC Irvine / 8 Aug 1993
-		// 
+		//
 		// With corrections from Arno Formella, May 2008
-		// 
+		//
 		// usage: a.out r d
 		//   r is real number to approx
 		//   d is the maximum denominator allowed
-		// 
+		//
 		// based on the theory of continued fractions
 		// if x = a1 + 1/(a2 + 1/(a3 + 1/(a4 + ...)))
 		// then best approximation is found by truncating this series
 		// (with some adjustments in the last term).
-		// 
+		//
 		// Note the fraction can be recovered as the first column of the matrix
 		//  ( a1 1 ) ( a2 1 ) ( a3 1 ) ...
 		//  ( 1  0 ) ( 1  0 ) ( 1  0 )
@@ -1398,7 +1398,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				decl.AddAnnotation(new TypeResolveResult(typeDefinition));
 			}
 			decl.Name = typeDefinition.Name == "_" ? "@_" : typeDefinition.Name;
-			
+
 			int outerTypeParameterCount = (typeDefinition.DeclaringTypeDefinition == null) ? 0 : typeDefinition.DeclaringTypeDefinition.TypeParameterCount;
 
 			if (this.ShowTypeParameters) {
@@ -1633,8 +1633,8 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			foreach (IParameter p in method.Parameters) {
 				decl.Parameters.Add(ConvertParameter(p));
 			}
-			if (method.IsExtensionMethod && method.ReducedFrom == null && decl.Parameters.Any() && decl.Parameters.First().ParameterModifier == ParameterModifier.None)
-				decl.Parameters.First().ParameterModifier = ParameterModifier.This;
+			if (method.IsExtensionMethod && method.ReducedFrom == null && decl.Parameters.Any())
+				decl.Parameters.First().HasThisModifier = true;
 
 			if (this.ShowTypeParameters && this.ShowTypeParameterConstraints && !method.IsOverride && !method.IsExplicitInterfaceImplementation) {
 				foreach (ITypeParameter tp in method.TypeParameters) {
