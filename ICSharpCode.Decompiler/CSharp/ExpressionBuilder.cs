@@ -134,7 +134,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			};
 			var cexpr = inst.AcceptVisitor(this, context);
 			#if DEBUG
-			if (inst.ResultType != StackType.Void && cexpr.Type.Kind != TypeKind.Unknown && inst.ResultType != StackType.Unknown) {
+			if (inst.ResultType != StackType.Void && cexpr.Type.Kind != TypeKind.Unknown && inst.ResultType != StackType.Unknown && cexpr.Type.Kind != TypeKind.None) {
 				// Validate the Translate post-condition (documented at beginning of this file):
 				if (inst.ResultType.IsIntegerType()) {
 					Debug.Assert(cexpr.Type.GetStackType().IsIntegerType(), "IL instructions of integer type must convert into C# expressions of integer type");
@@ -556,7 +556,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			var argUType = NullableType.GetUnderlyingType(argument.Type);
 
 			if (argUType.GetStackType().GetSize() < inst.UnderlyingResultType.GetSize()
-			    || argUType.Kind == TypeKind.Enum && argUType.IsSmallIntegerType()
+				|| argUType.Kind == TypeKind.Enum && argUType.IsSmallIntegerType()
 				|| argUType.GetStackType() == StackType.I
 				|| argUType.IsKnownType(KnownTypeCode.Boolean)
 				|| argUType.IsKnownType(KnownTypeCode.Char))
@@ -942,6 +942,13 @@ namespace ICSharpCode.Decompiler.CSharp
 			return new BinaryOperatorExpression(left.Expression, op, right.Expression)
 				.WithRR(new OperatorResolveResult(nullableBoolType, eop, null, true, new[] { left.ResolveResult, right.ResolveResult }))
 				.WithILInstruction(inst);
+		}
+
+		protected internal override TranslatedExpression VisitThrow(Throw inst, TranslationContext context)
+		{
+			return new ThrowExpression(Translate(inst.Argument))
+				.WithILInstruction(inst)
+				.WithRR(new ThrowResolveResult());
 		}
 
 		protected internal override TranslatedExpression VisitUserDefinedLogicOperator(UserDefinedLogicOperator inst, TranslationContext context)
@@ -2133,7 +2140,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			TranslatedExpression arrayExpr = Translate(inst.Array);
 			var arrayType = arrayExpr.Type as ArrayType;
 			if (arrayType == null || !TypeUtils.IsCompatibleTypeForMemoryAccess(arrayType.ElementType, inst.Type)) {
-				arrayType  = new ArrayType(compilation, inst.Type, inst.Indices.Count);
+				arrayType = new ArrayType(compilation, inst.Type, inst.Indices.Count);
 				arrayExpr = arrayExpr.ConvertTo(arrayType, this);
 			}
 			TranslatedExpression expr = new IndexerExpression(
@@ -2180,8 +2187,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					// try via its effective base class.
 					arg = arg.ConvertTo(((ITypeParameter)targetType).EffectiveBaseClass, this);
 				}
-			}
-			else {
+			} else {
 				// Before unboxing arg must be a object
 				arg = arg.ConvertTo(compilation.FindType(KnownTypeCode.Object), this);
 			}
@@ -2653,7 +2659,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			var rr = resolver.ResolveBinaryOperator(BinaryOperatorType.NullCoalescing, value.ResolveResult, fallback.ResolveResult);
 			if (rr.IsError) {
 				IType targetType;
-				if (!value.Type.Equals(SpecialType.NullType) && !fallback.Type.Equals(SpecialType.NullType) && !value.Type.Equals(fallback.Type)) {
+				if (fallback.Expression is ThrowExpression && fallback.Type.Equals(SpecialType.NoType)) {
+					targetType = NullableType.GetUnderlyingType(value.Type);
+				} else if (!value.Type.Equals(SpecialType.NullType) && !fallback.Type.Equals(SpecialType.NullType) && !value.Type.Equals(fallback.Type)) {
 					targetType = compilation.FindType(inst.UnderlyingResultType.ToKnownTypeCode());
 				} else {
 					targetType = value.Type.Equals(SpecialType.NullType) ? fallback.Type : value.Type;
