@@ -336,7 +336,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 		public static bool IsCompilerGeneratorEnumerator(TypeDef type)
 		{
-			if (!(type?.DeclaringType != null && type.IsCompilerGenerated()))
+			if (type == null || !type.IsCompilerGeneratedOrIsInCompilerGeneratedClass() || type.DeclaringType == null)
 				return false;
 			foreach (var i in type.Interfaces) {
 				var tr = i.Interface;

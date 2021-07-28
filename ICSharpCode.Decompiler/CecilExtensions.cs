@@ -132,6 +132,16 @@ namespace ICSharpCode.Decompiler
 			return method.DeclaringType != null && method.DeclaringType.IsCompilerGenerated();
 		}
 
+		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this TypeDef type)
+		{
+			if (type.IsCompilerGenerated())
+				return true;
+			TypeDef declaringTypeHandle = type.DeclaringType;
+			if (declaringTypeHandle != null && declaringTypeHandle.IsCompilerGenerated())
+				return true;
+			return false;
+		}
+
 		public static bool IsCompilerGenerated(this IHasCustomAttribute  provider)
 		{
 			if (provider != null && provider.HasCustomAttributes) {
