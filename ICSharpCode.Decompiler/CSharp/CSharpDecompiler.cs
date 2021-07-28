@@ -564,7 +564,6 @@ namespace ICSharpCode.Decompiler.CSharp
 							break;
 						case Code.Ldftn:
 							// deal with ldftn instructions, i.e., lambdas
-							TypeDef closureType;
 							switch (instr.Operand) {
 								case MethodDef def:
 									if (def.IsCompilerGeneratedOrIsInCompilerGeneratedClass()) {
@@ -572,15 +571,23 @@ namespace ICSharpCode.Decompiler.CSharp
 									}
 									continue;
 								case MemberRef memberRef when memberRef.IsMethodRef:
-									closureType = ExtractDeclaringType(memberRef);
+									TypeDef closureType = ExtractDeclaringType(memberRef);
 									if (closureType != null) {
-										// Must be a nested type of the containing type.
-										if (closureType.DeclaringType != declaringType)
-											break;
-										if (!processedNestedTypes.Add(closureType))
-											break;
-										foreach (var m in closureType.Methods) {
-											connectedMethods.Enqueue(m);
+										if (closureType != declaringType) {
+											// Must be a nested type of the containing type.
+											if (closureType.DeclaringType != declaringType)
+												break;
+											if (!processedNestedTypes.Add(closureType))
+												break;
+											foreach (var m in closureType.Methods) {
+												connectedMethods.Enqueue(m);
+											}
+										} else {
+											// Delegate body is declared in the same type
+											foreach (var methodDef in closureType.Methods) {
+												if (methodDef.Name == memberRef.Name)
+													connectedMethods.Enqueue(methodDef);
+											}
 										}
 										break;
 									}
