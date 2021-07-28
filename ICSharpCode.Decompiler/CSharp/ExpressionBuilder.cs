@@ -348,6 +348,11 @@ namespace ICSharpCode.Decompiler.CSharp
 			return new CallBuilder(this, typeSystem, settings).Build(inst);
 		}
 
+		protected internal override TranslatedExpression VisitLdVirtDelegate(LdVirtDelegate inst, TranslationContext context)
+		{
+			return new CallBuilder(this, typeSystem, settings).Build(inst);
+		}
+
 		protected internal override TranslatedExpression VisitNewArr(NewArr inst, TranslationContext context)
 		{
 			var dimensions = inst.Indices.Count;
