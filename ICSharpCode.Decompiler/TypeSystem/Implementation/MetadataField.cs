@@ -172,7 +172,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				Volatile.Write(ref this.isVolatile, true);
 				ty = mod.ElementType;
 			}
-			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, handle, metadata, module.TypeSystemOptions);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation,
+				handle, metadata, module.TypeSystemOptions,
+				DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious);
 			return LazyInit.GetOrSet(ref this.type, ty);
 		}
 

@@ -67,8 +67,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var returnType = LazyInit.VolatileRead(ref this.returnType);
 				if (returnType != null)
 					return returnType;
-				var context = new GenericContext(DeclaringTypeDefinition?.TypeParameters);
-				returnType = module.ResolveType(handle.EventType, context, handle);
+				var declaringTypeDef = DeclaringTypeDefinition;
+				var context = new GenericContext(declaringTypeDef?.TypeParameters);
+				var nullableContext = declaringTypeDef?.NullableContext ?? Nullability.Oblivious;
+				returnType = module.ResolveType(handle.EventType, context, handle, nullableContext);
 				return LazyInit.GetOrSet(ref this.returnType, returnType);
 			}
 		}

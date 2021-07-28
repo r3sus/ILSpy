@@ -384,6 +384,18 @@ namespace ICSharpCode.Decompiler
 			return handle.GetFullTypeName() == TypeSystem.KnownAttributes.GetTypeName(knownType);
 		}
 
+		public static TypeSystem.Nullability? GetNullableContext(this CustomAttributeCollection customAttributes)
+		{
+			foreach (var customAttribute in customAttributes) {
+				if (customAttribute.IsKnownAttribute(TypeSystem.KnownAttribute.NullableContext)) {
+					if (customAttribute.ConstructorArguments.Count == 1 && customAttribute.ConstructorArguments[0].Value is byte b && b <= 2) {
+						return (TypeSystem.Nullability)b;
+					}
+				}
+			}
+			return null;
+		}
+
 		public static TypeSystem.KnownTypeCode ToKnownTypeCode(this ElementType typeCode)
 		{
 			switch (typeCode) {

@@ -37,6 +37,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public ICompilation Compilation { get; }
 		internal readonly ModuleDef metadata;
 		readonly TypeSystemOptions options;
+		internal readonly Nullability NullableContext;
 
 		readonly MetadataNamespace rootNamespace;
 		readonly MetadataTypeDefinition[] typeDefs;
@@ -63,6 +64,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				this.FullAssemblyName = this.AssemblyName;
 			}
 
+			this.NullableContext = metadata.CustomAttributes.GetNullableContext() ?? Nullability.Oblivious;
 			this.rootNamespace = new MetadataNamespace(this, null, string.Empty,
 				NamespaceDefinition.GetUnresolvedRootNamespace(compilation.NameComparer, metadata.Types));
 
@@ -280,12 +282,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		#endregion
 
 		#region Resolve Type
-		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, IHasCustomAttribute typeAttributes = null)
+		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
 		{
-			return ResolveType(typeRefDefSpec, context, options, typeAttributes);
+			return ResolveType(typeRefDefSpec, context, options, typeAttributes, nullableContext);
 		}
 
-		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, TypeSystemOptions customOptions, IHasCustomAttribute typeAttributes = null)
+		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, TypeSystemOptions customOptions, IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
 		{
 			if (typeRefDefSpec == null)
 				return SpecialType.UnknownType;
@@ -311,7 +313,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				default:
 					throw new BadImageFormatException("Not a type handle");
 			}
-			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, typeAttributes, metadata, customOptions);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, typeAttributes, metadata, customOptions, nullableContext);
 			return ty;
 		}
 
@@ -321,14 +323,14 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var ty = ResolveType(declaringTypeReference, context,
 				options & ~(TypeSystemOptions.Dynamic | TypeSystemOptions.Tuple | TypeSystemOptions.NullabilityAnnotations));
 			// but substitute tuple types in type arguments:
-			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, typeChildrenOnly: true);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, Nullability.Oblivious, typeChildrenOnly: true);
 			return ty;
 		}
 
 		IType IntroduceTupleTypes(IType ty)
 		{
 			// run ApplyAttributeTypeVisitor without attributes, in order to introduce tuple types
-			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options);
+			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, Nullability.Oblivious);
 		}
 		#endregion
 

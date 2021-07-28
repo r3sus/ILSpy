@@ -172,7 +172,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						var deco = par.Type.DecodeSignature(module, genericContext);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
-							par.ParamDef, module.metadata, module.TypeSystemOptions);
+							par.ParamDef, module.metadata, module.TypeSystemOptions, NullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}
@@ -195,9 +195,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var sig = handle.ReturnType.DecodeSignature(module, genericContext);
 
 				var retType = ApplyAttributeTypeVisitor.ApplyAttributesToType(sig,
-					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.TypeSystemOptions);
+					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.TypeSystemOptions, NullableContext);
 
 				return LazyInit.GetOrSet(ref this.returnType, retType);
+			}
+		}
+
+		internal Nullability NullableContext {
+			get {
+				return handle.CustomAttributes.GetNullableContext() ?? DeclaringTypeDefinition.NullableContext;
 			}
 		}
 		#endregion

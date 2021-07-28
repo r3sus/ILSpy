@@ -96,12 +96,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 				List<IParameter> param = new List<IParameter>();
 				var gCtx = new GenericContext(DeclaringType.TypeParameters);
+				Nullability nullableContext;
+
+				if (propertyHandle.GetMethod != null) {
+					nullableContext = propertyHandle.GetMethod.CustomAttributes.GetNullableContext()
+									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				} else if (propertyHandle.SetMethod != null) {
+					nullableContext = propertyHandle.SetMethod.CustomAttributes.GetNullableContext()
+									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				} else {
+					nullableContext = DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				}
+
 				foreach (Parameter par in propertyHandle.GetParameters()) {
 					if (par.IsNormalMethodParameter) {
 						var deco = par.Type.DecodeSignature(module, gCtx);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
-							par.ParamDef, module.metadata, module.TypeSystemOptions);
+							par.ParamDef, module.metadata, module.TypeSystemOptions, nullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}
@@ -116,8 +128,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return returnType;
 				var deocded = propertyHandle.PropertySig.RetType.DecodeSignature(module,
 					new GenericContext(DeclaringType.TypeParameters));
+				Nullability nullableContext;
+
+				if (propertyHandle.GetMethod != null) {
+					nullableContext = propertyHandle.GetMethod.CustomAttributes.GetNullableContext()
+									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				} else if (propertyHandle.SetMethod != null) {
+					nullableContext = propertyHandle.SetMethod.CustomAttributes.GetNullableContext()
+									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				} else {
+					nullableContext = DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+				}
+
 				var ret = ApplyAttributeTypeVisitor.ApplyAttributesToType(deocded,
-					module.Compilation, propertyHandle, module.metadata, module.TypeSystemOptions);
+					module.Compilation, propertyHandle, module.metadata, module.TypeSystemOptions, nullableContext);
 				return LazyInit.GetOrSet(ref this.returnType, ret);
 			}
 		}

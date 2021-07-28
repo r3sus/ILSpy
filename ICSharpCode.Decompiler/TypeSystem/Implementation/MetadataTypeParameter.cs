@@ -158,11 +158,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		private IReadOnlyList<IType> DecodeConstraints()
 		{
+			Nullability nullableContext;
+			if (Owner is ITypeDefinition typeDef) {
+				nullableContext = typeDef.NullableContext;
+			} else if (Owner is MetadataMethod method) {
+				nullableContext = method.NullableContext;
+			} else {
+				nullableContext = Nullability.Oblivious;
+			}
+
 			var constraintHandleCollection = handle.GenericParamConstraints;
 			List<IType> result = new List<IType>(constraintHandleCollection.Count + 1);
 			bool hasNonInterfaceConstraint = false;
 			foreach (var constraint in constraintHandleCollection) {
-				var ty = module.ResolveType(constraint.Constraint, new GenericContext(Owner), constraint);
+				var ty = module.ResolveType(constraint.Constraint, new GenericContext(Owner), constraint, nullableContext);
 				result.Add(ty);
 				hasNonInterfaceConstraint |= (ty.Kind != TypeKind.Interface);
 			}
