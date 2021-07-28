@@ -536,24 +536,7 @@ namespace ICSharpCode.Decompiler.CSharp
 									break;
 								}
 								case MemberRef memberRef when memberRef.IsFieldRef: {
-									switch (memberRef.Class) {
-										case TypeDef typeDef:
-											fsmTypeDef = typeDef;
-											break;
-										case TypeRef _:
-											// This should never happen in normal code, because we are looking at nested types
-											// If it's not a nested type, it can't be a reference to the state machine anyway, and
-											// those should be either TypeDef or TypeSpec.
-											continue;
-										case TypeSpec typeSpec when typeSpec.TypeSig is GenericInstSig genericInstSig: {
-											if (!genericInstSig.GenericType.IsTypeDef)
-												continue;
-											fsmTypeDef = genericInstSig.GenericType.TypeDef;
-											break;
-										}
-										default:
-											continue;
-									}
+									fsmTypeDef = ExtractDeclaringType(memberRef);
 									break;
 								}
 								default:
@@ -564,10 +547,10 @@ namespace ICSharpCode.Decompiler.CSharp
 								// Must be a nested type of the containing type.
 								if (fsmTypeDef.DeclaringType != declaringType)
 									break;
-								if (!processedNestedTypes.Add(fsmTypeDef))
-									break;
 								if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(fsmTypeDef)
 									|| AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(fsmTypeDef)) {
+									if (!processedNestedTypes.Add(fsmTypeDef))
+										break;
 									foreach (var h in fsmTypeDef.Methods) {
 										if (h.SemanticsAttributes != 0)
 											continue;
@@ -580,16 +563,34 @@ namespace ICSharpCode.Decompiler.CSharp
 							break;
 						case Code.Ldftn:
 							// deal with ldftn instructions, i.e., lambdas
-							if (instr.Operand is MethodDef dnMethod) {
-								if (dnMethod.IsCompilerGeneratedOrIsInCompilerGeneratedClass())
-									connectedMethods.Enqueue(dnMethod);
+							TypeDef closureType;
+							switch (instr.Operand) {
+								case MethodDef def:
+									if (def.IsCompilerGeneratedOrIsInCompilerGeneratedClass()) {
+										connectedMethods.Enqueue(def);
+									}
+									continue;
+								case MemberRef memberRef when memberRef.IsMethodRef:
+									closureType = ExtractDeclaringType(memberRef);
+									if (closureType != null) {
+										// Must be a nested type of the containing type.
+										if (closureType.DeclaringType != declaringType)
+											break;
+										if (!processedNestedTypes.Add(closureType))
+											break;
+										foreach (var m in closureType.Methods) {
+											connectedMethods.Enqueue(m);
+										}
+										break;
+									}
+									break;
+								default:
+									continue;
 							}
-
 							break;
 						case Code.Call:
 						case Code.Callvirt:
 							// deal with call/callvirt instructions, i.e., local function invocations
-
 							MethodDef method;
 							switch (instr.Operand) {
 								case MethodDef def:
@@ -609,6 +610,22 @@ namespace ICSharpCode.Decompiler.CSharp
 				}
 			}
 			info.AddMapping(parent, part);
+
+			TypeDef ExtractDeclaringType(MemberRef memberRef)
+			{
+				switch (memberRef.Class) {
+					case TypeRef _:
+						// This should never happen in normal code, because we are looking at nested types
+						// If it's not a nested type, it can't be a reference to the state machine or lambda anyway, and
+						// those should be either TypeDef or TypeSpec.
+						return null;
+					case TypeDef defParent:
+						return defParent;
+					case TypeSpec ts when ts.TypeSig is GenericInstSig genericInstSig:
+						return genericInstSig.GenericType.TypeDef;
+				}
+				return null;
+			}
 		}
 
 
