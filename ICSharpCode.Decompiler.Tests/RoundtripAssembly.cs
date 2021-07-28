@@ -67,11 +67,7 @@ namespace ICSharpCode.Decompiler.Tests
 		[Test]
 		public void ICSharpCode_Decompiler()
 		{
-			try {
-				RunWithTest("ICSharpCode.Decompiler", "ICSharpCode.Decompiler.dll", "ICSharpCode.Decompiler.Tests.exe");
-			} catch (CompilationFailedException) {
-				Assert.Ignore("C# 7 tuples not yet supported.");
-			}
+			RunWithTest("ICSharpCode.Decompiler", "ICSharpCode.Decompiler.dll", "ICSharpCode.Decompiler.Tests.exe");
 		}
 
 		[Test]

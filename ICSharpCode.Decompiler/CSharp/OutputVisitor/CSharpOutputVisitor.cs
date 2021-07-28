@@ -1884,6 +1884,25 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			EndNode(variableDeclarationStatement);
 		}
 
+		public virtual void VisitLocalFunctionDeclarationStatement(LocalFunctionDeclarationStatement localFunctionDeclarationStatement)
+		{
+			StartNode(localFunctionDeclarationStatement);
+
+			WriteModifiers(localFunctionDeclarationStatement.ModifierTokens);
+			localFunctionDeclarationStatement.ReturnType.AcceptVisitor(this);
+			Space();
+			WriteIdentifier(localFunctionDeclarationStatement.NameToken);
+			WriteTypeParameters(localFunctionDeclarationStatement.TypeParameters);
+			Space(policy.SpaceBeforeMethodDeclarationParentheses);
+			WriteCommaSeparatedListInParenthesis(localFunctionDeclarationStatement.Parameters, policy.SpaceWithinMethodDeclarationParentheses);
+			foreach (Constraint constraint in localFunctionDeclarationStatement.Constraints) {
+				constraint.AcceptVisitor(this);
+			}
+			WriteMethodBody(localFunctionDeclarationStatement.Body, policy.MethodBraceStyle);
+
+			EndNode(localFunctionDeclarationStatement);
+		}
+		
 		public virtual void VisitWhileStatement(WhileStatement whileStatement)
 		{
 			StartNode(whileStatement);

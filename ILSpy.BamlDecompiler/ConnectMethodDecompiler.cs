@@ -67,7 +67,7 @@ namespace ILSpy.BamlDecompiler
 				methodTypeParameters: method.TypeParameters);
 			// decompile method and optimize the switch
 			var ilReader = new ILReader(typeSystem.MainModule);
-			var function = ilReader.ReadIL((MethodDef)method.MetadataToken, genericContext, cancellationToken);
+			var function = ilReader.ReadIL((MethodDef)method.MetadataToken, genericContext, ILFunctionKind.TopLevelFunction, cancellationToken);
 
 			var context = new ILTransformContext(function, typeSystem) {
 				CancellationToken = cancellationToken

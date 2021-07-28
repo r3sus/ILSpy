@@ -114,7 +114,7 @@ namespace ICSharpCode.ILSpy
 				var typeSystem = new DecompilerTypeSystem(new PEFile(method.Module));
 				var reader = new ILReader(typeSystem.MainModule);
 				reader.UseDebugSymbols = options.DecompilerSettings.UseDebugSymbols;
-				ILFunction il = reader.ReadIL(method, cancellationToken: options.CancellationToken);
+				ILFunction il = reader.ReadIL(method, kind: ILFunctionKind.TopLevelFunction, cancellationToken: options.CancellationToken);
 				var namespaces = new HashSet<string>();
 				var decompiler = new CSharpDecompiler(typeSystem, options.DecompilerSettings) { CancellationToken = options.CancellationToken };
 				ILTransformContext context = decompiler.CreateILTransformContext(il);

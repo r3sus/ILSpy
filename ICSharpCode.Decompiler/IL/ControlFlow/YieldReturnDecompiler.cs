@@ -382,7 +382,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 									 .Concat(genericContext.MethodTypeParameters ?? EmptyList<ITypeParameter>.Instance).ToArray(),
 				methodTypeParameters: null);
 			var il = context.CreateILReader()
-							.ReadIL(method, genericContext, context.CancellationToken);
+							.ReadIL(method, genericContext, context.Function.Kind, context.CancellationToken);
 			il.RunTransforms(CSharpDecompiler.EarlyILTransforms(true),
 				new ILTransformContext(il, context.TypeSystem, context.Settings) {
 					CancellationToken = context.CancellationToken,

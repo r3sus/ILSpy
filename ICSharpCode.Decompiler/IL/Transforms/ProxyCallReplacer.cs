@@ -32,7 +32,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return;
 			// partially copied from CSharpDecompiler
 			var ilReader = context.CreateILReader();
-			var proxyFunction = ilReader.ReadIL(handle, genericContext.Value, context.CancellationToken);
+			var proxyFunction = ilReader.ReadIL(handle, genericContext.Value, ILFunctionKind.TopLevelFunction, context.CancellationToken);
 			var transformContext = new ILTransformContext(context, proxyFunction);
 			proxyFunction.RunTransforms(CSharp.CSharpDecompiler.EarlyILTransforms(), transformContext);
 			if (!(proxyFunction.Body is BlockContainer blockContainer))

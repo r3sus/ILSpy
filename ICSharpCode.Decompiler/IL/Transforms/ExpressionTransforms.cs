@@ -392,6 +392,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		protected internal override void VisitLdObj(LdObj inst)
 		{
 			base.VisitLdObj(inst);
+			EarlyExpressionTransforms.AddressOfLdLocToLdLoca(inst, context);
 			EarlyExpressionTransforms.LdObjToLdLoc(inst, context);
 		}
 

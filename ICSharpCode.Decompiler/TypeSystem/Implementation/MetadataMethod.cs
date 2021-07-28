@@ -41,6 +41,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		readonly IHasSemantic accessorOwner;
 		public MethodSemanticsAttributes AccessorKind { get; }
 		public bool IsExtensionMethod { get; }
+		bool IMethod.IsLocalFunction => false;
 
 		// lazy-loaded fields:
 		ITypeDefinition declaringType;

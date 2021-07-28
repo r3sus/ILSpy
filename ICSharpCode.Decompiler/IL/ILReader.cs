@@ -457,14 +457,14 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Decodes the specified method body and returns an ILFunction.
 		/// </summary>
-		public ILFunction ReadIL(dnlib.DotNet.MethodDef methodDef, GenericContext genericContext = default, CancellationToken cancellationToken = default(CancellationToken))
+		public ILFunction ReadIL(dnlib.DotNet.MethodDef methodDef, GenericContext genericContext = default, ILFunctionKind kind = ILFunctionKind.TopLevelFunction, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			Init(methodDef, genericContext);
 			ReadInstructions(cancellationToken);
 			var blockBuilder = new BlockBuilder(body, variableByExceptionHandler);
 			blockBuilder.CreateBlocks(mainContainer, instructionBuilder, isBranchTarget, cancellationToken);
-			var function = new ILFunction(method, methodDef, this.genericContext, mainContainer);
+			var function = new ILFunction(this.method, methodDef, this.genericContext, mainContainer, kind);
 			CollectionExtensions.AddRange(function.Variables, parameterVariables);
 			CollectionExtensions.AddRange(function.Variables, localVariables);
 			CollectionExtensions.AddRange(function.Variables, stackVariables);

@@ -107,6 +107,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get { return methodDefinition.IsExtensionMethod; }
 		}
 
+		public bool IsLocalFunction {
+			get { return methodDefinition.IsLocalFunction; }
+		}
+
 		public bool IsConstructor {
 			get { return methodDefinition.IsConstructor; }
 		}

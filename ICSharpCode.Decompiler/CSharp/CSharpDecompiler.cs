@@ -148,6 +148,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				},
 				new ProxyCallReplacer(),
 				new DelegateConstruction(),
+				new LocalFunctionDecompiler(),
 				new TransformDisplayClassUsage(),
 				new HighLevelLoopTransform(),
 				new ReduceNestingTransform(),
@@ -256,7 +257,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (method != null) {
 				if (method.IsGetter || method.IsSetter || method.IsAddOn || method.IsRemoveOn)
 					return true;
-				if (LocalFunctionDecompiler.IsLocalFunctionMethod(method))
+				if (LocalFunctionDecompiler.IsLocalFunctionMethod(null, method))
 					return settings.LocalFunctions;
 				if (settings.AnonymousMethods && method.HasGeneratedName() && method.IsCompilerGenerated())
 					return true;
@@ -267,7 +268,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			TypeDef type = member as TypeDef;
 			if (type != null) {
 				if (type.DeclaringType != null) {
-					if (LocalFunctionDecompiler.IsLocalFunctionDisplayClass(type))
+					if (LocalFunctionDecompiler.IsLocalFunctionDisplayClass(null, type))
 						return settings.LocalFunctions;
 					if (settings.AnonymousMethods && IsClosureType(type))
 						return true;
@@ -342,7 +343,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		}
 		#endregion
 
-		TypeSystemAstBuilder CreateAstBuilder(ITypeResolveContext decompilationContext)
+		static TypeSystemAstBuilder CreateAstBuilder(ITypeResolveContext decompilationContext)
 		{
 			var typeSystemAstBuilder = new TypeSystemAstBuilder();
 			typeSystemAstBuilder.ShowAttributes = true;
@@ -584,6 +585,25 @@ namespace ICSharpCode.Decompiler.CSharp
 									connectedMethods.Enqueue(dnMethod);
 							}
 
+							break;
+						case Code.Call:
+						case Code.Callvirt:
+							// deal with call/callvirt instructions, i.e., local function invocations
+
+							MethodDef method;
+							switch (instr.Operand) {
+								case MethodDef def:
+									method = def;
+									break;
+								case MethodSpec spec when spec.Method is MethodDef specDef:
+									method = specDef;
+									break;
+								default:
+									continue;
+							}
+							if (LocalFunctionDecompiler.IsLocalFunctionMethod(null, method)) {
+								connectedMethods.Enqueue(method);
+							}
 							break;
 					}
 				}
@@ -1067,7 +1087,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			FixParameterNames(methodDecl);
 			var methodDefinition = (MethodDef)method.MetadataToken;
-			if (!settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionMethod(methodDefinition)) {
+			if (!settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionMethod(null, methodDefinition)) {
 				// if local functions are not active and we're dealing with a local function,
 				// reduce the visibility of the method to private,
 				// otherwise this leads to compile errors because the display classes have lesser accessibility.
