@@ -19,6 +19,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using dnlib.DotNet;
+using System.Linq;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.TypeSystem.Implementation
@@ -31,7 +32,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		readonly GenericParamAttributes attr;
 
 		// lazy-loaded:
-		IReadOnlyList<IType> constraints;
+		IReadOnlyList<TypeConstraint> constraints;
 		ThreeState unmanagedConstraint = ThreeState.Unknown;
 		const byte nullabilityNotYetLoaded = 255;
 		byte nullabilityConstraint = nullabilityNotYetLoaded;
@@ -153,16 +154,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
-		public override IEnumerable<IType> DirectBaseTypes {
+		public override IReadOnlyList<TypeConstraint> TypeConstraints {
 			get {
 				var constraints = LazyInit.VolatileRead(ref this.constraints);
-				if (constraints != null)
-					return constraints;
-				return LazyInit.GetOrSet(ref this.constraints, DecodeConstraints());
+				if (constraints == null) {
+					constraints = LazyInit.GetOrSet(ref this.constraints, DecodeConstraints());
+				}
+				return constraints;
 			}
 		}
 
-		private IReadOnlyList<IType> DecodeConstraints()
+		private IReadOnlyList<TypeConstraint> DecodeConstraints()
 		{
 			Nullability nullableContext;
 			if (Owner is ITypeDefinition typeDef) {
@@ -174,17 +176,24 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 
 			var constraintHandleCollection = handle.GenericParamConstraints;
-			List<IType> result = new List<IType>(constraintHandleCollection.Count + 1);
+			List<TypeConstraint> result = new List<TypeConstraint>(constraintHandleCollection.Count + 1);
 			bool hasNonInterfaceConstraint = false;
 			foreach (var constraint in constraintHandleCollection) {
+				var attrs = constraint.CustomAttributes;
 				var ty = module.ResolveType(constraint.Constraint, new GenericContext(Owner), constraint, nullableContext);
-				result.Add(ty);
+				if (attrs.Count == 0) {
+					result.Add(new TypeConstraint(ty));
+				} else {
+					AttributeListBuilder b = new AttributeListBuilder(module);
+					b.Add(attrs, SymbolKind.Constraint);
+					result.Add(new TypeConstraint(ty, b.Build()));
+				}
 				hasNonInterfaceConstraint |= (ty.Kind != TypeKind.Interface);
 			}
 			if (this.HasValueTypeConstraint) {
-				result.Add(Compilation.FindType(KnownTypeCode.ValueType));
+				result.Add(new TypeConstraint(Compilation.FindType(KnownTypeCode.ValueType)));
 			} else if (!hasNonInterfaceConstraint) {
-				result.Add(Compilation.FindType(KnownTypeCode.Object));
+				result.Add(new TypeConstraint(Compilation.FindType(KnownTypeCode.Object)));
 			}
 			return result;
 		}
