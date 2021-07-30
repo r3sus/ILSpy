@@ -42,6 +42,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		struct LocalFunctionInfo
 		{
 			public List<CallInstruction> UseSites;
+			public TypeSystem.IMethod Method;
 			public ILFunction Definition;
 		}
 
@@ -68,8 +69,13 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			var cancellationToken = context.CancellationToken;
 			// Find all local functions declared inside this method, including nested local functions or local functions declared in lambdas.
 			FindUseSites(function, context, localFunctions);
-			foreach (var (method, info) in localFunctions) {
+			foreach (var (_, info) in localFunctions) {
 				cancellationToken.ThrowIfCancellationRequested();
+				if (info.Definition == null) {
+					function.Warnings.Add($"Could not decode local function '{info.Method}'");
+					continue;
+				}
+
 				var firstUseSite = info.UseSites[0];
 				context.StepStartGroup($"Transform " + info.Definition.Name, info.Definition);
 				try {
@@ -124,10 +130,13 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					context.StepStartGroup($"Read local function '{targetMethod.Name}'", inst);
 					info = new LocalFunctionInfo() {
 						UseSites = new List<CallInstruction>() { inst },
+						Method = targetMethod,
 						Definition = ReadLocalFunctionDefinition(context.Function, targetMethod)
 					};
 					localFunctions.Add((MethodDef)targetMethod.MetadataToken, info);
-					FindUseSites(info.Definition, context, localFunctions);
+					if (info.Definition != null) {
+						FindUseSites(info.Definition, context, localFunctions);
+					}
 					context.StepEndGroup();
 				} else {
 					info.UseSites.Add(inst);
@@ -265,7 +274,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				}
 				if (closureVar.AddressCount == 0 && closureVar.StoreInstructions.Count == 0)
 					return true;
-				// determine the capture scope of closureVar and the declaration scope of the function 
+				// determine the capture scope of closureVar and the declaration scope of the function
 				var instructions = closureVar.StoreInstructions.OfType<ILInstruction>()
 					.Concat(closureVar.AddressInstructions).OrderBy(inst => inst.StartILOffset).ToList();
 				var additionalScope = BlockContainer.FindClosestContainer(instructions.First());
