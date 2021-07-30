@@ -17,18 +17,14 @@ namespace ICSharpCode.Decompiler
 			this.Name = name;
 		}
 
-		public static NamespaceDefinition GetUnresolvedRootNamespace(StringComparer nameComparer, IList<TypeDef> defs)
+		public static NamespaceDefinition GetUnresolvedRootNamespace(StringComparer nameComparer, IEnumerable<TypeDef> defs)
 		{
 			var root = new NamespaceDefinition(string.Empty, string.Empty);
 			var dict = new Dictionary<string, NamespaceDefinition>(nameComparer);
 			dict.Add(root.FullName, root);
 			foreach (var typeName in defs) {
 				var ns = GetOrAddNamespace(dict, typeName.Namespace);
-				//ns.Types.Add(typeName);
-			}
-
-			foreach (TypeDef typeDef in defs) {
-				dict[typeDef.Namespace].Types.Add(typeDef);
+				ns.Types.Add(typeName);
 			}
 			return root;
 		}

@@ -36,6 +36,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public PEFile(ModuleDef reader)
 		{
 			this.Module = reader ?? throw new ArgumentNullException(nameof(reader));
+			this.Module.EnableTypeDefFindCache = true;
 		}
 
 		public void Dispose()
@@ -43,30 +44,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			Module.Dispose();
 		}
 
-		Dictionary<TopLevelTypeName, TypeDef> typeLookup;
-
 		/// <summary>
 		/// Finds the top-level-type with the specified name.
 		/// </summary>
 		public TypeDef GetTypeDefinition(TopLevelTypeName typeName)
 		{
-			var lookup = LazyInit.VolatileRead(ref typeLookup);
-			if (lookup == null) {
-				lookup = new Dictionary<TopLevelTypeName, TypeDef>();
-				foreach (var td in Module.Types) {
-					if (td.IsNested) {
-						continue; // nested type
-					}
-					string ns = td.Namespace;
-					string name = ReflectionHelper.SplitTypeParameterCountFromReflectionName(td.Name, out int typeParameterCount);
-					lookup[new TopLevelTypeName(ns, name, typeParameterCount)] = td;
-				}
-				lookup = LazyInit.GetOrSet(ref typeLookup, lookup);
-			}
-			if (lookup.TryGetValue(typeName, out var resultHandle))
-				return resultHandle;
-			else
-				return default;
+			return Module.Find(typeName.ReflectionName, true);
 		}
 
 		Dictionary<FullTypeName, ExportedType> typeForwarderLookup;
@@ -78,11 +61,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			var lookup = LazyInit.VolatileRead(ref typeForwarderLookup);
 			if (lookup == null) {
-				lookup = new Dictionary<FullTypeName, ExportedType>();
+				lookup = new Dictionary<FullTypeName, ExportedType>(Module.ExportedTypes.Count);
 				foreach (var handle in Module.ExportedTypes) {
-					string ns = handle.Namespace;
-					string name = ReflectionHelper.SplitTypeParameterCountFromReflectionName(handle.Name, out int typeParameterCount);
-					lookup[new FullTypeName(new TopLevelTypeName(ns, name, typeParameterCount))] = handle;
+					lookup[handle.GetFullTypeName()] = handle;
 				}
 				lookup = LazyInit.GetOrSet(ref typeForwarderLookup, lookup);
 			}

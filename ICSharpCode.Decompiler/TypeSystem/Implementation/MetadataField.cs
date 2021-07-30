@@ -41,7 +41,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		IType type;
 		bool isVolatile; // initialized together with this.type
 		// this can't be bool? as bool? is not thread-safe from torn reads
-		ThreeState decimalConstantState;
+		volatile ThreeState decimalConstantState;
 
 		internal MetadataField(MetadataModule module, FieldDef handle)
 		{

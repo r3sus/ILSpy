@@ -64,6 +64,7 @@ namespace ICSharpCode.Decompiler
 			//var modCreateOpts = new ModuleCreationOptions(resolver.DefaultModuleContext);
 			var module = ModuleDefMD.Load(mainAssemblyFileName, new ModuleContext(resolver));
 			module.Location = mainAssemblyFileName;
+			module.EnableTypeDefFindCache = true;
 
 			resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
 
@@ -295,7 +296,9 @@ namespace ICSharpCode.Decompiler
 				parameters.Resolver = new Resolver(parameters.AssemblyResolver);
 			}
 
-			return ModuleDefMD.Load(file, parameters).Assembly;
+			var mod = ModuleDefMD.Load(file, parameters);
+			mod.EnableTypeDefFindCache = true;
+			return mod.Assembly;
 		}
 
 		string GetAssemblyInGac(IAssembly reference)

@@ -156,6 +156,8 @@ namespace ICSharpCode.ILSpy
 				module = ModuleDefMD.Load(fileName, ctx);
 			}
 
+			module.EnableTypeDefFindCache = true;
+
 			if (DecompilerSettingsPanel.CurrentDecompilerSettings.UseDebugSymbols) {
 				try {
 					LoadSymbols(module);
@@ -229,9 +231,9 @@ namespace ICSharpCode.ILSpy
 			if (name == null)
 				throw new ArgumentNullException(nameof(name));
 			if (name.IsContentTypeWindowsRuntime) {
-				return assemblyList.assemblyLookupCache.GetOrAdd((name.Name, true), key => LookupReferencedAssemblyInternal(name, true));
+				return assemblyList.assemblyLookupCache.GetOrAdd(name, key => LookupReferencedAssemblyInternal(name, true));
 			} else {
-				return assemblyList.assemblyLookupCache.GetOrAdd((name.FullName, false), key => LookupReferencedAssemblyInternal(name, false));
+				return assemblyList.assemblyLookupCache.GetOrAdd(name, key => LookupReferencedAssemblyInternal(name, false));
 			}
 		}
 
@@ -247,15 +249,14 @@ namespace ICSharpCode.ILSpy
 
 		LoadedAssembly LookupReferencedAssemblyInternal(IAssembly fullName, bool isWinRT)
 		{
-			string GetName(IAssembly name) => isWinRT ? name.Name.String : name.FullName;
-
 			string file;
 			LoadedAssembly asm;
 			lock (loadingAssemblies) {
+				var comparer = isWinRT ? AssemblyNameComparer.NameOnly : AssemblyNameComparer.CompareAll;
 				foreach (LoadedAssembly loaded in assemblyList.GetAssemblies()) {
 					var asmDef = loaded.GetAssemblyDefinitionOrNull();
-					if (asmDef != null && GetName(fullName).Equals(GetName(asmDef), StringComparison.OrdinalIgnoreCase)) {
-						LoadedAssemblyReferencesInfo.AddMessageOnce(fullName.ToString(), MessageKind.Info, "Success - Found in Assembly List");
+					if (asmDef != null && comparer.Equals(asmDef, fullName)) {
+						LoadedAssemblyReferencesInfo.AddMessageOnce(fullName.FullName, MessageKind.Info, "Success - Found in Assembly List");
 						return loaded;
 					}
 				}

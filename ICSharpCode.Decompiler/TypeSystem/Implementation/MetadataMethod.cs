@@ -48,7 +48,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		string name;
 		IParameter[] parameters;
 		IType returnType;
-		ThreeState returnTypeIsRefReadonly = ThreeState.Unknown;
+		volatile ThreeState returnTypeIsRefReadonly = ThreeState.Unknown;
 
 		internal MetadataMethod(MetadataModule module, MethodDef handle)
 		{
@@ -59,9 +59,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.attributes = handle.Attributes;
 
 			this.symbolKind = SymbolKind.Method;
-			var owner = FindOwner(handle);
 			const MethodAttributes finalizerAttributes = MethodAttributes.Virtual | MethodAttributes.Family | MethodAttributes.HideBySig;
-			if (handle.SemanticsAttributes != 0 && owner != null) {
+			IHasSemantic owner = handle.SemanticsAttributes != 0 ? FindOwner(handle) : null;
+			if (owner != null) {
 				this.symbolKind = SymbolKind.Accessor;
 				this.accessorOwner = owner;
 				this.AccessorKind = handle.SemanticsAttributes;
@@ -101,15 +101,15 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 			if (handle.IsAddOn || handle.IsRemoveOn || handle.IsFire) {
 				foreach (var eventDef in handle.DeclaringType.Events) {
-					if (handle.IsAddOn && eventDef.AddMethod == handle) {
+					if (handle.IsAddOn && comparer.Equals(eventDef.AddMethod, handle)) {
 						owner = eventDef;
 						break;
 					}
-					if (handle.IsRemoveOn && eventDef.RemoveMethod == handle) {
+					if (handle.IsRemoveOn && comparer.Equals(eventDef.RemoveMethod, handle)) {
 						owner = eventDef;
 						break;
 					}
-					if (handle.IsFire && eventDef.InvokeMethod == handle) {
+					if (handle.IsFire && comparer.Equals(eventDef.InvokeMethod, handle)) {
 						owner = eventDef;
 						break;
 					}

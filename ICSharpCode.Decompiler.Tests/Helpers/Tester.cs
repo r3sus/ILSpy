@@ -118,6 +118,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				resolver.DefaultModuleContext = new ModuleContext(resolver);
 				using (ModuleDefMD module = ModuleDefMD.Load(sourceFileName, resolver.DefaultModuleContext))
 				using (var writer = new StringWriter()) {
+					module.EnableTypeDefFindCache = true;
 					module.Name = Path.GetFileNameWithoutExtension(outputFile);
 					var output = new PlainTextOutput(writer);
 					ReflectionDisassembler rd = new ReflectionDisassembler(output, CancellationToken.None);
@@ -377,6 +378,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			var resolver = new AssemblyResolver();
 			resolver.DefaultModuleContext = new ModuleContext(resolver);
 			var moduleDefinition = ModuleDefMD.Load(peStream, resolver.DefaultModuleContext);
+			moduleDefinition.EnableTypeDefFindCache = true;
 			var decompiler = new CSharpDecompiler(moduleDefinition, new DecompilerSettings());
 
 			return decompiler;
@@ -425,6 +427,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 			resolver.DefaultModuleContext = new ModuleContext(resolver);
 			resolver.PostSearchPaths.Add(Path.GetDirectoryName(typeof(Span<>).Assembly.Location));
 			using (var module = ModuleDefMD.Load(assemblyFileName, resolver.DefaultModuleContext)) {
+				module.EnableTypeDefFindCache = true;
 				CSharpDecompiler decompiler = new CSharpDecompiler(new PEFile(module), settings ?? new DecompilerSettings());
 				decompiler.AstTransforms.Insert(0, new RemoveEmbeddedAttributes());
 				decompiler.AstTransforms.Insert(0, new RemoveCompilerAttribute());

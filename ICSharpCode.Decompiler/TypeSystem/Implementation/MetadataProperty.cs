@@ -30,12 +30,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		readonly MetadataModule module;
 		readonly PropertyDef propertyHandle;
-		readonly IMethod getter;
-		readonly IMethod setter;
 		readonly string name;
 		readonly SymbolKind symbolKind;
 
 		// lazy-loaded:
+		IMethod getter;
+		IMethod setter;
 		volatile Accessibility cachedAccessiblity = InvalidAccessibility;
 		IParameter[] parameters;
 		IType returnType;
@@ -47,8 +47,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.module = module;
 			this.propertyHandle = handle;
 
-			getter = module.GetDefinition(handle.GetMethod);
-			setter = module.GetDefinition(handle.SetMethod);
 			name = handle.Name;
 			// Maybe we should defer the calculation of symbolKind?
 			if (DetermineIsIndexer(name)) {
@@ -77,12 +75,31 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public IMemberDef MetadataToken => propertyHandle;
 		public string Name => name;
 
-		public bool CanGet => getter != null;
-		public bool CanSet => setter != null;
 
-		public IMethod Getter => getter;
-		public IMethod Setter => setter;
-		IMethod AnyAccessor => getter ?? setter;
+		public bool CanGet => Getter != null;
+		public bool CanSet => Setter != null;
+
+		public IMethod Getter {
+			get {
+				var get = LazyInit.VolatileRead(ref this.getter);
+				if (get != null)
+					return get;
+				get = module.GetDefinition(propertyHandle.GetMethod);
+				return LazyInit.GetOrSet(ref this.getter, get);
+			}
+		}
+
+		public IMethod Setter {
+			get {
+				var set = LazyInit.VolatileRead(ref this.setter);
+				if (set != null)
+					return set;
+				set = module.GetDefinition(propertyHandle.SetMethod);
+				return LazyInit.GetOrSet(ref this.setter, set);
+			}
+		}
+
+		IMethod AnyAccessor => Getter ?? Setter;
 
 		public bool IsIndexer => symbolKind == SymbolKind.Indexer;
 		public SymbolKind SymbolKind => symbolKind;
@@ -187,7 +204,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		Accessibility ComputeAccessibility()
 		{
-			if (IsOverride && (getter == null || setter == null)) {
+			if (IsOverride && (Getter == null || Setter == null)) {
 				foreach (var baseMember in InheritanceHelper.GetBaseMembers(this, includeImplementedInterfaces: false)) {
 					if (!baseMember.IsOverride)
 						return baseMember.Accessibility;

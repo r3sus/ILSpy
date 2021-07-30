@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -26,6 +26,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using System.Xml.Linq;
+using dnlib.DotNet;
 
 namespace ICSharpCode.ILSpy
 {
@@ -35,12 +36,12 @@ namespace ICSharpCode.ILSpy
 	public sealed class AssemblyList
 	{
 		readonly string listName;
-		
+
 		/// <summary>Dirty flag, used to mark modifications so that the list is saved later</summary>
 		bool dirty;
-		
-		internal readonly ConcurrentDictionary<(string assemblyName, bool isWinRT), LoadedAssembly> assemblyLookupCache = new ConcurrentDictionary<(string assemblyName, bool isWinRT), LoadedAssembly>();
-		
+
+		internal readonly ConcurrentDictionary<IAssembly, LoadedAssembly> assemblyLookupCache = new ConcurrentDictionary<IAssembly, LoadedAssembly>(AssemblyNameComparer.CompareAll);
+
 		/// <summary>
 		/// The assemblies in this list.
 		/// Needs locking for multi-threaded access!
@@ -51,13 +52,13 @@ namespace ICSharpCode.ILSpy
 		/// thread-safe <see cref="GetAssemblies()"/> method.
 		/// </remarks>
 		internal readonly ObservableCollection<LoadedAssembly> assemblies = new ObservableCollection<LoadedAssembly>();
-		
+
 		public AssemblyList(string listName)
 		{
 			this.listName = listName;
 			assemblies.CollectionChanged += Assemblies_CollectionChanged;
 		}
-		
+
 		/// <summary>
 		/// Loads an assembly list from XML.
 		/// </summary>
@@ -69,7 +70,7 @@ namespace ICSharpCode.ILSpy
 			}
 			this.dirty = false; // OpenAssembly() sets dirty, so reset it afterwards
 		}
-		
+
 		/// <summary>
 		/// Gets the loaded assemblies. This method is thread-safe.
 		/// </summary>
@@ -79,7 +80,7 @@ namespace ICSharpCode.ILSpy
 				return assemblies.ToArray();
 			}
 		}
-		
+
 		/// <summary>
 		/// Saves this assembly list to XML.
 		/// </summary>
@@ -91,14 +92,14 @@ namespace ICSharpCode.ILSpy
 				assemblies.Where(asm => !asm.IsAutoLoaded).Select(asm => new XElement("Assembly", asm.FileName))
 			);
 		}
-		
+
 		/// <summary>
 		/// Gets the name of this list.
 		/// </summary>
 		public string ListName {
 			get { return listName; }
 		}
-		
+
 		void Assemblies_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 		{
 			ClearCache();
@@ -132,7 +133,7 @@ namespace ICSharpCode.ILSpy
 				);
 			}
 		}
-		
+
 		internal void ClearCache()
 		{
 			assemblyLookupCache.Clear();
@@ -166,14 +167,14 @@ namespace ICSharpCode.ILSpy
 		public LoadedAssembly OpenAssembly(string file, bool isAutoLoaded = false)
 		{
 			App.Current.Dispatcher.VerifyAccess();
-			
+
 			file = Path.GetFullPath(file);
-			
+
 			foreach (LoadedAssembly asm in this.assemblies) {
 				if (file.Equals(asm.FileName, StringComparison.OrdinalIgnoreCase))
 					return asm;
 			}
-			
+
 			var newAsm = new LoadedAssembly(this, file);
 			newAsm.IsAutoLoaded = isAutoLoaded;
 			lock (assemblies) {
@@ -243,7 +244,7 @@ namespace ICSharpCode.ILSpy
 			}
 			return newAsm;
 		}
-		
+
 		public void Unload(LoadedAssembly assembly)
 		{
 			App.Current.Dispatcher.VerifyAccess();
@@ -252,9 +253,9 @@ namespace ICSharpCode.ILSpy
 			}
 			RequestGC();
 		}
-		
+
 		static bool gcRequested;
-		
+
 		void RequestGC()
 		{
 			if (gcRequested) return;
@@ -265,12 +266,12 @@ namespace ICSharpCode.ILSpy
 					GC.Collect();
 				}));
 		}
-		
+
 		public void Sort(IComparer<LoadedAssembly> comparer)
 		{
 			Sort(0, int.MaxValue, comparer);
 		}
-		
+
 		public void Sort(int index, int count, IComparer<LoadedAssembly> comparer)
 		{
 			App.Current.Dispatcher.VerifyAccess();

@@ -142,6 +142,7 @@ namespace ICSharpCode.Decompiler.Tests
 					resolver.PreSearchPaths.Add(inputDir);
 					resolver.DefaultModuleContext = new ModuleContext(resolver);
 					var module = ModuleDefMD.Load(file, resolver.DefaultModuleContext );
+					module.EnableTypeDefFindCache = true;
 					var decompiler = new TestProjectDecompiler(inputDir);
 					// Let's limit the roundtrip tests to C# 7.3 for now; because 8.0 is still in preview
 					// and the generated project doesn't build as-is.

@@ -236,20 +236,9 @@ namespace ICSharpCode.Decompiler
 			}
 		}
 
-		public static TypeSystem.FullTypeName GetFullTypeName(this ITypeDefOrRef typeDef)
+		public static TypeSystem.FullTypeName GetFullTypeName(this IType typeDef)
 		{
 			return new TypeSystem.FullTypeName(typeDef.ReflectionFullName);
-		}
-
-		public static TypeSystem.FullTypeName GetFullTypeName(this ExportedType type)
-		{
-			string name = TypeSystem.ReflectionHelper.SplitTypeParameterCountFromReflectionName(type.Name, out int typeParameterCount);
-			if (type.Implementation is ExportedType outerType) {
-				return outerType.GetFullTypeName().NestedType(name, typeParameterCount);
-			}
-
-			string ns = type.Namespace ?? "";
-			return new TypeSystem.TopLevelTypeName(ns, name, typeParameterCount);
 		}
 
 		public static bool IsDelegate(this TypeDef type)

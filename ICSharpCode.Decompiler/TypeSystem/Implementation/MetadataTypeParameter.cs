@@ -33,9 +33,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		// lazy-loaded:
 		IReadOnlyList<TypeConstraint> constraints;
-		ThreeState unmanagedConstraint = ThreeState.Unknown;
+		volatile ThreeState unmanagedConstraint = ThreeState.Unknown;
 		const byte nullabilityNotYetLoaded = 255;
-		byte nullabilityConstraint = nullabilityNotYetLoaded;
+		volatile byte nullabilityConstraint = nullabilityNotYetLoaded;
 
 		public static ITypeParameter[] Create(MetadataModule module, ITypeDefinition copyFromOuter, IEntity owner, IList<GenericParam> handles)
 		{

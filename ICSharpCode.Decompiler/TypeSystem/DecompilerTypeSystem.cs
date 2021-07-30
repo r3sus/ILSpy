@@ -73,7 +73,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		DecimalConstants = 0x20,
 		/// <summary>
 		/// If this option is active, modopt and modreq types are preserved in the type system.
-		/// 
+		///
 		/// Note: the decompiler currently does not support handling modified types;
 		/// activating this option may lead to incorrect decompilation or internal errors.
 		/// </summary>
@@ -152,11 +152,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			// Load referenced assemblies and type-forwarder references.
 			// This is necessary to make .NET Core/PCL binaries work better.
 			var moduleDefinition = mainModule.Module;
-			// Load referenced assemblies and type-forwarder references.
-			// This is necessary to make .NET Core/PCL binaries work better.
 			var referencedAssemblies = new List<PEFile>();
-			var assemblyReferenceQueue = new Queue<dnlib.DotNet.IAssembly>(moduleDefinition.GetAssemblyRefs());
-			var processedAssemblyReferences = new HashSet<dnlib.DotNet.IAssembly>(KeyComparer.Create((dnlib.DotNet.IAssembly reference) => reference.FullName));
+			var assemblyReferenceQueue = new Queue<IAssembly>(moduleDefinition.GetAssemblyRefs());
+			var processedAssemblyReferences = new HashSet<IAssembly>(AssemblyNameComparer.CompareAll);
 			while (assemblyReferenceQueue.Count > 0) {
 				var asmRef = assemblyReferenceQueue.Dequeue();
 				if (!processedAssemblyReferences.Add(asmRef))
@@ -165,7 +163,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (asm != null) {
 					referencedAssemblies.Add(new PEFile(asm.ManifestModule));
 					foreach (var forwarder in asm.ManifestModule.ExportedTypes) {
-						if (!forwarder.IsForwarder || !(forwarder.Scope is dnlib.DotNet.IAssembly forwarderRef)) continue;
+						if (!forwarder.IsForwarder || !(forwarder.Scope is IAssembly forwarderRef)) continue;
 						assemblyReferenceQueue.Enqueue(forwarderRef);
 					}
 				}
