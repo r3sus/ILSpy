@@ -27,12 +27,11 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return;
 			if (!handle.HasBody)
 				return;
-			var genericContext = DelegateConstruction.GenericContextFromTypeArguments(inst.Method.Substitution);
-			if (genericContext == null)
-				return;
+			// Use the callee's generic context
+			var genericContext = new GenericContext(inst.Method);
 			// partially copied from CSharpDecompiler
 			var ilReader = context.CreateILReader();
-			var proxyFunction = ilReader.ReadIL(handle, genericContext.Value, ILFunctionKind.TopLevelFunction, context.CancellationToken);
+			var proxyFunction = ilReader.ReadIL(handle, genericContext, ILFunctionKind.TopLevelFunction, context.CancellationToken);
 			var transformContext = new ILTransformContext(context, proxyFunction);
 			proxyFunction.RunTransforms(CSharp.CSharpDecompiler.EarlyILTransforms(), transformContext);
 			if (!(proxyFunction.Body is BlockContainer blockContainer))
@@ -77,8 +76,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				}
 			}
 			context.Step("Replace proxy: " + inst.Method.Name + " with " + call.Method.Name, inst);
-			Call newInst = (Call)call.Clone();
-
+			// Apply the wrapper call's substitution to the actual method call.
+			Call newInst = new Call(call.Method.Specialize(inst.Method.Substitution));
+			// copy flags
+			newInst.ConstrainedTo = call.ConstrainedTo;
+			newInst.ILStackWasEmpty = call.ILStackWasEmpty;
+			newInst.IsTail = call.IsTail;
+			// copy IL ranges
+			newInst.AddILRange(call);
 			newInst.Arguments.ReplaceList(inst.Arguments);
 			inst.ReplaceWith(newInst);
 		}
