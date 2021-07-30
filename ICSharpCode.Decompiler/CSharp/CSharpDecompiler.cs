@@ -1035,6 +1035,8 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		EnumValueDisplayMode DetectBestEnumValueDisplayMode(ITypeDefinition typeDef)
 		{
+			if (settings.AlwaysShowEnumMemberValues)
+				return EnumValueDisplayMode.All;
 			if (typeDef.HasAttribute(KnownAttribute.Flags, inherit: false))
 				return EnumValueDisplayMode.All;
 			bool first = true;
