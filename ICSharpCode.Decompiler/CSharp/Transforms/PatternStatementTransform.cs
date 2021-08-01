@@ -98,7 +98,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		public override AstNode VisitPropertyDeclaration(PropertyDeclaration propertyDeclaration)
 		{
 			if (context.Settings.AutomaticProperties) {
-				AstNode result = TransformAutomaticProperties(propertyDeclaration);
+				AstNode result = TransformAutomaticProperty(propertyDeclaration);
 				if (result != null)
 					return result;
 			}
@@ -554,45 +554,57 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 		};
 
-		PropertyDeclaration TransformAutomaticProperties(PropertyDeclaration property)
+		bool CanTransformToAutomaticProperty(IProperty property)
 		{
-			dnlib.DotNet.PropertyDef cecilProperty = (property.GetSymbol() as IProperty).MetadataToken as dnlib.DotNet.PropertyDef;
-			if (cecilProperty == null || cecilProperty.GetMethod == null)
+			if (!property.CanGet)
+				return false;
+			if (!property.Getter.IsCompilerGenerated())
+				return false;
+			if (property.Setter is IMethod setter) {
+				if (!setter.IsCompilerGenerated())
+					return false;
+				if (setter.HasReadonlyModifier())
+					return false;
+			}
+			return true;
+		}
+
+		PropertyDeclaration TransformAutomaticProperty(PropertyDeclaration propertyDeclaration)
+		{
+			IProperty property = propertyDeclaration.GetSymbol() as IProperty;
+			if (!CanTransformToAutomaticProperty(property))
 				return null;
-			if (!cecilProperty.GetMethod.IsCompilerGenerated() && (cecilProperty.SetMethod?.IsCompilerGenerated() == false))
-				return null;
-			IField fieldInfo = null;
-			Match m = automaticPropertyPattern.Match(property);
+			IField field = null;
+			Match m = automaticPropertyPattern.Match(propertyDeclaration);
 			if (m.Success) {
-				fieldInfo = m.Get<AstNode>("fieldReference").Single().GetSymbol() as IField;
+				field = m.Get<AstNode>("fieldReference").Single().GetSymbol() as IField;
 			} else {
-				Match m2 = automaticReadonlyPropertyPattern.Match(property);
+				Match m2 = automaticReadonlyPropertyPattern.Match(propertyDeclaration);
 				if (m2.Success) {
-					fieldInfo = m2.Get<AstNode>("fieldReference").Single().GetSymbol() as IField;
+					field = m2.Get<AstNode>("fieldReference").Single().GetSymbol() as IField;
 				}
 			}
-			if (fieldInfo == null)
+			if (field == null)
 				return null;
-			if (property.Setter.HasModifier(Modifiers.Readonly))
+			if (propertyDeclaration.Setter.HasModifier(Modifiers.Readonly))
 				return null;
-			dnlib.DotNet.FieldDef field = fieldInfo.MetadataToken as dnlib.DotNet.FieldDef;
-			if (field.IsCompilerGenerated() && field.DeclaringType == cecilProperty.DeclaringType) {
-				RemoveCompilerGeneratedAttribute(property.Getter.Attributes);
-				RemoveCompilerGeneratedAttribute(property.Setter.Attributes);
-				property.Getter.Body = null;
-				property.Setter.Body = null;
-				property.Getter.Modifiers &= ~Modifiers.Readonly;
+			if (field.IsCompilerGenerated() && field.DeclaringTypeDefinition == property.DeclaringTypeDefinition) {
+				RemoveCompilerGeneratedAttribute(propertyDeclaration.Getter.Attributes);
+				RemoveCompilerGeneratedAttribute(propertyDeclaration.Setter.Attributes);
+				propertyDeclaration.Getter.Body = null;
+				propertyDeclaration.Setter.Body = null;
+				propertyDeclaration.Getter.Modifiers &= ~Modifiers.Readonly;
 
 				// Add C# 7.3 attributes on backing field:
-				var attributes = fieldInfo.GetAttributes()
-					.Where(a => !attributeTypesToRemoveFromAutoProperties.Any(t => t == a.AttributeType.FullName))
-					.Select(context.TypeSystemAstBuilder.ConvertAttribute).ToArray();
+				var attributes = field.GetAttributes()
+									  .Where(a => !attributeTypesToRemoveFromAutoProperties.Contains(a.AttributeType.FullName))
+									  .Select(context.TypeSystemAstBuilder.ConvertAttribute).ToArray();
 				if (attributes.Length > 0) {
 					var section = new AttributeSection {
 						AttributeTarget = "field"
 					};
 					section.Attributes.AddRange(attributes);
-					property.Attributes.Add(section);
+					propertyDeclaration.Attributes.Add(section);
 				}
 			}
 			// Since the property instance is not changed, we can continue in the visitor as usual, so return null
@@ -655,14 +667,12 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				var parent = identifier.Parent;
 				var mrr = parent.Annotation<MemberResolveResult>();
 				var field = mrr?.Member as IField;
-				if (field != null && field.IsCompilerGenerated()) {
-					var propertyName = identifier.Name.Substring(1, identifier.Name.Length - 1 - ">k__BackingField".Length);
-					var property = field.DeclaringTypeDefinition.GetProperties(p => p.Name == propertyName, GetMemberOptions.IgnoreInheritedMembers).FirstOrDefault();
-					if (property != null) {
-						parent.RemoveAnnotations<MemberResolveResult>();
-						parent.AddAnnotation(new MemberResolveResult(mrr.TargetResult, property));
-						return Identifier.Create(propertyName);
-					}
+				if (field != null && IsBackingFieldOfAutomaticProperty(field, out var property)
+					&& CanTransformToAutomaticProperty(property) && currentMethod.AccessorOwner != property)
+				{
+					parent.RemoveAnnotations<MemberResolveResult>();
+					parent.AddAnnotation(new MemberResolveResult(mrr.TargetResult, property));
+					return Identifier.Create(property.Name);
 				}
 			}
 			return null;
@@ -676,7 +686,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			if (field == null)
 				return null;
 			var @event = field.DeclaringType.GetEvents(ev => ev.Name == field.Name, GetMemberOptions.IgnoreInheritedMembers).SingleOrDefault();
-			if (@event != null) {
+			if (@event != null && currentMethod.AccessorOwner != @event) {
 				parent.RemoveAnnotations<MemberResolveResult>();
 				parent.AddAnnotation(new MemberResolveResult(mrr.TargetResult, @event));
 				return identifier;
