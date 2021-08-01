@@ -188,6 +188,7 @@ namespace ICSharpCode.Decompiler.IL
 		ILVariable CreateILVariable(dnlib.DotNet.Parameter p)
 		{
 			IType parameterType;
+			bool isRefReadOnly;
 			if (p.IsHiddenThisParameter) {
 				ITypeDefinition def = module.ResolveType(methodDef.DeclaringType, genericContext).GetDefinition();
 				if (def != null && def.TypeParameterCount > 0) {
@@ -198,8 +199,11 @@ namespace ICSharpCode.Decompiler.IL
 				} else {
 					parameterType = module.ResolveType(p.Type, genericContext);
 				}
+				isRefReadOnly = def?.IsReadOnly == true;
 			} else {
-				parameterType = method.Parameters[p.MethodSigIndex].Type;
+				var param = method.Parameters[p.MethodSigIndex];
+				parameterType = param.Type;
+				isRefReadOnly = param.IsIn;
 			}
 
 			Debug.Assert(!parameterType.IsUnbound());
@@ -209,6 +213,7 @@ namespace ICSharpCode.Decompiler.IL
 				parameterType = new ParameterizedType(parameterType.GetDefinition(), parameterType.TypeArguments);
 			}
 			var ilVar = new ILVariable(VariableKind.Parameter, parameterType, p.MethodSigIndex == -2 ? -1 : p.MethodSigIndex);
+			ilVar.IsRefReadOnly = isRefReadOnly;
 			Debug.Assert(ilVar.StoreCount == 1); // count the initial store when the method is called with an argument
 			if (p.IsHiddenThisParameter)
 				ilVar.Name = "this";
