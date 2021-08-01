@@ -210,7 +210,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		public override string ToString()
 		{
-			return $"{handle.MDToken.Raw:X8} Index={Index} Owner={Owner}";
+			return $"{handle.MDToken.Raw:X8} {ReflectionName}";
 		}
 	}
 }

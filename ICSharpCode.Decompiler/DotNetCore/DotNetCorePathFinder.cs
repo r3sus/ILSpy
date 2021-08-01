@@ -52,6 +52,11 @@ namespace ICSharpCode.Decompiler
 		readonly string version;
 		readonly string dotnetBasePath = FindDotNetExeDirectory();
 
+		public DotNetCorePathFinder(Version version)
+		{
+			this.version = version.ToString();
+		}
+
 		public DotNetCorePathFinder(string parentAssemblyFileName, string targetFrameworkId, string version, ReferenceLoadInfo loadInfo = null)
 		{
 			this.assemblyName = Path.GetFileNameWithoutExtension(parentAssemblyFileName);
@@ -90,6 +95,25 @@ namespace ICSharpCode.Decompiler
 			}
 
 			return FallbackToDotNetSharedDirectory(name, new Version(version));
+		}
+
+		internal string GetReferenceAssemblyPath(string targetFramework)
+		{
+			var (tfi, version) = UniversalAssemblyResolver.ParseTargetFramework(targetFramework);
+			string identifier, identifierExt;
+			switch (tfi) {
+				case TargetFrameworkIdentifier.NETCoreApp:
+					identifier = "Microsoft.NETCore.App";
+					identifierExt = "netcoreapp" + version.Major + "." + version.Minor;
+					break;
+				case TargetFrameworkIdentifier.NETStandard:
+					identifier = "NETStandard.Library";
+					identifierExt = "netstandard" + version.Major + "." + version.Minor;
+					break;
+				default:
+					throw new NotSupportedException();
+			}
+			return Path.Combine(dotnetBasePath, "packs", identifier + ".Ref", version.ToString(), "ref", identifierExt);
 		}
 
 		static IEnumerable<DotNetCorePackageInfo> LoadPackageInfos(string depsJsonFileName, string targetFramework)

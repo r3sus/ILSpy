@@ -6,6 +6,21 @@ using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler
 {
+	enum TargetFrameworkIdentifier
+	{
+		NETFramework,
+		NETCoreApp,
+		NETStandard,
+		Silverlight
+	}
+
+	enum DecompilerRuntime
+	{
+		NETFramework,
+		NETCoreApp,
+		Mono
+	}
+
 	public class UniversalAssemblyResolver : IAssemblyResolver
 	{
 		DotNetCorePathFinder dotNetCorePathFinder;
@@ -367,6 +382,52 @@ namespace ICSharpCode.Decompiler
 
 		protected virtual void Dispose(bool disposing)
 		{
+		}
+
+		internal static (TargetFrameworkIdentifier, Version) ParseTargetFramework(string targetFramework)
+		{
+			string[] tokens = targetFramework.Split(',');
+			TargetFrameworkIdentifier identifier;
+
+			switch (tokens[0].Trim().ToUpperInvariant()) {
+				case ".NETCOREAPP":
+					identifier = TargetFrameworkIdentifier.NETCoreApp;
+					break;
+				case ".NETSTANDARD":
+					identifier = TargetFrameworkIdentifier.NETStandard;
+					break;
+				case "SILVERLIGHT":
+					identifier = TargetFrameworkIdentifier.Silverlight;
+					break;
+				default:
+					identifier = TargetFrameworkIdentifier.NETFramework;
+					break;
+			}
+
+			Version version = null;
+
+			for (int i = 1; i < tokens.Length; i++) {
+				var pair = tokens[i].Trim().Split('=');
+
+				if (pair.Length != 2)
+					continue;
+
+				switch (pair[0].Trim().ToUpperInvariant()) {
+					case "VERSION":
+						var versionString = pair[1].TrimStart('v', ' ', '\t');
+						if (identifier == TargetFrameworkIdentifier.NETCoreApp ||
+							identifier == TargetFrameworkIdentifier.NETStandard)
+						{
+							if (versionString.Length == 3)
+								versionString += ".0";
+						}
+						if (!Version.TryParse(versionString, out version))
+							version = null;
+						break;
+				}
+			}
+
+			return (identifier, version ?? ZeroVersion);
 		}
 	}
 }

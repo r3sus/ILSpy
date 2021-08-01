@@ -278,6 +278,8 @@ namespace ICSharpCode.Decompiler.CSharp
 						return true;
 					if (settings.AsyncAwait && AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(type))
 						return true;
+					if (settings.AsyncEnumerator && AsyncAwaitDecompiler.IsCompilerGeneratorAsyncEnumerator(type))
+						return true;
 					if (settings.FixedBuffers && type.Name.StartsWith("<", StringComparison.Ordinal) && type.Name.Contains("__FixedBuffer"))
 						return true;
 				} else if (type.IsCompilerGenerated()) {
@@ -489,12 +491,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		/// </summary>
 		public static CodeMappingInfo GetCodeMappingInfo(PEFile module, IMemberDef member)
 		{
-			TypeDef declaringType;
-			if (member is MethodDef mDef)
-				declaringType = mDef.DeclaringType;
-			else
-				declaringType = ((TypeDef)member).DeclaringType;
-
+			TypeDef declaringType = member.DeclaringType;
 			if (declaringType is null && member is TypeDef def) {
 				declaringType = def;
 			}
@@ -1204,7 +1201,11 @@ namespace ICSharpCode.Decompiler.CSharp
 					if (localSettings.DecompileMemberBodies && !body.Descendants.Any(d => d is YieldReturnStatement || d is YieldBreakStatement)) {
 						body.Add(new YieldBreakStatement());
 					}
-					RemoveAttribute(entityDecl, KnownAttribute.IteratorStateMachine);
+					if (function.IsAsync) {
+						RemoveAttribute(entityDecl, KnownAttribute.AsyncIteratorStateMachine);
+					} else {
+						RemoveAttribute(entityDecl, KnownAttribute.IteratorStateMachine);
+					}
 					if (function.StateMachineCompiledWithMono) {
 						RemoveAttribute(entityDecl, KnownAttribute.DebuggerHidden);
 					}

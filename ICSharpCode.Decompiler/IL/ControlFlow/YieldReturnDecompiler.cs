@@ -306,6 +306,15 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		/// </summary>
 		bool MatchEnumeratorCreationNewObj(ILInstruction inst)
 		{
+			return MatchEnumeratorCreationNewObj(inst, currentType,
+				out enumeratorCtor, out enumeratorType);
+		}
+
+		internal static bool MatchEnumeratorCreationNewObj(ILInstruction inst, TypeDef currentType,
+			out MethodDef enumeratorCtor, out TypeDef enumeratorType)
+		{
+			enumeratorCtor = default;
+			enumeratorType = default;
 			// newobj(CurrentType/...::.ctor, ldc.i4(-2))
 			if (!(inst is NewObj newObj))
 				return false;
@@ -435,7 +444,13 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			MethodDef getEnumeratorMethod = enumeratorType.Methods.FirstOrDefault(
 				m => m.Name.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal)
 				&& m.Name.EndsWith(".GetEnumerator", StringComparison.Ordinal));
-			if (getEnumeratorMethod == null)
+			ResolveIEnumerableIEnumeratorFieldMapping(getEnumeratorMethod, context, fieldToParameterMap);
+		}
+
+		internal static void ResolveIEnumerableIEnumeratorFieldMapping(MethodDef getEnumeratorMethod, ILTransformContext context,
+			Dictionary<IField, ILVariable> fieldToParameterMap)
+		{
+			if (getEnumeratorMethod is null)
 				return; // no mappings (maybe it's just an IEnumerator implementation?)
 			var function = CreateILAst(getEnumeratorMethod, context);
 			foreach (var block in function.Descendants.OfType<Block>()) {
