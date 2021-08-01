@@ -238,7 +238,7 @@ namespace ICSharpCode.Decompiler
 
 		public static TypeSystem.FullTypeName GetFullTypeName(this IType typeDef)
 		{
-			return new TypeSystem.FullTypeName(typeDef.ReflectionFullName);
+			return new TypeSystem.FullTypeName(typeDef.FullName, true);
 		}
 
 		public static bool IsDelegate(this TypeDef type)
