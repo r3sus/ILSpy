@@ -766,7 +766,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			// Special case comparisons with enum and char literals
 			left = TryUniteEqualityOperandType(left, right);
 			right = TryUniteEqualityOperandType(right, left);
-			
+
 			if (IsSpecialCasedReferenceComparisonWithNull(left, right)) {
 				// When comparing a string/delegate with null, the C# compiler generates a reference comparison.
 				negateOutput = false;
@@ -1409,9 +1409,10 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (UserDefinedCompoundAssign.IsStringConcat(inst.Method)) {
 				Debug.Assert(inst.Method.Parameters.Count == 2);
 				var value = Translate(inst.Value).ConvertTo(inst.Method.Parameters[1].Type, this, allowImplicitConversion: true);
-				return new AssignmentExpression(target, AssignmentOperatorType.Add, value)
-					   .WithILInstruction(inst)
-					   .WithRR(new OperatorResolveResult(inst.Method.ReturnType, ExpressionType.AddAssign, inst.Method, inst.IsLifted, new[] { target.ResolveResult, value.ResolveResult }));
+				var valueExpr = ReplaceMethodCallsWithOperators.RemoveRedundantToStringInConcat(value, inst.Method, isLastArgument: true).Detach();
+				return new AssignmentExpression(target, AssignmentOperatorType.Add, valueExpr)
+					.WithILInstruction(inst)
+					.WithRR(new OperatorResolveResult(inst.Method.ReturnType, ExpressionType.AddAssign, inst.Method, inst.IsLifted, new[] { target.ResolveResult, value.ResolveResult }));
 			} else if (inst.Method.Parameters.Count == 2) {
 				var value = Translate(inst.Value).ConvertTo(inst.Method.Parameters[1].Type, this);
 				AssignmentOperatorType? op = GetAssignmentOperatorTypeFromMetadataName(inst.Method.Name);
