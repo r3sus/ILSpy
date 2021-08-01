@@ -55,10 +55,10 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			if (entity == null || entity.MetadataToken is null)
 				return;
+			if (mappingInfo == null)
+				mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 			switch (entity) {
 				case ITypeDefinition td:
-					if (mappingInfo == null)
-						mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 					namespaces.Add(td.Namespace);
 					HandleAttributes(td.GetAttributes());
 					HandleTypeParameters(td.TypeParameters);
@@ -101,8 +101,6 @@ namespace ICSharpCode.Decompiler.CSharp
 					}
 					HandleTypeParameters(method.TypeParameters);
 					if (method.MetadataToken != null) {
-						if (mappingInfo == null)
-							mappingInfo = CSharpDecompiler.GetCodeMappingInfo(entity.ParentModule.PEFile, entity.MetadataToken);
 						var parts = mappingInfo.GetMethodParts((MethodDef)method.MetadataToken).ToList();
 						foreach (var methodDef in parts) {
 							HandleOverrides(methodDef.Overrides, module);
@@ -113,13 +111,13 @@ namespace ICSharpCode.Decompiler.CSharp
 					break;
 				case IProperty property:
 					HandleAttributes(property.GetAttributes());
-					CollectNamespaces(property.Getter, module);
-					CollectNamespaces(property.Setter, module);
+					CollectNamespaces(property.Getter, module, mappingInfo);
+					CollectNamespaces(property.Setter, module, mappingInfo);
 					break;
 				case IEvent @event:
 					HandleAttributes(@event.GetAttributes());
-					CollectNamespaces(@event.AddAccessor, module);
-					CollectNamespaces(@event.RemoveAccessor, module);
+					CollectNamespaces(@event.AddAccessor, module, mappingInfo);
+					CollectNamespaces(@event.RemoveAccessor, module, mappingInfo);
 					break;
 			}
 		}

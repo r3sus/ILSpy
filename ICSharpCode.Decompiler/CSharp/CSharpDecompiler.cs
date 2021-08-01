@@ -96,7 +96,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				new SwitchDetection(),
 				new SwitchOnStringTransform(),
 				new SwitchOnNullableTransform(),
-				new SplitVariables(), // split variables once again, because SwitchOnNullableTransform eliminates ldloca 
+				new SplitVariables(), // split variables once again, because SwitchOnNullableTransform eliminates ldloca
 				new IntroduceRefReadOnlyModifierOnLocals(),
 				new BlockILTransform { // per-block transforms
 					PostOrderTransforms = {
@@ -663,6 +663,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			syntaxTree = new SyntaxTree();
 
 			foreach (var type in types) {
+				CancellationToken.ThrowIfCancellationRequested();
 				if (type is null)
 					throw new ArgumentException("types contains null element");
 				RequiredNamespaceCollector.CollectNamespaces(type, module, decompileRun.Namespaces);
