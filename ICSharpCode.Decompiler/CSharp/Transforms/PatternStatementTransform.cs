@@ -573,12 +573,15 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			if (fieldInfo == null)
 				return null;
+			if (property.Setter.HasModifier(Modifiers.Readonly))
+				return null;
 			dnlib.DotNet.FieldDef field = fieldInfo.MetadataToken as dnlib.DotNet.FieldDef;
 			if (field.IsCompilerGenerated() && field.DeclaringType == cecilProperty.DeclaringType) {
 				RemoveCompilerGeneratedAttribute(property.Getter.Attributes);
 				RemoveCompilerGeneratedAttribute(property.Setter.Attributes);
 				property.Getter.Body = null;
 				property.Setter.Body = null;
+				property.Getter.Modifiers &= ~Modifiers.Readonly;
 
 				// Add C# 7.3 attributes on backing field:
 				var attributes = fieldInfo.GetAttributes()

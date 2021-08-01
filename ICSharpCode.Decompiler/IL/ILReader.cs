@@ -199,7 +199,7 @@ namespace ICSharpCode.Decompiler.IL
 				} else {
 					parameterType = module.ResolveType(p.Type, genericContext);
 				}
-				isRefReadOnly = def?.IsReadOnly == true;
+				isRefReadOnly = method.ThisIsRefReadOnly;
 			} else {
 				var param = method.Parameters[p.MethodSigIndex];
 				parameterType = param.Type;
