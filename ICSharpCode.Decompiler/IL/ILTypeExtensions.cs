@@ -16,52 +16,40 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using dnlib.DotNet;
 using ICSharpCode.Decompiler.TypeSystem;
-using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL
 {
 	static class ILTypeExtensions
 	{
-		public static StackType GetStackType(this ElementType typeCode)
+		public static StackType GetStackType(this PrimitiveType typeCode)
 		{
 			switch (typeCode) {
-				case ElementType.Boolean:
-				case ElementType.Char:
-				case ElementType.I1:
-				case ElementType.U1:
-				case ElementType.I2:
-				case ElementType.U2:
-				case ElementType.I4:
-				case ElementType.U4:
+				case PrimitiveType.I1:
+				case PrimitiveType.U1:
+				case PrimitiveType.I2:
+				case PrimitiveType.U2:
+				case PrimitiveType.I4:
+				case PrimitiveType.U4:
 					return StackType.I4;
-				case ElementType.I8:
-				case ElementType.U8:
+				case PrimitiveType.I8:
+				case PrimitiveType.U8:
 					return StackType.I8;
-				case ElementType.I:
-				case ElementType.U:
-				case ElementType.Ptr:
-				case ElementType.FnPtr:
+				case PrimitiveType.I:
+				case PrimitiveType.U:
 					return StackType.I;
-				case ElementType.R4:
+				case PrimitiveType.R4:
 					return StackType.F4;
-				case ElementType.R8:
+				case PrimitiveType.R8:
+				case PrimitiveType.R:
 					return StackType.F8;
-				case ElementType.ByRef:
+				case PrimitiveType.Ref: // ByRef
 					return StackType.Ref;
-				case ElementType.Void:
-					return StackType.Void;
-				case (ElementType)PrimitiveType.Unknown:
+				case PrimitiveType.Unknown:
 					return StackType.Unknown;
 				default:
 					return StackType.O;
 			}
-		}
-
-		public static StackType GetStackType(this PrimitiveType primitiveType)
-		{
-			return ((ElementType)primitiveType).GetStackType();
 		}
 
 		public static Sign GetSign(this PrimitiveType primitiveType)
@@ -73,6 +61,7 @@ namespace ICSharpCode.Decompiler.IL
 				case PrimitiveType.I8:
 				case PrimitiveType.R4:
 				case PrimitiveType.R8:
+				case PrimitiveType.R:
 				case PrimitiveType.I:
 					return Sign.Signed;
 				case PrimitiveType.U1:
@@ -108,6 +97,7 @@ namespace ICSharpCode.Decompiler.IL
 				case PrimitiveType.I8:
 				case PrimitiveType.R8:
 				case PrimitiveType.U8:
+				case PrimitiveType.R:
 					return 8;
 				case PrimitiveType.I:
 				case PrimitiveType.U:
@@ -132,6 +122,18 @@ namespace ICSharpCode.Decompiler.IL
 		public static bool IsIntegerType(this PrimitiveType primitiveType)
 		{
 			return primitiveType.GetStackType().IsIntegerType();
+		}
+
+		public static bool IsFloatType(this PrimitiveType type)
+		{
+			switch (type) {
+				case PrimitiveType.R4:
+				case PrimitiveType.R8:
+				case PrimitiveType.R:
+					return true;
+				default:
+					return false;
+			}
 		}
 
 		/// <summary>
