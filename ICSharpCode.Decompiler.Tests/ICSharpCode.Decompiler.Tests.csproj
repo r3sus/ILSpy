@@ -77,6 +77,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="TestCases\Correctness\StringConcat.cs" />
     <Compile Include="TestCases\ILPretty\ConstantBlobs.cs" />
     <Compile Include="TestCases\Pretty\OutVariables.cs" />
     <Compile Include="TestCases\Pretty\CustomTaskType.cs" />
