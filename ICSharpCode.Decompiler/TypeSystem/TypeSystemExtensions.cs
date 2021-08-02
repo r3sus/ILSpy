@@ -210,8 +210,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public static bool IsUnbound(this IType type)
 		{
 			if (type == null)
-				throw new ArgumentNullException("type");
-			return type is ITypeDefinition && type.TypeParameterCount > 0;
+				throw new ArgumentNullException(nameof(type));
+			return (type is ITypeDefinition || type is UnknownType) && type.TypeParameterCount > 0;
 		}
 
 		/// <summary>
