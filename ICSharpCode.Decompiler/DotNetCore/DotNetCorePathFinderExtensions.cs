@@ -12,15 +12,59 @@ namespace ICSharpCode.Decompiler
 			@"(Reference Assemblies[/\\]Microsoft[/\\]Framework[/\\](?<1>.NETFramework)[/\\]v(?<2>[^/\\]+)[/\\])" +
 			@"|(NuGetFallbackFolder[/\\](?<1>[^/\\]+)\\(?<2>[^/\\]+)([/\\].*)?[/\\]ref[/\\])";
 
-		public static string DetectTargetFrameworkId(this AssemblyDef assembly, string assemblyPath = null)
+		public static string DetectTargetFrameworkId(this ModuleDefMD module, string assemblyPath = null)
 		{
-			if (assembly == null)
-				throw new ArgumentNullException(nameof(assembly));
+			if (module.Assembly != null) {
+				if (module.Assembly.TryGetOriginalTargetFrameworkAttribute(out var fw, out var version2, out var profile)) {
+					if (profile is null)
+						return fw + ",Version=v" + version2;
+					return fw + ",Version=v" + version2 + ",Profile=" + profile;
+				}
+			}
 
-			if (assembly.TryGetOriginalTargetFrameworkAttribute(out var fw, out var version2, out var profile)) {
-				if (profile is null)
-					return fw + ",Version=v" + version2;
-				return fw + ",Version=v" + version2 + ",Profile=" + profile;
+			foreach (var r in module.GetAssemblyRefs())
+			{
+				try
+				{
+					if (r.PublicKeyOrToken.IsNullOrEmpty)
+						continue;
+					string version;
+					switch (r.Name)
+					{
+						case "netstandard":
+							version = r.Version.ToString(3);
+							return $".NETStandard,Version=v{version}";
+						case "System.Runtime":
+							// System.Runtime.dll uses the following scheme:
+							// 4.2.0 => .NET Core 2.0
+							// 4.2.1 => .NET Core 2.1 / 3.0
+							// 4.2.2 => .NET Core 3.1
+							if (r.Version >= new Version(4, 2, 0))
+							{
+								version = "2.0";
+								if (r.Version >= new Version(4, 2, 1))
+								{
+									version = "3.0";
+								}
+								if (r.Version >= new Version(4, 2, 2))
+								{
+									version = "3.1";
+								}
+								return $".NETCoreApp,Version=v{version}";
+							}
+							else
+							{
+								continue;
+							}
+						case "mscorlib":
+							version = r.Version.ToString(2);
+							return $".NETFramework,Version=v{version}";
+					}
+				}
+				catch (BadImageFormatException)
+				{
+					// ignore malformed references
+				}
 			}
 
 			// Optionally try to detect target version through assembly path as a fallback (use case: reference assemblies)

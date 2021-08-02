@@ -14,7 +14,7 @@ namespace ICSharpCode.ILSpy.AddIn
 	{
 		public static string FindAssemblyFile(AssemblyDef assemblyDefinition, string assemblyFile)
 		{
-			var detectedTargetFramework = assemblyDefinition.DetectTargetFrameworkId(assemblyFile);
+			var detectedTargetFramework = (assemblyDefinition.ManifestModule as ModuleDefMD).DetectTargetFrameworkId(assemblyFile);
 			if (string.IsNullOrEmpty(detectedTargetFramework)) {
 				// Without a target framework id it makes no sense to continue
 				return null;

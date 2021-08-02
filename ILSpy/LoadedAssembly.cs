@@ -61,7 +61,7 @@ namespace ICSharpCode.ILSpy
 		public async Task<string> GetTargetFrameworkIdAsync()
 		{
 			var assembly = await GetAssemblyDefinitionAsync().ConfigureAwait(false);
-			return assembly?.DetectTargetFrameworkId() ?? string.Empty;
+			return (assembly.ManifestModule as ModuleDefMD)?.DetectTargetFrameworkId() ?? string.Empty;
 		}
 
 		public ReferenceLoadInfo LoadedAssemblyReferencesInfo { get; } = new ReferenceLoadInfo();

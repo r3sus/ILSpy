@@ -81,7 +81,7 @@ namespace ICSharpCode.Decompiler
 			module.Location = mainAssemblyFileName;
 			module.EnableTypeDefFindCache = true;
 
-			resolver.TargetFramework = module.Assembly.DetectTargetFrameworkId();
+			resolver.TargetFramework = module.DetectTargetFrameworkId();
 
 			return module;
 		}
