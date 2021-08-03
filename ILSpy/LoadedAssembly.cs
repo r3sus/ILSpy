@@ -239,8 +239,8 @@ namespace ICSharpCode.ILSpy
 
 		class MyUniversalResolver : UniversalAssemblyResolver
 		{
-			public MyUniversalResolver(LoadedAssembly assembly)
-				: base(assembly.FileName, false)
+			public MyUniversalResolver(LoadedAssembly assembly, string tfm)
+				: base(assembly.FileName, false, tfm)
 			{
 			}
 		}
@@ -264,7 +264,7 @@ namespace ICSharpCode.ILSpy
 				if (isWinRT) {
 					file = Path.Combine(Environment.SystemDirectory, "WinMetadata", fullName.Name + ".winmd");
 				} else {
-					var resolver = new MyUniversalResolver(this) { TargetFramework = GetTargetFrameworkIdAsync().Result };
+					var resolver = new MyUniversalResolver(this, GetTargetFrameworkIdAsync().Result);
 					file = resolver.FindAssemblyFile(fullName);
 				}
 

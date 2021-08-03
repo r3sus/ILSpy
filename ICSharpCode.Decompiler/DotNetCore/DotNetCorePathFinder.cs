@@ -1,4 +1,22 @@
-﻿using System;
+﻿// Copyright (c) 2018 Siegfried Pammer
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this
+// software and associated documentation files (the "Software"), to deal in the Software
+// without restriction, including without limitation the rights to use, copy, modify, merge,
+// publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+// to whom the Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+// PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+// FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -44,25 +62,28 @@ namespace ICSharpCode.Decompiler
 			"Microsoft.AspNetCore.All"
 		};
 
-		readonly Dictionary<string, DotNetCorePackageInfo> packages;
+		readonly DotNetCorePackageInfo[] packages;
 		ISet<string> packageBasePaths = new HashSet<string>(StringComparer.Ordinal);
-		readonly string assemblyName;
-		readonly string basePath;
-		readonly string targetFrameworkId;
-		readonly string version;
+		readonly Version version;
 		readonly string dotnetBasePath = FindDotNetExeDirectory();
 
 		public DotNetCorePathFinder(Version version)
 		{
-			this.version = version.ToString();
+			this.version = version;
 		}
 
-		public DotNetCorePathFinder(string parentAssemblyFileName, string targetFrameworkId, string version, ReferenceLoadInfo loadInfo = null)
+		public DotNetCorePathFinder(string parentAssemblyFileName, string targetFrameworkIdString, TargetFrameworkIdentifier targetFramework, Version version, ReferenceLoadInfo loadInfo = null)
 		{
-			this.assemblyName = Path.GetFileNameWithoutExtension(parentAssemblyFileName);
-			this.basePath = Path.GetDirectoryName(parentAssemblyFileName);
-			this.targetFrameworkId = targetFrameworkId;
+			string assemblyName = Path.GetFileNameWithoutExtension(parentAssemblyFileName);
+			string basePath = Path.GetDirectoryName(parentAssemblyFileName);
 			this.version = version;
+
+			if (targetFramework == TargetFrameworkIdentifier.NETStandard) {
+				// .NET Standard 2.1 is implemented by .NET Core 3.0 or higher
+				if (version.Major == 2 && version.Minor == 1) {
+					this.version = new Version(3, 0, 0);
+				}
+			}
 
 			var depsJsonFileName = Path.Combine(basePath, $"{assemblyName}.deps.json");
 			if (!File.Exists(depsJsonFileName)) {
@@ -70,13 +91,13 @@ namespace ICSharpCode.Decompiler
 				return;
 			}
 
-			packages = LoadPackageInfos(depsJsonFileName, targetFrameworkId).ToDictionary(i => i.Name);
+			packages = LoadPackageInfos(depsJsonFileName, targetFrameworkIdString).ToArray();
 
 			foreach (var path in LookupPaths) {
-				foreach (var pk in packages) {
-					foreach (var item in pk.Value.RuntimeComponents) {
+				foreach (var p in packages) {
+					foreach (var item in p.RuntimeComponents) {
 						var itemPath = Path.GetDirectoryName(item);
-						var fullPath = Path.Combine(path, pk.Value.Name, pk.Value.Version, itemPath).ToLowerInvariant();
+						var fullPath = Path.Combine(path, p.Name, p.Version, itemPath).ToLowerInvariant();
 						if (Directory.Exists(fullPath))
 							packageBasePaths.Add(fullPath);
 					}
@@ -94,7 +115,7 @@ namespace ICSharpCode.Decompiler
 				}
 			}
 
-			return FallbackToDotNetSharedDirectory(name, new Version(version));
+			return FallbackToDotNetSharedDirectory(name, version);
 		}
 
 		internal string GetReferenceAssemblyPath(string targetFramework)
@@ -119,7 +140,7 @@ namespace ICSharpCode.Decompiler
 		static IEnumerable<DotNetCorePackageInfo> LoadPackageInfos(string depsJsonFileName, string targetFramework)
 		{
 			var dependencies = JsonReader.Parse(File.ReadAllText(depsJsonFileName));
-			var runtimeInfos = dependencies["targets"][targetFramework + "/"].AsJsonObject;
+			var runtimeInfos = dependencies["targets"][targetFramework].AsJsonObject;
 			var libraries = dependencies["libraries"].AsJsonObject;
 			if (runtimeInfos == null || libraries == null)
 				yield break;
@@ -167,7 +188,7 @@ namespace ICSharpCode.Decompiler
 			return result ?? version.ToString();
 		}
 
-		static (Version, string) ConvertToVersion(string name)
+		internal static (Version, string) ConvertToVersion(string name)
 		{
 			string RemoveTrailingVersionInfo()
 			{
@@ -190,9 +211,7 @@ namespace ICSharpCode.Decompiler
 		static string FindDotNetExeDirectory()
 		{
 			string dotnetExeName = (Environment.OSVersion.Platform == PlatformID.Unix) ? "dotnet" : "dotnet.exe";
-
-			var pathEnvVar = Environment.GetEnvironmentVariable("PATH").Split(new[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
-			foreach (string item in pathEnvVar) {
+			foreach (var item in Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator)) {
 				try {
 					string fileName = Path.Combine(item, dotnetExeName);
 					if (!File.Exists(fileName))

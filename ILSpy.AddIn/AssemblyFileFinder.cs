@@ -23,16 +23,26 @@ namespace ICSharpCode.ILSpy.AddIn
 			var targetFramework = detectedTargetFramework.Split(new[] { ",Version=v" }, StringSplitOptions.None);
 			string file = null;
 			switch (targetFramework[0]) {
-				case ".NETCoreApp":
-				case ".NETStandard":
+				case ".NETCoreApp": {
 					if (targetFramework.Length != 2)
 						return FindAssemblyFromGAC(assemblyDefinition);
 					var version = targetFramework[1].Length == 3 ? targetFramework[1] + ".0" : targetFramework[1];
-					var dotNetCorePathFinder = new DotNetCorePathFinder(assemblyFile, detectedTargetFramework, version);
+					var dotNetCorePathFinder = new DotNetCorePathFinder(assemblyFile, detectedTargetFramework, TargetFrameworkIdentifier.NETCoreApp, new Version(version));
 					file = dotNetCorePathFinder.TryResolveDotNetCore(assemblyDefinition);
 					if (file != null)
 						return file;
 					return FindAssemblyFromGAC(assemblyDefinition);
+				}
+				case ".NETStandard": {
+					if (targetFramework.Length != 2)
+						return FindAssemblyFromGAC(assemblyDefinition);
+					var version = targetFramework[1].Length == 3 ? targetFramework[1] + ".0" : targetFramework[1];
+					var dotNetCorePathFinder = new DotNetCorePathFinder(assemblyFile, detectedTargetFramework, TargetFrameworkIdentifier.NETStandard, new Version(version));
+					file = dotNetCorePathFinder.TryResolveDotNetCore(assemblyDefinition);
+					if (file != null)
+						return file;
+					return FindAssemblyFromGAC(assemblyDefinition);
+				}
 				default:
 					return FindAssemblyFromGAC(assemblyDefinition);
 			}
