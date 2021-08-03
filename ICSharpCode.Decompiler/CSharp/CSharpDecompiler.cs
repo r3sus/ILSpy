@@ -1113,7 +1113,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			FixParameterNames(methodDecl);
 			var methodDefinition = (MethodDef)method.MetadataToken;
-			if (!settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionMethod(null, methodDefinition)) {
+			if (!settings.LocalFunctions && LocalFunctionDecompiler.LocalFunctionNeedsAccessibilityChange(null, methodDefinition)) {
 				// if local functions are not active and we're dealing with a local function,
 				// reduce the visibility of the method to private,
 				// otherwise this leads to compile errors because the display classes have lesser accessibility.

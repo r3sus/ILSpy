@@ -79,6 +79,7 @@
 
   <ItemGroup>
     <Compile Include="TestCases\Correctness\StringConcat.cs" />
+    <Compile Include="TestCases\Ugly\NoLocalFunctions.cs" />
     <Compile Include="TestCases\VBPretty\Select.cs" />
     <None Include="TestCases\ILPretty\WeirdEnums.cs" />
     <Compile Include="TestCases\ILPretty\ConstantBlobs.cs" />

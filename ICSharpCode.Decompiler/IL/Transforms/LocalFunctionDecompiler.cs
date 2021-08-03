@@ -327,6 +327,25 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			return true;
 		}
 
+		public static bool LocalFunctionNeedsAccessibilityChange(PEFile module, MethodDef method)
+		{
+			if (!IsLocalFunctionMethod(module, method))
+				return false;
+
+			List<TypeDef> refStructTypes = new List<TypeDef>();
+			VisitFindRefStruct(method.ReturnType, refStructTypes);
+			foreach (TypeSig sig in method.MethodSig.Params) {
+				VisitFindRefStruct(sig, refStructTypes);
+			}
+
+			foreach (var td in refStructTypes) {
+				if (td.IsCompilerGenerated() && td.IsValueType)
+					return true;
+			}
+
+			return false;
+		}
+
 		public static bool IsLocalFunctionDisplayClass(PEFile module, TypeDef type, ILTransformContext context = null)
 		{
 			if (context != null && context.PEFile != module)
@@ -345,7 +364,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 				bool canBe = false;
 				foreach (TypeSig sig in method.MethodSig.Params) {
-					canBe |= VisitSig(sig, type);
+					canBe |= VisitFindType(sig, type);
 				}
 				if (canBe)
 					return true;
@@ -354,7 +373,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			return false;
 		}
 
-		private static bool VisitSig(TypeSig sig, TypeDef type)
+		private static bool VisitFindType(TypeSig sig, TypeDef type)
 		{
 			switch (sig) {
 				case SZArraySig _:
@@ -363,26 +382,50 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				case FnPtrSig _:
 					return false;
 				case PtrSig ptrSig:
-					return VisitSig(ptrSig.Next, type);
+					return VisitFindType(ptrSig.Next, type);
 				case PinnedSig pinnedSig:
-					return VisitSig(pinnedSig.Next, type);
+					return VisitFindType(pinnedSig.Next, type);
 				case ModifierSig modifierSig:
-					return VisitSig(modifierSig.Next, type);
+					return VisitFindType(modifierSig.Next, type);
 				case GenericInstSig genericInstSig:
-					return VisitSig(genericInstSig.GenericType, type);
+					return VisitFindType(genericInstSig.GenericType, type);
 				case ByRefSig byRefSig:
-					return VisitSig(byRefSig.Next, type);
+					return VisitFindType(byRefSig.Next, type);
 				case ArraySig arraySig:
-					return VisitSig(arraySig.Next, type);
+					return VisitFindType(arraySig.Next, type);
 				case ClassOrValueTypeSig classOrValueTypeSig:
 					if (classOrValueTypeSig.IsTypeSpec)
-						return VisitSig(classOrValueTypeSig.TypeSpec.TypeSig, type);
+						return VisitFindType(classOrValueTypeSig.TypeSpec.TypeSig, type);
 					else if (classOrValueTypeSig.IsTypeRef)
 						return false;
 					else
 						return classOrValueTypeSig.TypeDef == type;
 				default:
 					throw new ArgumentOutOfRangeException();
+			}
+		}
+
+		private static void VisitFindRefStruct(TypeSig sig, List<TypeDef> refTypes)
+		{
+			switch (sig) {
+				case SZArraySig _:
+				case CorLibTypeSig _:
+				case GenericVar _:
+				case FnPtrSig _:
+				case PtrSig _:
+				case PinnedSig _:
+				case ModifierSig _:
+				case GenericInstSig _:
+				case ArraySig _:
+					return;
+				case ByRefSig byRefSig:
+					VisitFindRefStruct(byRefSig.Next, refTypes);
+					return;
+				case ClassOrValueTypeSig classOrValueTypeSig when classOrValueTypeSig.IsTypeDef:
+					refTypes.Add(classOrValueTypeSig.TypeDef);
+					return;
+				default:
+					return;
 			}
 		}
 
