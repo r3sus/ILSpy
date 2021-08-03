@@ -540,5 +540,30 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			return type.ChangeNullability(Nullability.Oblivious);
 		}
+
+		public static bool IsDirectImportOf(this ITypeDefinition type, IModule module)
+		{
+			var moduleReference = type.ParentModule;
+			foreach (var asmRef in module.PEFile.Module.GetAssemblyRefs()) {
+				if (asmRef.FullName == moduleReference.FullAssemblyName)
+					return true;
+				if (asmRef.Name == "netstandard" && !dnlib.DotNet.PublicKeyBase.IsNullOrEmpty2(asmRef.PublicKeyOrToken)) {
+					var referencedModule = module.Compilation.FindModuleByReference(asmRef);
+					if (referencedModule != null && referencedModule.PEFile.GetTypeForwarder(type.FullTypeName) != null)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		public static IModule FindModuleByReference(this ICompilation compilation, dnlib.DotNet.IAssembly assemblyName)
+		{
+			foreach (var module in compilation.Modules) {
+				if (module.FullAssemblyName == assemblyName.FullName) {
+					return module;
+				}
+			}
+			return null;
+		}
 	}
 }
