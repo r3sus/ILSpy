@@ -378,9 +378,14 @@ namespace ICSharpCode.Decompiler
 			return attr.AttributeType.IsKnownType(attrType);
 		}
 
+		public static bool IsKnownType(this ITypeDefOrRef handle, TypeSystem.KnownTypeCode knownType)
+		{
+			return handle != null && GetFullTypeName(handle) ==  TypeSystem.KnownTypeReference.Get(knownType).TypeName;
+		}
+
 		internal static bool IsKnownType(this ITypeDefOrRef handle, TypeSystem.KnownAttribute knownType)
 		{
-			return handle.GetFullTypeName() == TypeSystem.KnownAttributes.GetTypeName(knownType);
+			return handle != null && GetFullTypeName(handle) == TypeSystem.KnownAttributes.GetTypeName(knownType);
 		}
 
 		public static TypeSystem.Nullability? GetNullableContext(this CustomAttributeCollection customAttributes)
