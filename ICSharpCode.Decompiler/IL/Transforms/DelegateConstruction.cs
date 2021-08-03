@@ -97,8 +97,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			return false;
 		}
-
-		internal static GenericContext? GenericContextFromTypeArguments(TypeParameterSubstitution subst)
+		
+		static GenericContext? GenericContextFromTypeArguments(TypeParameterSubstitution subst)
 		{
 			var classTypeParameters = new List<ITypeParameter>();
 			var methodTypeParameters = new List<ITypeParameter>();
