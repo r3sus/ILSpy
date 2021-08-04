@@ -1276,10 +1276,9 @@ namespace ICSharpCode.Decompiler.CSharp
 						long initValue = (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, constantValue, false);
 						enumDec.Initializer = typeSystemAstBuilder.ConvertConstantValue(decompilationContext.CurrentTypeDefinition.EnumUnderlyingType, constantValue);
 						if (enumDec.Initializer is PrimitiveExpression primitive
-							&& initValue >= 0 && (decompilationContext.CurrentTypeDefinition.HasAttribute(KnownAttribute.Flags)
-												  || (initValue > 9 && (unchecked(initValue & (initValue - 1)) == 0 || unchecked(initValue & (initValue + 1)) == 0))))
-						{
-							primitive.SetValue(initValue, $"0x{initValue:X}");
+							&& initValue >= 0 && (decompilationContext.CurrentTypeDefinition.HasAttribute(KnownAttribute.Flags) 
+												  || (initValue > 9 && (unchecked(initValue & (initValue - 1)) == 0 || unchecked(initValue & (initValue + 1)) == 0)))) {
+							primitive.Format = LiteralFormat.HexadecimalNumber;
 						}
 					}
 					enumDec.Attributes.AddRange(field.GetAttributes().Select(a => new AttributeSection(typeSystemAstBuilder.ConvertAttribute(a))));
