@@ -374,7 +374,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var b = new AttributeListBuilder(module);
 			if (handle.Parameters.ReturnParameter.HasParamDef) {
 				b.AddMarshalInfo(handle.Parameters.ReturnParameter.ParamDef.MarshalType);
-				b.Add(handle.Parameters.ReturnParameter.ParamDef.CustomAttributes, symbolKind);
+				b.Add(handle.Parameters.ReturnParameter.ParamDef.CustomAttributes, SymbolKind.ReturnType);
 			}
 			return b.Build();
 		}

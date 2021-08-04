@@ -1576,6 +1576,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				decl.AddAnnotation(new MemberResolveResult(null, property));
 			}
 			decl.ReturnType = ConvertType(property.ReturnType);
+			if (property.ReturnTypeIsRefReadOnly && decl.ReturnType is ComposedType ct && ct.HasRefSpecifier) {
+				ct.HasReadOnlySpecifier = true;
+			}
 			decl.Name = property.Name;
 			decl.Getter = ConvertAccessor(property.Getter, property.Accessibility, false);
 			decl.Setter = ConvertAccessor(property.Setter, property.Accessibility, true);
@@ -1603,6 +1606,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				decl.AddAnnotation(new MemberResolveResult(null, indexer));
 			}
 			decl.ReturnType = ConvertType(indexer.ReturnType);
+			if (indexer.ReturnTypeIsRefReadOnly && decl.ReturnType is ComposedType ct && ct.HasRefSpecifier) {
+				ct.HasReadOnlySpecifier = true;
+			}
 			foreach (IParameter p in indexer.Parameters) {
 				decl.Parameters.Add(ConvertParameter(p));
 			}
@@ -1697,6 +1703,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			decl.Modifiers = GetMemberModifiers(op);
 			decl.OperatorType = opType.Value;
 			decl.ReturnType = ConvertType(op.ReturnType);
+			if (op.ReturnTypeIsRefReadOnly && decl.ReturnType is ComposedType ct && ct.HasRefSpecifier) {
+				ct.HasReadOnlySpecifier = true;
+			}
 			foreach (IParameter p in op.Parameters) {
 				decl.Parameters.Add(ConvertParameter(p));
 			}

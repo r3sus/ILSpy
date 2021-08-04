@@ -162,6 +162,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return LazyInit.GetOrSet(ref this.returnType, ret);
 			}
 		}
+		
+		public bool ReturnTypeIsRefReadOnly {
+			get {
+				return propertyHandle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+			}
+		}
+		
 		#endregion
 
 		public bool IsExplicitInterfaceImplementation => AnyAccessor?.IsExplicitInterfaceImplementation ?? false;
