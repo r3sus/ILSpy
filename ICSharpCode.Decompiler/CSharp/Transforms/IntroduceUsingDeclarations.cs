@@ -117,12 +117,14 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		{
 			readonly Stack<CSharpTypeResolveContext> context;
 			readonly bool ignoreUsingScope;
+			readonly DecompilerSettings settings;
 
 			TypeSystemAstBuilder astBuilder;
 
 			public FullyQualifyAmbiguousTypeNamesVisitor(TransformContext context, UsingScope usingScope)
 			{
 				this.ignoreUsingScope = !context.Settings.UsingDeclarations;
+				this.settings = context.Settings;
 
 				CSharpTypeResolveContext currentContext;
 				if (ignoreUsingScope) {
@@ -140,7 +142,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				this.astBuilder = CreateAstBuilder(currentContext);
 			}
 
-			static TypeSystemAstBuilder CreateAstBuilder(CSharpTypeResolveContext context, IL.ILFunction function = null)
+			TypeSystemAstBuilder CreateAstBuilder(CSharpTypeResolveContext context, IL.ILFunction function = null)
 			{
 				CSharpResolver resolver = new CSharpResolver(context);
 				if (function != null) {
@@ -151,6 +153,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				}
 
 				return new TypeSystemAstBuilder(resolver) {
+					UseNullableSpecifierForValueTypes = settings.LiftNullables,
 					AddResolveResultAnnotations = true,
 					UseAliases = true
 				};

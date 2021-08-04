@@ -548,7 +548,14 @@ namespace ICSharpCode.ILSpy
 					return base.GetTooltip(member);
 			}
 			var flags = ConversionFlags.All & ~(ConversionFlags.ShowBody | ConversionFlags.PlaceReturnTypeAfterParameterList);
-			return new CSharpAmbience() { ConversionFlags = flags }.ConvertSymbol(symbol);
+			var settings = new DecompilationOptions().DecompilerSettings;
+			if (!settings.LiftNullables) {
+				flags &= ~ConversionFlags.UseNullableSpecifierForValueTypes;
+			}
+			StringWriter writer = new StringWriter();
+			new CSharpAmbience { ConversionFlags = flags }.ConvertSymbol(symbol, new TextWriterTokenWriter(writer),
+				settings.CSharpFormattingOptions);
+			return writer.ToString();
 		}
 	}
 }
