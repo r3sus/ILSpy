@@ -97,8 +97,10 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.Kind = TypeKind.Void;
 				} else {
 					this.Kind = TypeKind.Struct;
-					this.IsByRefLike = handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsByRefLike);
-					this.IsReadOnly = handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
+					this.IsByRefLike = (module.TypeSystemOptions & TypeSystemOptions.RefStructs) == TypeSystemOptions.RefStructs
+									   && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsByRefLike);
+					this.IsReadOnly = (module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == TypeSystemOptions.ReadOnlyStructsAndParameters 
+									  && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
 				}
 			} else if (handle.IsDelegate) {
 				this.Kind = TypeKind.Delegate;
