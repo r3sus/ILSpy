@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace ICSharpCode.Decompiler.DebugInfo
 {
-	readonly struct AsyncDebugInfo
+	public readonly struct AsyncDebugInfo
 	{
 		public readonly int CatchHandlerOffset;
 		public readonly ImmutableArray<Await> Awaits;

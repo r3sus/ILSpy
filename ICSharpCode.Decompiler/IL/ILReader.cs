@@ -46,6 +46,10 @@ namespace ICSharpCode.Decompiler.IL
 		public bool UseDebugSymbols { get; set; }
 		public List<string> Warnings { get; } = new List<string>();
 
+		// List of candidate locations for sequence points. Includes empty il stack locations, any nop instructions, and the instruction following
+		// a call instruction. 
+		public List<int> SequencePointCandidates { get; private set; }
+
 		/// <summary>
 		/// Creates a new ILReader instance.
 		/// </summary>
@@ -59,6 +63,7 @@ namespace ICSharpCode.Decompiler.IL
 			this.module = module;
 			this.compilation = module.Compilation;
 			this.metadata = module.metadata;
+			this.SequencePointCandidates = new List<int>();
 		}
 
 		GenericContext genericContext;
@@ -361,6 +366,7 @@ namespace ICSharpCode.Decompiler.IL
 				int start = (int)body.Instructions[nextInstructionIndex].Offset;
 				StoreStackForOffset(start, ref currentStack);
 				currentInstructionStart = start;
+				bool startedWithEmptyStack = currentStack.IsEmpty;
 				ILInstruction decodedInstruction;
 				try {
 					decodedInstruction = DecodeInstruction();
@@ -379,7 +385,10 @@ namespace ICSharpCode.Decompiler.IL
 						currentStack = ImmutableStack<ILVariable>.Empty;
 					}
 				}
-				//Debug.Assert(currentInstruction.Next == null || currentInstruction.Next.Offset == end);
+
+				if (IsSequencePointInstruction(decodedInstruction) || startedWithEmptyStack) {
+					this.SequencePointCandidates.Add(decodedInstruction.StartILOffset);
+				}
 			}
 
 			var visitor = new CollectStackVariablesVisitor(unionFind);
@@ -388,6 +397,20 @@ namespace ICSharpCode.Decompiler.IL
 			}
 			stackVariables = visitor.variables;
 			InsertStackAdjustments();
+		}
+
+		private bool IsSequencePointInstruction(ILInstruction instruction)
+		{
+			if (instruction.OpCode == OpCode.Nop ||
+				(this.instructionBuilder.Count > 0 &&
+				this.instructionBuilder.Last().OpCode == OpCode.Call ||
+				this.instructionBuilder.Last().OpCode == OpCode.CallIndirect ||
+				this.instructionBuilder.Last().OpCode == OpCode.CallVirt)) {
+
+				return true;
+			} else {
+				return false;
+			}
 		}
 
 		void InsertStackAdjustments()
@@ -488,6 +511,10 @@ namespace ICSharpCode.Decompiler.IL
 				function.Warnings.Add("Discarded unreachable code: "
 							+ string.Join(", ", removedBlocks.Select(b => $"IL_{b.StartILOffset:x4}")));
 			}
+
+			this.SequencePointCandidates.Sort();
+			function.SequencePointCandidates = this.SequencePointCandidates;
+
 			function.Warnings.AddRange(Warnings);
 			return function;
 		}
