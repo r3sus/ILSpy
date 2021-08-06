@@ -173,7 +173,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				ty = mod.ElementType;
 			}
 			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation,
-				handle, metadata, module.TypeSystemOptions,
+				handle, metadata, module.OptionsForEntity(this),
 				DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious);
 			return LazyInit.GetOrSet(ref this.type, ty);
 		}

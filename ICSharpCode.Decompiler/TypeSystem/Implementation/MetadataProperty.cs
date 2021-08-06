@@ -113,24 +113,33 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 				List<IParameter> param = new List<IParameter>();
 				var gCtx = new GenericContext(DeclaringType.TypeParameters);
+				var declTypeDef = this.DeclaringTypeDefinition;
 				Nullability nullableContext;
 
 				if (propertyHandle.GetMethod != null) {
 					nullableContext = propertyHandle.GetMethod.CustomAttributes.GetNullableContext()
-									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+									  ?? declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				} else if (propertyHandle.SetMethod != null) {
 					nullableContext = propertyHandle.SetMethod.CustomAttributes.GetNullableContext()
-									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+									  ?? declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				} else {
-					nullableContext = DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+					nullableContext = declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				}
+
+				// We call OptionsForEntity() for the declaring type, not the property itself,
+				// because the property's accessibilty isn't stored in metadata but computed.
+				// Otherwise we'd get infinite recursion, because computing the accessibility
+				// requires decoding the signature for the GetBaseMembers() call.
+				// Roslyn uses the same workaround (see the NullableTypeDecoder.TransformType
+				// call in PEPropertySymbol).
+				var typeOptions = module.OptionsForEntity(declTypeDef);
 
 				foreach (Parameter par in propertyHandle.GetParameters()) {
 					if (par.IsNormalMethodParameter) {
 						var deco = par.Type.DecodeSignature(module, gCtx);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
-							par.ParamDef, module.metadata, module.TypeSystemOptions, nullableContext);
+							par.ParamDef, module.metadata, typeOptions, nullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}
@@ -145,30 +154,38 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					return returnType;
 				var deocded = propertyHandle.PropertySig.RetType.DecodeSignature(module,
 					new GenericContext(DeclaringType.TypeParameters));
+				var declTypeDef = this.DeclaringTypeDefinition;
 				Nullability nullableContext;
 
 				if (propertyHandle.GetMethod != null) {
 					nullableContext = propertyHandle.GetMethod.CustomAttributes.GetNullableContext()
-									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+									  ?? declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				} else if (propertyHandle.SetMethod != null) {
 					nullableContext = propertyHandle.SetMethod.CustomAttributes.GetNullableContext()
-									  ?? DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+									  ?? declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				} else {
-					nullableContext = DeclaringTypeDefinition?.NullableContext ?? Nullability.Oblivious;
+					nullableContext = declTypeDef?.NullableContext ?? Nullability.Oblivious;
 				}
+				// We call OptionsForEntity() for the declaring type, not the property itself,
+				// because the property's accessibilty isn't stored in metadata but computed.
+				// Otherwise we'd get infinite recursion, because computing the accessibility
+				// requires decoding the signature for the GetBaseMembers() call.
+				// Roslyn uses the same workaround (see the NullableTypeDecoder.TransformType
+				// call in PEPropertySymbol).
+				var typeOptions = module.OptionsForEntity(declTypeDef);
 
 				var ret = ApplyAttributeTypeVisitor.ApplyAttributesToType(deocded,
-					module.Compilation, propertyHandle, module.metadata, module.TypeSystemOptions, nullableContext);
+					module.Compilation, propertyHandle, module.metadata, typeOptions, nullableContext);
 				return LazyInit.GetOrSet(ref this.returnType, ret);
 			}
 		}
-		
+
 		public bool ReturnTypeIsRefReadOnly {
 			get {
 				return propertyHandle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
 			}
 		}
-		
+
 		#endregion
 
 		public bool IsExplicitInterfaceImplementation => AnyAccessor?.IsExplicitInterfaceImplementation ?? false;
