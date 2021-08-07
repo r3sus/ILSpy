@@ -17,7 +17,6 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
@@ -26,33 +25,29 @@ using ICSharpCode.Decompiler.TypeSystem;
 namespace ICSharpCode.Decompiler.CSharp.Transforms
 {
 	/// <summary>
-	/// If the first element of a constructor is a chained constructor call, convert it into a constructor initializer.
+	/// This transform moves field initializers at the start of constructors to their respective field declarations
+	/// and transforms this-/base-ctor calls in constructors to constructor initializers.
 	/// </summary>
-	public class ConvertConstructorCallIntoInitializer : IAstTransform
+	public class TransformFieldAndConstructorInitializers : DepthFirstAstVisitor, IAstTransform
 	{
+		TransformContext context;
+
 		public void Run(AstNode node, TransformContext context)
 		{
-			var visitor = new ConvertConstructorCallIntoInitializerVisitor(context);
-
-			// If we're viewing some set of members (fields are direct children of SyntaxTree),
-			// we also need to handle those:
-			visitor.HandleInstanceFieldInitializers(node.Children);
-			visitor.HandleStaticFieldInitializers(node.Children);
-
-			node.AcceptVisitor(visitor);
-
-			visitor.RemoveSingleEmptyConstructor(node.Children, context.CurrentTypeDefinition);
-		}
-	}
-
-	sealed class ConvertConstructorCallIntoInitializerVisitor : DepthFirstAstVisitor
-	{
-		readonly TransformContext context;
-
-		public ConvertConstructorCallIntoInitializerVisitor(TransformContext context)
-		{
-			Debug.Assert(context != null);
 			this.context = context;
+
+			try {
+				// If we're viewing some set of members (fields are direct children of SyntaxTree),
+				// we also need to handle those:
+				HandleInstanceFieldInitializers(node.Children);
+				HandleStaticFieldInitializers(node.Children);
+
+				node.AcceptVisitor(this);
+
+				RemoveSingleEmptyConstructor(node.Children, context.CurrentTypeDefinition);
+			} finally {
+				this.context = null;
+			}
 		}
 
 		public override void VisitConstructorDeclaration(ConstructorDeclaration constructorDeclaration)
@@ -140,7 +135,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			HandleStaticFieldInitializers(typeDeclaration.Members);
 		}
 
-		internal void HandleInstanceFieldInitializers(IEnumerable<AstNode> members)
+		void HandleInstanceFieldInitializers(IEnumerable<AstNode> members)
 		{
 			var instanceCtors = members.OfType<ConstructorDeclaration>().Where(c => (c.Modifiers & Modifiers.Static) == 0).ToArray();
 			var instanceCtorsNotChainingWithThis = instanceCtors.Where(ctor => !thisCallPattern.IsMatch(ctor.Body.Statements.FirstOrDefault())).ToArray();
@@ -199,22 +194,35 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 		}
 
-		internal void RemoveSingleEmptyConstructor(IEnumerable<AstNode> members, ITypeDefinition contextTypeDefinition)
+		void RemoveSingleEmptyConstructor(IEnumerable<AstNode> members, ITypeDefinition contextTypeDefinition)
 		{
+			// if we're outside of a type definition skip this altogether
 			if (contextTypeDefinition == null) return;
+			// first get non-static constructor declarations from the AST
 			var instanceCtors = members.OfType<ConstructorDeclaration>().Where(c => (c.Modifiers & Modifiers.Static) == 0).ToArray();
-			if (instanceCtors.Length == 1 && (members.Skip(1).Any() || instanceCtors[0].Parent is TypeDeclaration)) {
-				ConstructorDeclaration emptyCtor = new ConstructorDeclaration();
-				emptyCtor.Modifiers = contextTypeDefinition.IsAbstract ? Modifiers.Protected : Modifiers.Public;
-				if (instanceCtors[0].HasModifier(Modifiers.Unsafe))
-					emptyCtor.Modifiers |= Modifiers.Unsafe;
-				emptyCtor.Body = new BlockStatement();
-				if (emptyCtor.IsMatch(instanceCtors[0]))
-					instanceCtors[0].Remove();
+			// if there's exactly one ctor and it's part of a type declaration or there's more than one member in the current selection
+			// we can remove the constructor. (We do not want to hide the constructor if the user explicitly selected it in the tree view.)
+			if (instanceCtors.Length == 1 && (instanceCtors[0].Parent is TypeDeclaration || members.Skip(1).Any())) {
+				var ctor = instanceCtors[0];
+				// dynamically create a pattern of an empty ctor
+				ConstructorDeclaration emptyCtorPattern = new ConstructorDeclaration();
+				emptyCtorPattern.Modifiers = contextTypeDefinition.IsAbstract ? Modifiers.Protected : Modifiers.Public;
+				if (ctor.HasModifier(Modifiers.Unsafe))
+					emptyCtorPattern.Modifiers |= Modifiers.Unsafe;
+				emptyCtorPattern.Body = new BlockStatement();
+
+				if (emptyCtorPattern.IsMatch(ctor)) {
+					//TODO: fix this later
+					// bool retainBecauseOfDocumentation = ctor.GetSymbol() is IMethod ctorMethod
+					// 	&& context.Settings.ShowXmlDocumentation
+					// 	&& context.DecompileRun.DocumentationProvider?.GetDocumentation(ctorMethod) != null;
+					// if (!retainBecauseOfDocumentation)
+						ctor.Remove();
+				}
 			}
 		}
 
-		internal void HandleStaticFieldInitializers(IEnumerable<AstNode> members)
+		void HandleStaticFieldInitializers(IEnumerable<AstNode> members)
 		{
 			// Translate static constructor into field initializers if the class is BeforeFieldInit
 			var staticCtor = members.OfType<ConstructorDeclaration>().FirstOrDefault(c => (c.Modifiers & Modifiers.Static) == Modifiers.Static);
