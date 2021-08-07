@@ -45,10 +45,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		public DecompilerSettings Settings { get; }
 		public CancellationToken CancellationToken { get; set; }
 		public Stepper Stepper { get; set; }
+		public PEFile PEFile => TypeSystem.MainModule.PEFile;
 
 		internal DecompileRun DecompileRun { get; set; }
-		internal ResolvedUsingScope UsingScope => DecompileRun.UsingScope.Resolve(TypeSystem);
-		public PEFile PEFile => TypeSystem.MainModule.PEFile;
+		internal ResolvedUsingScope UsingScope => DecompileRun?.UsingScope.Resolve(TypeSystem);
 
 		public ILTransformContext(ILFunction function, IDecompilerTypeSystem typeSystem, DecompilerSettings settings = null)
 		{
