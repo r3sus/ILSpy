@@ -335,7 +335,7 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		static bool IsAnonymousMethodCacheField(dnlib.DotNet.IField field)
 		{
-			return field.Name.StartsWith("CS$<>", StringComparison.Ordinal) || field.Name.StartsWith("<>f__am", StringComparison.Ordinal);
+			return field.Name.StartsWith("CS$<>", StringComparison.Ordinal) || field.Name.StartsWith("<>f__am", StringComparison.Ordinal) || field.Name.StartsWith("<>f__mg", StringComparison.Ordinal);
 		}
 
 		static bool IsClosureType(TypeDef type)
@@ -347,7 +347,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			return type.BaseType.FullName == "System.Object" && !type.HasInterfaces;
 		}
 		#endregion
-		
+
 		static TypeSystemAstBuilder CreateAstBuilder(DecompilerSettings settings)
 		{
 			var typeSystemAstBuilder = new TypeSystemAstBuilder();
@@ -1281,7 +1281,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						long initValue = (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, constantValue, false);
 						enumDec.Initializer = typeSystemAstBuilder.ConvertConstantValue(decompilationContext.CurrentTypeDefinition.EnumUnderlyingType, constantValue);
 						if (enumDec.Initializer is PrimitiveExpression primitive
-							&& initValue >= 0 && (decompilationContext.CurrentTypeDefinition.HasAttribute(KnownAttribute.Flags) 
+							&& initValue >= 0 && (decompilationContext.CurrentTypeDefinition.HasAttribute(KnownAttribute.Flags)
 												  || (initValue > 9 && (unchecked(initValue & (initValue - 1)) == 0 || unchecked(initValue & (initValue + 1)) == 0)))) {
 							primitive.Format = LiteralFormat.HexadecimalNumber;
 						}
