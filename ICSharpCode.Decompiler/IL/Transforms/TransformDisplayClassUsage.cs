@@ -397,7 +397,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				// IL_0000: ldarg.0
 				// IL_0001: call instance void [mscorlib]System.Object::.ctor()
 				// IL_0006: ret
-				if (DecodeOpCodeSkipNop(reader, ref i).OpCode.Code != dnlib.DotNet.Emit.Code.Ldarg_0)
+				var ldarg = DecodeOpCodeSkipNop(reader, ref i);
+				if (!ldarg.IsLdarg() || ldarg.GetParameterIndex() != 0)
 					return false;
 				var call = DecodeOpCodeSkipNop(reader, ref i);
 				if (call.OpCode.Code != dnlib.DotNet.Emit.Code.Call)
