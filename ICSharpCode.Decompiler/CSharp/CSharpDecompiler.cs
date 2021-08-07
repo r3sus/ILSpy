@@ -157,6 +157,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				new HighLevelLoopTransform(),
 				new ReduceNestingTransform(),
 				new IntroduceDynamicTypeOnLocals(),
+				new IntroduceNativeIntTypeOnLocals(),
 				new AssignVariableNames(),
 			};
 		}

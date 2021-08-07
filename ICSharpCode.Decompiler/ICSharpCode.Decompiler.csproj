@@ -61,6 +61,7 @@
     <Compile Include="IL\Transforms\IndexRangeTransform.cs" />
     <Compile Include="CSharp\TranslatedStatement.cs" />
     <Compile Include="IL\ControlFlow\AwaitInFinallyTransform.cs" />
+    <Compile Include="IL\Transforms\IntroduceNativeIntTypeOnLocals.cs" />
     <Compile Include="CSharp\Syntax\AstNode.cs" />
     <Compile Include="CSharp\Syntax\AstNodeCollection.cs" />
     <Compile Include="CSharp\Syntax\AstType.cs" />

@@ -151,7 +151,7 @@ namespace ICSharpCode.Decompiler.IL
 			CompoundTargetKind targetKind, ILInstruction value, IType type, CompoundEvalMode evalMode)
 			: base(OpCode.NumericCompoundAssign, evalMode, target, targetKind, value)
 		{
-			Debug.Assert(IsBinaryCompatibleWithType(binary, type));
+			Debug.Assert(IsBinaryCompatibleWithType(binary, type, null));
 			this.CheckForOverflow = binary.CheckForOverflow;
 			this.Sign = binary.Sign;
 			this.LeftInputType = binary.LeftInputType;
@@ -168,7 +168,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Gets whether the specific binary instruction is compatible with a compound operation on the specified type.
 		/// </summary>
-		internal static bool IsBinaryCompatibleWithType(BinaryNumericInstruction binary, IType type)
+		internal static bool IsBinaryCompatibleWithType(BinaryNumericInstruction binary, IType type, DecompilerSettings settings)
 		{
 			if (binary.IsLifted) {
 				if (!NullableType.IsNullable(type))
@@ -200,6 +200,19 @@ namespace ICSharpCode.Decompiler.IL
 						) != null;
 					default:
 						return false; // operator not supported on pointer types
+				}
+			} else if (type.IsKnownType(KnownTypeCode.IntPtr) || type.IsKnownType(KnownTypeCode.UIntPtr)) {
+				// "target.intptr *= 2;" is compiler error, but
+				// "target.intptr *= (nint)2;" works
+				if (settings != null && !settings.NativeIntegers) {
+					// But if native integers are not available, we cannot use compound assignment.
+					return false;
+				}
+				// The trick with casting the RHS to n(u)int doesn't work for shifts:
+				switch (binary.Operator) {
+					case BinaryNumericOperator.ShiftLeft:
+					case BinaryNumericOperator.ShiftRight:
+						return false;
 				}
 			}
 			if (binary.Sign != Sign.None) {
