@@ -355,23 +355,18 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			var trueExitInst = GetExit(ifInst.TrueInst);
 			var exitInst = GetExit(block);
 			context.Step($"InvertIf at IL_{ifInst.StartILOffset:x4}", ifInst);
-			
+
 			//if the then block terminates, else blocks are redundant, and should not exist
 			Debug.Assert(IsEmpty(ifInst.FalseInst));
 
 			//save a copy
 			var thenInst = ifInst.TrueInst;
 
-			if (ifInst != block.Instructions.SecondToLastOrDefault()) {
-				// extract "else...; exit".
-				// Note that this will only extract instructions that were previously inlined from another block
-				// (via InlineExitBranch), so the instructions are already fully-transformed.
-				// So it's OK to move them into a nested block again (which hides them from the following block transforms).
-				ifInst.TrueInst = ExtractBlock(block, block.Instructions.IndexOf(ifInst) + 1, block.Instructions.Count);
-			} else {
-				block.Instructions.RemoveAt(block.Instructions.Count - 1);
-				ifInst.TrueInst = exitInst;
-			}
+			// extract "else...; exit".
+			// Note that this will only extract instructions that were previously inlined from another block
+			// (via InlineExitBranch), so the instructions are already fully-transformed.
+			// So it's OK to move them into a nested block again (which hides them from the following block transforms).
+			ifInst.TrueInst = ExtractBlock(block, block.Instructions.IndexOf(ifInst) + 1, block.Instructions.Count);
 
 			if (thenInst is Block thenBlock) {
 				block.Instructions.AddRange(thenBlock.Instructions);
@@ -524,7 +519,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			if (strongly)
 				return 0;
-			
+
 			// prefer arranging stuff in IL order
 			if (exit1.MatchBranch(out var block1) && exit2.MatchBranch(out var block2))
 				return block1.StartILOffset.CompareTo(block2.StartILOffset);
@@ -532,7 +527,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			// use the IL offsets of the arguments of leave instructions instead of the leaves themselves if possible
 			if (exit1.MatchLeave(out var _, out var arg1) && exit2.MatchLeave(out var _, out var arg2))
 				return arg1.StartILOffset.CompareTo(arg2.StartILOffset);
-				
+
 			return exit1.StartILOffset.CompareTo(exit2.StartILOffset);
 		}
 
