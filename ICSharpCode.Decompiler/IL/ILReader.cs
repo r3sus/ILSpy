@@ -47,7 +47,7 @@ namespace ICSharpCode.Decompiler.IL
 		public List<string> Warnings { get; } = new List<string>();
 
 		// List of candidate locations for sequence points. Includes empty il stack locations, any nop instructions, and the instruction following
-		// a call instruction. 
+		// a call instruction.
 		public List<int> SequencePointCandidates { get; private set; }
 
 		/// <summary>
@@ -1442,8 +1442,8 @@ namespace ICSharpCode.Decompiler.IL
 				signature.CallingConvention,
 				module.ResolveType(signature.RetType, genericContext),
 				parameterTypes.ToImmutableArray(),
-				arguments,
-				functionPointer
+				functionPointer,
+				arguments
 			);
 			if (call.ResultType != StackType.Void)
 				return Push(call);
