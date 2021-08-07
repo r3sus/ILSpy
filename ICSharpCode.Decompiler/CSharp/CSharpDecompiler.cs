@@ -531,15 +531,20 @@ namespace ICSharpCode.Decompiler.CSharp
 				for (int i = 0; i < part.Body.Instructions.Count; i++) {
 					var instr = part.Body.Instructions[i];
 					switch (instr.OpCode.Code) {
+						case Code.Newobj:
 						case Code.Stfld:
 							// async and yield fsms:
 							TypeDef fsmTypeDef;
 							switch (instr.Operand) {
+								case MethodDef fsmMethod: {
+									fsmTypeDef = fsmMethod.DeclaringType;
+									break;
+								}
 								case FieldDef fsmField: {
 									fsmTypeDef = fsmField.DeclaringType;
 									break;
 								}
-								case MemberRef memberRef when memberRef.IsFieldRef: {
+								case MemberRef memberRef: {
 									fsmTypeDef = ExtractDeclaringType(memberRef);
 									break;
 								}
