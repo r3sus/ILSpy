@@ -56,6 +56,7 @@
     <Compile Include="CSharp\OutputVisitor\GenericGrammarAmbiguityVisitor.cs" />
     <Compile Include="CSharp\RequiredNamespaceCollector.cs" />
     <Compile Include="CSharp\SequencePointBuilder.cs" />
+    <Compile Include="IL\Transforms\IndexRangeTransform.cs" />
     <Compile Include="CSharp\TranslatedStatement.cs" />
     <Compile Include="IL\ControlFlow\AwaitInFinallyTransform.cs" />
     <Compile Include="CSharp\Syntax\AstNode.cs" />
@@ -355,6 +356,7 @@
     <Compile Include="TypeSystem\Implementation\MetadataTypeDefinition.cs" />
     <Compile Include="TypeSystem\Implementation\MetadataTypeParameter.cs" />
     <Compile Include="TypeSystem\Implementation\SpecializedParameter.cs" />
+    <Compile Include="TypeSystem\Implementation\SyntheticRangeIndexer.cs" />
     <Compile Include="TypeSystem\MetadataModule.cs" />
     <Compile Include="TypeSystem\ModifiedType.cs" />
     <Compile Include="TypeSystem\Implementation\PinnedType.cs" />
