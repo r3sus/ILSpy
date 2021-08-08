@@ -111,6 +111,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		internal static bool TransformSpanTArrayInitialization(NewObj inst, StatementTransformContext context, out Block block)
 		{
 			block = null;
+			if (!context.Settings.ArrayInitializers)
+				return false;
 			if (MatchSpanTCtorWithPointerAndSize(inst, context, out var elementType, out var field, out var size)) {
 				if (field != null && field.InitialValue != null) {
 					var valuesList = new List<ILInstruction>();
