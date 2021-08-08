@@ -256,6 +256,9 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				preprocessorSymbols.Add("LEGACY_CSC");
 				preprocessorSymbols.Add("LEGACY_VBC");
 			}
+			if (flags.HasFlag(CompilerOptions.Preview)) {
+				preprocessorSymbols.Add("CS90");
+			}
 			return preprocessorSymbols;
 		}
 

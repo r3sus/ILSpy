@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 using ICSharpCode.Decompiler.CSharp.Resolver;
@@ -26,6 +27,7 @@ using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.IL;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.TypeSystem;
+using ICSharpCode.Decompiler.TypeSystem.Implementation;
 
 namespace ICSharpCode.Decompiler
 {
@@ -118,6 +120,7 @@ namespace ICSharpCode.Decompiler
 			if (symbol != null && node.Role == Roles.Type && node.Parent is ObjectCreateExpression) {
 				symbol = node.Parent.GetSymbol();
 			}
+
 			if (node is IdentifierExpression && node.Role == Roles.TargetExpression && node.Parent is InvocationExpression && symbol is IMember member) {
 				var declaringType = member.DeclaringType;
 				if (declaringType != null && declaringType.Kind == TypeKind.Delegate)
@@ -131,10 +134,8 @@ namespace ICSharpCode.Decompiler
 			if (symbol == null)
 				return null;
 
-			//if (settings.AutomaticEvents && member is FieldDefinition) {
-			//	var field = (FieldDefinition)member;
-			//	return field.DeclaringType.Events.FirstOrDefault(ev => ev.Name == field.Name) ?? member;
-			//}
+			if (symbol is LocalFunctionMethod)
+				return null;
 
 			return symbol;
 		}
@@ -150,12 +151,16 @@ namespace ICSharpCode.Decompiler
 			if (letClauseVariable != null)
 				return letClauseVariable;
 
-			var gotoStatement = node as GotoStatement;
-			if (gotoStatement != null)
-			{
+			if (node is GotoStatement gotoStatement) {
 				var method = nodeStack.Select(nd => nd.GetSymbol() as IMethod).FirstOrDefault(mr => mr != null);
 				if (method != null)
 					return method + gotoStatement.Label;
+			}
+
+			if (node.Role == Roles.TargetExpression && node.Parent is InvocationExpression) {
+				var symbol = node.Parent.GetSymbol();
+				if (symbol is LocalFunctionMethod)
+					return symbol;
 			}
 
 			return null;
@@ -185,8 +190,8 @@ namespace ICSharpCode.Decompiler
 					return method + label.Label;
 			}
 
-			if (node is LocalFunctionDeclarationStatement) {
-				var localFunction = node.GetResolveResult() as MemberResolveResult;
+			if (node is MethodDeclaration && node.Parent is LocalFunctionDeclarationStatement) {
+				var localFunction = node.Parent.GetResolveResult() as MemberResolveResult;
 				if (localFunction != null)
 					return localFunction.Member;
 			}
@@ -375,9 +380,6 @@ namespace ICSharpCode.Decompiler
 			}
 		}
 
-//		Stack<TextLocation> startLocations = new Stack<TextLocation>();
-//		Stack<MethodDebugSymbols> symbolsStack = new Stack<MethodDebugSymbols>();
-
 		public override void StartNode(AstNode node)
 		{
 			if (nodeStack.Count == 0) {
@@ -411,10 +413,10 @@ namespace ICSharpCode.Decompiler
 			if (nodeStack.Pop() != node)
 				throw new InvalidOperationException();
 		}
-		
+
 		public static bool IsDefinition(ref AstNode node)
 		{
-			if (node is EntityDeclaration)
+			if (node is EntityDeclaration && !(node.Parent is LocalFunctionDeclarationStatement))
 				return true;
 			if (node is VariableInitializer && node.Parent is FieldDeclaration) {
 				node = node.Parent;

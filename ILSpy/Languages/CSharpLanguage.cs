@@ -549,14 +549,19 @@ namespace ICSharpCode.ILSpy
 					return base.GetTooltip(member);
 			}
 			var flags = ConversionFlags.All & ~(ConversionFlags.ShowBody | ConversionFlags.PlaceReturnTypeAfterParameterList);
+			var output = new StringWriter();
+			var decoratedWriter = new TextWriterTokenWriter(output);
+			var writer = TokenWriter.InsertRequiredSpaces(decoratedWriter);
 			var settings = new DecompilationOptions().DecompilerSettings;
 			if (!settings.LiftNullables) {
 				flags &= ~ConversionFlags.UseNullableSpecifierForValueTypes;
 			}
-			StringWriter writer = new StringWriter();
-			new CSharpAmbience { ConversionFlags = flags }.ConvertSymbol(symbol, new TextWriterTokenWriter(writer),
+			if (symbol is IMethod m && m.IsLocalFunction) {
+				writer.WriteIdentifier(Identifier.Create("(local)"));
+			}
+			new CSharpAmbience { ConversionFlags = flags }.ConvertSymbol(symbol, writer,
 				settings.CSharpFormattingOptions);
-			return writer.ToString();
+			return output.ToString();
 		}
 	}
 }

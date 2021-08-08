@@ -93,21 +93,20 @@ namespace ICSharpCode.Decompiler.CSharp
 					CollectNamespacesForTypeReference(field.ReturnType);
 					break;
 				case IMethod method:
-					HandleAttributes(method.GetAttributes());
-					HandleAttributes(method.GetReturnTypeAttributes());
-					CollectNamespacesForTypeReference(method.ReturnType);
-					foreach (var param in method.Parameters) {
-						HandleAttributes(param.GetAttributes());
-						CollectNamespacesForTypeReference(param.Type);
-					}
-					HandleTypeParameters(method.TypeParameters);
-					if (method.MetadataToken != null) {
-						var parts = mappingInfo.GetMethodParts((MethodDef)method.MetadataToken).ToList();
-						foreach (var methodDef in parts) {
-							HandleOverrides(methodDef.Overrides, module);
-							if (methodDef.HasBody)
-								CollectNamespacesFromMethodBody(methodDef.Body, module);
+					var parts = mappingInfo.GetMethodParts((MethodDef)method.MetadataToken).ToList();
+					foreach (var part in parts) {
+						var partMethod = module.ResolveMethod(part, genericContext);
+						HandleAttributes(partMethod.GetAttributes());
+						HandleAttributes(partMethod.GetReturnTypeAttributes());
+						CollectNamespacesForTypeReference(partMethod.ReturnType);
+						foreach (var param in partMethod.Parameters) {
+							HandleAttributes(param.GetAttributes());
+							CollectNamespacesForTypeReference(param.Type);
 						}
+						HandleTypeParameters(partMethod.TypeParameters);
+						HandleOverrides(part.Overrides, module);
+						if (part.HasBody)
+							CollectNamespacesFromMethodBody(part.Body, module);
 					}
 					break;
 				case IProperty property:
