@@ -519,15 +519,38 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 						}
 					}
 					replacements.Add((v.InsertionPoint.nextNode, vds));
-				} else if (CanBeDeclaredAsOutVariable(v, out var dirExpr)) {
-					// 'T v; SomeCall(out v);' can be combined to 'SomeCall(out var v);'
+				}
+				else if (CanBeDeclaredAsOutVariable(v, out var dirExpr))
+				{
+					// 'T v; SomeCall(out v);' can be combined to 'SomeCall(out T v);'
 					AstType type;
 					if (context.Settings.AnonymousTypes && v.Type.ContainsAnonymousType()) {
 						type = new SimpleType("var");
-					} else {
+					}
+					else if (dirExpr.Annotation<UseImplicitlyTypedOutAnnotation>() != null)
+					{
+						type = new SimpleType("var");
+					}
+					else
+					{
 						type = context.TypeSystemAstBuilder.ConvertType(v.Type);
 					}
-					var ovd = new OutVarDeclarationExpression(type, v.Name);
+					string name;
+					// Variable is not used and discards are allowed, we can simplify this to 'out T _'.
+					// TODO: if no variable named _ is declared and var is used instead of T, use out _.
+					// Note: ExpressionBuilder.HidesVariableWithName produces inaccurate results, because it
+					// does not take lambdas and local functions into account, that are defined in the same
+					// scope as v.
+					if (context.Settings.Discards && v.ILVariable.LoadCount == 0
+						&& v.ILVariable.StoreCount == 0 && v.ILVariable.AddressCount == 1)
+					{
+						name = "_";
+					}
+					else
+					{
+						name = v.Name;
+					}
+					var ovd = new OutVarDeclarationExpression(type, name);
 					ovd.Variable.AddAnnotation(new ILVariableResolveResult(ilVariable));
 					ovd.CopyAnnotationsFrom(dirExpr);
 					replacements.Add((dirExpr, ovd));
