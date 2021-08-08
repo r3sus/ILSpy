@@ -136,6 +136,7 @@ namespace ICSharpCode.Decompiler.CSharp
 							new TransformCollectionAndObjectInitializers(),
 							new TransformExpressionTrees(),
 							new IndexRangeTransform(),
+							new DeconstructionTransform(),
 							new NamedArgumentTransform(),
 							new UserDefinedLogicTransform()
 						),

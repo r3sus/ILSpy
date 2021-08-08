@@ -56,9 +56,15 @@
     <Compile Include="CSharp\OutputVisitor\GenericGrammarAmbiguityVisitor.cs" />
     <Compile Include="CSharp\RequiredNamespaceCollector.cs" />
     <Compile Include="CSharp\SequencePointBuilder.cs" />
+    <Compile Include="CSharp\Syntax\Expressions\DeclarationExpression.cs" />
     <Compile Include="CSharp\Syntax\Expressions\SwitchExpression.cs" />
     <Compile Include="CSharp\Syntax\FunctionPointerType.cs" />
+    <Compile Include="CSharp\Syntax\VariableDesignation.cs" />
+    <Compile Include="IL\Transforms\DeconstructionTransform.cs" />
     <Compile Include="IL\Transforms\FixLoneIsInst.cs" />
+    <Compile Include="IL\Instructions\DeconstructInstruction.cs" />
+    <Compile Include="IL\Instructions\DeconstructResultInstruction.cs" />
+    <Compile Include="IL\Instructions\MatchInstruction.cs" />
     <Compile Include="IL\Transforms\IndexRangeTransform.cs" />
     <Compile Include="CSharp\TranslatedStatement.cs" />
     <Compile Include="IL\ControlFlow\AwaitInFinallyTransform.cs" />
