@@ -1080,10 +1080,10 @@ namespace ICSharpCode.Decompiler.CSharp
 				return null;
 			if (inst.Operator == BinaryNumericOperator.Sub && inst.LeftInputType == StackType.Ref && inst.RightInputType == StackType.Ref) {
 				// ref - ref => i
-				return CallUnsafeIntrinsic("ByteOffset", new[] { 
+				return CallUnsafeIntrinsic("ByteOffset", new[] {
 					// ByteOffset() expects the parameters the wrong way around, so order using named arguments
-					new NamedArgumentExpression("target", left.Expression), 
-					new NamedArgumentExpression("origin", right.Expression) 
+					new NamedArgumentExpression("target", left.Expression),
+					new NamedArgumentExpression("origin", right.Expression)
 				}, compilation.FindType(KnownTypeCode.IntPtr), inst);
 			}
 			if (inst.LeftInputType == StackType.Ref && inst.RightInputType.IsIntegerType()
@@ -1152,7 +1152,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			if (!expr.Type.IsCSharpPrimitiveIntegerType() && !expr.Type.IsCSharpNativeIntegerType()) {
 				// pointer arithmetic accepts all primitive integer types, but no enums etc.
-				expr = expr.ConvertTo(FindArithmeticType(expr.Type.GetStackType(), expr.Type.GetSign()), this); 
+				expr = expr.ConvertTo(FindArithmeticType(expr.Type.GetStackType(), expr.Type.GetSign()), this);
 			}
 			return expr;
 		}
@@ -1242,7 +1242,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				return false;
 			}
 		}
-		
+
 		TranslatedExpression HandleBinaryNumeric(BinaryNumericInstruction inst, BinaryOperatorType op, TranslationContext context)
 		{
 			var resolverWithOverflowCheck = resolver.WithCheckForOverflow(inst.CheckForOverflow);
@@ -1265,7 +1265,7 @@ namespace ICSharpCode.Decompiler.CSharp
 
 			if (op == BinaryOperatorType.Subtract && inst.Left.MatchLdcI(0)) {
 				IType rightUType = NullableType.GetUnderlyingType(right.Type);
-				if (rightUType.IsKnownType(KnownTypeCode.Int32) || rightUType.IsKnownType(KnownTypeCode.Int64) 
+				if (rightUType.IsKnownType(KnownTypeCode.Int32) || rightUType.IsKnownType(KnownTypeCode.Int64)
 					|| rightUType.IsCSharpSmallIntegerType() || rightUType.IsCSharpNativeIntegerType()) {
 					// unary minus is supported on signed int and long, and on the small integer types (since they promote to int)
 					var uoe = new UnaryOperatorExpression(UnaryOperatorType.Minus, right.Expression);
@@ -1335,7 +1335,7 @@ namespace ICSharpCode.Decompiler.CSharp
 
 		/// <summary>
 		/// Gets a type used for performing arithmetic with the stack type and sign.
-		/// 
+		///
 		/// This may result in a larger type than requested when the selected C# version
 		/// doesn't support native integers.
 		/// Should only be used after a call to PrepareArithmeticArgument()
@@ -1350,7 +1350,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					// If native integers are not available, use 64-bit arithmetic instead
 					stackType = StackType.I8;
 				}
-			} 
+			}
 			return compilation.FindType(stackType.ToKnownTypeCode(sign));
 		}
 
@@ -2031,19 +2031,27 @@ namespace ICSharpCode.Decompiler.CSharp
 			statementBuilder.currentIsIterator = false;
 			try {
 				var body = statementBuilder.ConvertAsBlock(container);
-				body.InsertChildAfter(null, new Comment(" Could not convert BlockContainer to single expression"), Roles.Comment);
+				var comment = new Comment(" Could not convert BlockContainer to single expression");
+				body.InsertChildAfter(null, comment, Roles.Comment);
+				// set ILVariable.HasInitialValue for any variables being used inside the container
+				foreach (var stloc in container.Descendants.OfType<StLoc>())
+					stloc.Variable.HasInitialValue = true;
 				var ame = new AnonymousMethodExpression { Body = body };
 				var systemFuncType = compilation.FindType(typeof(Func<>));
 				var blockReturnType = InferReturnType(body);
 				var delegateType = new ParameterizedType(systemFuncType, blockReturnType);
 				var invocationTarget = new CastExpression(ConvertType(delegateType), ame);
 				ResolveResult rr;
-				// This might happen when trying to decompile an assembly built for a target framework where System.Func<T> does not exist yet.
+				// This might happen when trying to decompile an assembly built for a target framework
+				// where System.Func<T> does not exist yet.
 				if (systemFuncType.Kind == TypeKind.Unknown) {
 					rr = new ResolveResult(blockReturnType);
 				} else {
 					var invokeMethod = delegateType.GetDelegateInvokeMethod();
-					rr = new CSharpInvocationResolveResult(new ResolveResult(delegateType), invokeMethod, EmptyList<ResolveResult>.Instance);
+					rr = new CSharpInvocationResolveResult(
+						new ResolveResult(delegateType),
+						invokeMethod,
+						EmptyList<ResolveResult>.Instance);
 				}
 				return new InvocationExpression(new MemberReferenceExpression(invocationTarget, "Invoke"))
 					.WithILInstruction(container)
@@ -2331,7 +2339,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			return new DirectionExpression(FieldDirection.Ref, expr)
 				.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.Type, ReferenceKind.Ref));
 		}
-		
+
 		TranslatedExpression TranslateArrayIndex(ILInstruction i)
 		{
 			var input = Translate(i);
@@ -2341,7 +2349,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			IType targetType = FindArithmeticType(i.ResultType, input.Type.GetSign());
 			return input.ConvertTo(targetType, this);
 		}
-		
+
 		internal static bool IsUnboxAnyWithIsInst(UnboxAny unboxAny, IsInst isInst)
 		{
 			return unboxAny.Type.Equals(isInst.Type)
@@ -2967,7 +2975,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			} else {
 				resultType = compilation.FindType(inst.ResultType.ToKnownTypeCode());
 			}
-			
+
 			foreach (var section in inst.Sections) {
 				if (section == defaultSection)
 					continue;
