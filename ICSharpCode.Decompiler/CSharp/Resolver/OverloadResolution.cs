@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -35,53 +35,53 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		sealed class Candidate
 		{
 			public readonly IParameterizedMember Member;
-			
+
 			/// <summary>
 			/// Returns the normal form candidate, if this is an expanded candidate.
 			/// </summary>
 			public readonly bool IsExpandedForm;
-			
+
 			/// <summary>
 			/// Gets the parameter types. In the first step, these are the types without any substition.
 			/// After type inference, substitutions will be performed.
 			/// </summary>
 			public readonly IType[] ParameterTypes;
-			
+
 			/// <summary>
 			/// argument index -> parameter index; -1 for arguments that could not be mapped
 			/// </summary>
 			public int[] ArgumentToParameterMap;
-			
+
 			public OverloadResolutionErrors Errors;
 			public int ErrorCount;
-			
+
 			public bool HasUnmappedOptionalParameters;
-			
+
 			public IType[] InferredTypes;
-			
+
 			/// <summary>
 			/// Gets the original member parameters (before any substitution!)
 			/// </summary>
 			public readonly IReadOnlyList<IParameter> Parameters;
-			
+
 			/// <summary>
 			/// Gets the original method type parameters (before any substitution!)
 			/// </summary>
 			public readonly IReadOnlyList<ITypeParameter> TypeParameters;
-			
+
 			/// <summary>
 			/// Conversions applied to the arguments.
 			/// This field is set by the CheckApplicability step.
 			/// </summary>
 			public Conversion[] ArgumentConversions;
-			
+
 			public bool IsGenericMethod {
 				get {
 					IMethod method = Member as IMethod;
 					return method != null && method.TypeParameters.Count > 0;
 				}
 			}
-			
+
 			public int ArgumentsPassedToParamsArray {
 				get {
 					int count = 0;
@@ -95,7 +95,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					return count;
 				}
 			}
-			
+
 			public Candidate(IParameterizedMember member, bool isExpanded)
 			{
 				this.Member = member;
@@ -111,7 +111,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				}
 				this.ParameterTypes = new IType[this.Parameters.Count];
 			}
-			
+
 			public void AddError(OverloadResolutionErrors newError)
 			{
 				this.Errors |= newError;
@@ -119,7 +119,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					this.ErrorCount++;
 			}
 		}
-		
+
 		readonly ICompilation compilation;
 		readonly ResolveResult[] arguments;
 		readonly string[] argumentNames;
@@ -130,7 +130,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		IType[] explicitlyGivenTypeArguments;
 		bool bestCandidateWasValidated;
 		OverloadResolutionErrors bestCandidateValidationResult;
-		
+
 		#region Constructor
 		public OverloadResolution(ICompilation compilation, ResolveResult[] arguments, string[] argumentNames = null, IType[] typeArguments = null, CSharpConversions conversions = null)
 		{
@@ -145,17 +145,17 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			this.compilation = compilation;
 			this.arguments = arguments;
 			this.argumentNames = argumentNames;
-			
+
 			// keep explicitlyGivenTypeArguments==null when no type arguments were specified
 			if (typeArguments != null && typeArguments.Length > 0)
 				this.explicitlyGivenTypeArguments = typeArguments;
-			
+
 			this.conversions = conversions ?? CSharpConversions.Get(compilation);
 			this.AllowExpandingParams = true;
 			this.AllowOptionalParameters = true;
 		}
 		#endregion
-		
+
 		#region Input Properties
 		/// <summary>
 		/// Gets/Sets whether the methods are extension methods that are being called using extension method syntax.
@@ -165,27 +165,27 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		/// implicit identity, reference, or boxing conversions.
 		/// </remarks>
 		public bool IsExtensionMethodInvocation { get; set; }
-		
+
 		/// <summary>
 		/// Gets/Sets whether expanding 'params' into individual elements is allowed.
 		/// The default value is true.
 		/// </summary>
 		public bool AllowExpandingParams { get; set; }
-		
+
 		/// <summary>
 		/// Gets/Sets whether optional parameters may be left at their default value.
 		/// The default value is true.
 		/// If this property is set to false, optional parameters will be treated like regular parameters.
 		/// </summary>
 		public bool AllowOptionalParameters { get; set; }
-		
+
 		/// <summary>
 		/// Gets/Sets whether ConversionResolveResults created by this OverloadResolution
 		/// instance apply overflow checking.
 		/// The default value is false.
 		/// </summary>
 		public bool CheckForOverflow { get; set; }
-		
+
 		/// <summary>
 		/// Gets the arguments for which this OverloadResolution instance was created.
 		/// </summary>
@@ -193,7 +193,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			get { return arguments; }
 		}
 		#endregion
-		
+
 		#region AddCandidate
 		/// <summary>
 		/// Adds a candidate to overload resolution.
@@ -205,7 +205,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		{
 			return AddCandidate(member, OverloadResolutionErrors.None);
 		}
-		
+
 		/// <summary>
 		/// Adds a candidate to overload resolution.
 		/// </summary>
@@ -219,13 +219,13 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		{
 			if (member == null)
 				throw new ArgumentNullException("member");
-			
+
 			Candidate c = new Candidate(member, false);
 			c.AddError(additionalErrors);
 			if (CalculateCandidate(c)) {
 				//candidates.Add(c);
 			}
-			
+
 			if (this.AllowExpandingParams && member.Parameters.Count > 0
 			    && member.Parameters[member.Parameters.Count - 1].IsParams)
 			{
@@ -234,14 +234,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				// consider expanded form only if it isn't obviously wrong
 				if (CalculateCandidate(expandedCandidate)) {
 					//candidates.Add(expandedCandidate);
-					
+
 					if (expandedCandidate.ErrorCount < c.ErrorCount)
 						return expandedCandidate.Errors;
 				}
 			}
 			return c.Errors;
 		}
-		
+
 		/// <summary>
 		/// Calculates applicability etc. for the candidate.
 		/// </summary>
@@ -256,7 +256,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			ConsiderIfNewCandidateIsBest(candidate);
 			return true;
 		}
-		
+
 		bool ResolveParameterTypes(Candidate candidate, bool useSpecializedParameters)
 		{
 			for (int i = 0; i < candidate.Parameters.Count; i++) {
@@ -281,11 +281,11 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			return true;
 		}
 		#endregion
-		
+
 		#region AddMethodLists
 		/// <summary>
 		/// Adds all candidates from the method lists.
-		/// 
+		///
 		/// This method implements the logic that causes applicable methods in derived types to hide
 		/// all methods in base types.
 		/// </summary>
@@ -305,20 +305,20 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					Log.WriteLine("  Skipping methods in {0} because they are hidden by an applicable method in a derived type", methodLists[i].DeclaringType);
 					continue;
 				}
-				
+
 				MethodListWithDeclaringType methodList = methodLists[i];
 				bool foundApplicableCandidateInCurrentList = false;
-				
+
 				for (int j = 0; j < methodList.Count; j++) {
 					IParameterizedMember method = methodList[j];
 					Log.Indent();
 					OverloadResolutionErrors errors = AddCandidate(method);
 					Log.Unindent();
 					LogCandidateAddingResult("  Candidate", method, errors);
-					
+
 					foundApplicableCandidateInCurrentList |= IsApplicable(errors);
 				}
-				
+
 				if (foundApplicableCandidateInCurrentList && i > 0) {
 					foreach (IType baseType in methodList.DeclaringType.GetAllBaseTypes()) {
 						for (int j = 0; j < i; j++) {
@@ -329,7 +329,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				}
 			}
 		}
-		
+
 		[Conditional("DEBUG")]
 		internal void LogCandidateAddingResult(string text, IParameterizedMember method, OverloadResolutionErrors errors)
 		{
@@ -343,7 +343,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			#endif
 		}
 		#endregion
-		
+
 		#region MapCorrespondingParameters
 		void MapCorrespondingParameters(Candidate candidate)
 		{
@@ -386,7 +386,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 		#endregion
-		
+
 		#region RunTypeInference
 		void RunTypeInference(Candidate candidate)
 		{
@@ -438,18 +438,18 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			if (!substitution.ConstraintsValid)
 				candidate.AddError(OverloadResolutionErrors.ConstructedTypeDoesNotSatisfyConstraint);
 		}
-		
+
 		sealed class ConstraintValidatingSubstitution : TypeParameterSubstitution
 		{
 			readonly CSharpConversions conversions;
 			public bool ConstraintsValid = true;
-			
+
 			public ConstraintValidatingSubstitution(IReadOnlyList<IType> classTypeArguments, IReadOnlyList<IType> methodTypeArguments, OverloadResolution overloadResolution)
 				: base(classTypeArguments, methodTypeArguments)
 			{
 				this.conversions = overloadResolution.conversions;
 			}
-			
+
 			public override IType VisitParameterizedType(ParameterizedType type)
 			{
 				IType newType = base.VisitParameterizedType(type);
@@ -472,14 +472,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 		#endregion
-		
+
 		#region Validate Constraints
 		OverloadResolutionErrors ValidateMethodConstraints(Candidate candidate)
 		{
 			// If type inference already failed, we won't check the constraints:
 			if ((candidate.Errors & OverloadResolutionErrors.TypeInferenceFailed) != 0)
 				return OverloadResolutionErrors.None;
-			
+
 			if (candidate.TypeParameters == null || candidate.TypeParameters.Count == 0)
 				return OverloadResolutionErrors.None; // the method isn't generic
 			var substitution = GetSubstitution(candidate);
@@ -489,7 +489,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 			return OverloadResolutionErrors.None;
 		}
-		
+
 		/// <summary>
 		/// Validates whether the given type argument satisfies the constraints for the given type parameter.
 		/// </summary>
@@ -507,7 +507,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				throw new ArgumentNullException("typeArgument");
 			return ValidateConstraints(typeParameter, typeArgument, substitution, CSharpConversions.Get(typeParameter.Owner.Compilation));
 		}
-		
+
 		internal static bool ValidateConstraints(ITypeParameter typeParameter, IType typeArgument, TypeVisitor substitution, CSharpConversions conversions)
 		{
 			switch (typeArgument.Kind) { // void, null, and pointers cannot be used as type arguments
@@ -545,7 +545,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			return true;
 		}
 		#endregion
-		
+
 		#region CheckApplicability
 		/// <summary>
 		/// Returns whether a candidate with the given errors is still considered to be applicable.
@@ -556,11 +556,11 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				OverloadResolutionErrors.AmbiguousMatch | OverloadResolutionErrors.MethodConstraintsNotSatisfied;
 			return (errors & ~errorsThatDoNotMatterForApplicability) == OverloadResolutionErrors.None;
 		}
-		
+
 		void CheckApplicability(Candidate candidate)
 		{
 			// C# 4.0 spec: §7.5.3.1 Applicable function member
-			
+
 			// Test whether parameters were mapped the correct number of arguments:
 			int[] argumentCountPerParameter = new int[candidate.ParameterTypes.Length];
 			foreach (int parameterIndex in candidate.ArgumentToParameterMap) {
@@ -579,7 +579,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					candidate.AddError(OverloadResolutionErrors.MultipleArgumentsForSingleParameter);
 				}
 			}
-			
+
 			candidate.ArgumentConversions = new Conversion[arguments.Length];
 			// Test whether argument passing mode matches the parameter passing mode
 			for (int i = 0; i < arguments.Length; i++) {
@@ -588,12 +588,21 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					candidate.ArgumentConversions[i] = Conversion.None;
 					continue;
 				}
-				
-				ByReferenceResolveResult brrr = arguments[i] as ByReferenceResolveResult;
-				if (brrr != null) {
+
+				if (arguments[i] is ByReferenceResolveResult brrr)
+				{
 					if (brrr.ReferenceKind != candidate.Parameters[parameterIndex].ReferenceKind)
 						candidate.AddError(OverloadResolutionErrors.ParameterPassingModeMismatch);
-				} else {
+				}
+				else if (arguments[i] is OutVarResolveResult)
+				{
+					if (candidate.Parameters[parameterIndex].ReferenceKind != ReferenceKind.Out)
+						candidate.AddError(OverloadResolutionErrors.ParameterPassingModeMismatch);
+					// 'out var decl' arguments are compatible with any out parameter
+					continue;
+				}
+				else
+				{
 					if (candidate.Parameters[parameterIndex].ReferenceKind != ReferenceKind.None)
 						candidate.AddError(OverloadResolutionErrors.ParameterPassingModeMismatch);
 				}
@@ -611,7 +620,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 		#endregion
-		
+
 		#region BetterFunctionMember
 		/// <summary>
 		/// Returns 1 if c1 is better than c2; 2 if c2 is better than c1; or 0 if neither is better.
@@ -623,7 +632,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return 1;
 			if (c1.ErrorCount > 0 && c2.ErrorCount == 0)
 				return 2;
-			
+
 			// C# 4.0 spec: §7.5.3.2 Better function member
 			bool c1IsBetter = false;
 			bool c2IsBetter = false;
@@ -652,42 +661,42 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return 1;
 			if (!c1IsBetter && c2IsBetter)
 				return 2;
-			
+
 			// prefer members with less errors (part of heuristic that produces a best candidate even if none is applicable)
 			if (c1.ErrorCount < c2.ErrorCount) return 1;
 			if (c1.ErrorCount > c2.ErrorCount) return 2;
-			
+
 			if (!c1IsBetter && !c2IsBetter && parameterTypesEqual) {
 				// we need the tie-breaking rules
-				
+
 				// non-generic methods are better
 				if (!c1.IsGenericMethod && c2.IsGenericMethod)
 					return 1;
 				else if (c1.IsGenericMethod && !c2.IsGenericMethod)
 					return 2;
-				
+
 				// non-expanded members are better
 				if (!c1.IsExpandedForm && c2.IsExpandedForm)
 					return 1;
 				else if (c1.IsExpandedForm && !c2.IsExpandedForm)
 					return 2;
-				
+
 				// prefer the member with less arguments mapped to the params-array
 				int r = c1.ArgumentsPassedToParamsArray.CompareTo(c2.ArgumentsPassedToParamsArray);
 				if (r < 0) return 1;
 				else if (r > 0) return 2;
-				
+
 				// prefer the member where no default values need to be substituted
 				if (!c1.HasUnmappedOptionalParameters && c2.HasUnmappedOptionalParameters)
 					return 1;
 				else if (c1.HasUnmappedOptionalParameters && !c2.HasUnmappedOptionalParameters)
 					return 2;
-				
+
 				// compare the formal parameters
 				r = MoreSpecificFormalParameters(c1, c2);
 				if (r != 0)
 					return r;
-				
+
 				// prefer non-lifted operators
 				ILiftedOperator lift1 = c1.Member as ILiftedOperator;
 				ILiftedOperator lift2 = c2.Member as ILiftedOperator;
@@ -698,17 +707,17 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 			return 0;
 		}
-		
+
 		int MoreSpecificFormalParameters(Candidate c1, Candidate c2)
 		{
 			// prefer the member with more formal parmeters (in case both have different number of optional parameters)
 			int r = c1.Parameters.Count.CompareTo(c2.Parameters.Count);
 			if (r > 0) return 1;
 			else if (r < 0) return 2;
-			
+
 			return MoreSpecificFormalParameters(c1.Parameters.Select(p => p.Type), c2.Parameters.Select(p => p.Type));
 		}
-		
+
 		static int MoreSpecificFormalParameters(IEnumerable<IType> t1, IEnumerable<IType> t2)
 		{
 			bool c1IsBetter = false;
@@ -729,14 +738,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return 2;
 			return 0;
 		}
-		
+
 		static int MoreSpecificFormalParameter(IType t1, IType t2)
 		{
 			if ((t1 is ITypeParameter) && !(t2 is ITypeParameter))
 				return 2;
 			if ((t2 is ITypeParameter) && !(t1 is ITypeParameter))
 				return 1;
-			
+
 			ParameterizedType p1 = t1 as ParameterizedType;
 			ParameterizedType p2 = t2 as ParameterizedType;
 			if (p1 != null && p2 != null && p1.TypeParameterCount == p2.TypeParameterCount) {
@@ -752,7 +761,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			return 0;
 		}
 		#endregion
-		
+
 		#region ConsiderIfNewCandidateIsBest
 		void ConsiderIfNewCandidateIsBest(Candidate candidate)
 		{
@@ -777,12 +786,12 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 		}
 		#endregion
-		
+
 		#region Output Properties
 		public IParameterizedMember BestCandidate {
 			get { return bestCandidate != null ? bestCandidate.Member : null; }
 		}
-		
+
 		/// <summary>
 		/// Returns the errors that apply to the best candidate.
 		/// This includes additional errors that do not affect applicability (e.g. AmbiguousMatch, MethodConstraintsNotSatisfied)
@@ -801,23 +810,23 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return err;
 			}
 		}
-		
+
 		public bool FoundApplicableCandidate {
 			get { return bestCandidate != null && IsApplicable(bestCandidate.Errors); }
 		}
-		
+
 		public IParameterizedMember BestCandidateAmbiguousWith {
 			get { return bestCandidateAmbiguousWith != null ? bestCandidateAmbiguousWith.Member : null; }
 		}
-		
+
 		public bool BestCandidateIsExpandedForm {
 			get { return bestCandidate != null ? bestCandidate.IsExpandedForm : false; }
 		}
-		
+
 		public bool IsAmbiguous {
 			get { return bestCandidateAmbiguousWith != null; }
 		}
-		
+
 		public IReadOnlyList<IType> InferredTypeArguments {
 			get {
 				if (bestCandidate != null && bestCandidate.InferredTypes != null)
@@ -826,7 +835,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					return EmptyList<IType>.Instance;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the implicit conversions that are being applied to the arguments.
 		/// </summary>
@@ -838,11 +847,11 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					return Enumerable.Repeat(Conversion.None, arguments.Length).ToList();
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets an array that maps argument indices to parameter indices.
 		/// For arguments that could not be mapped to any parameter, the value will be -1.
-		/// 
+		///
 		/// parameterIndex = GetArgumentToParameterMap()[argumentIndex]
 		/// </summary>
 		public IReadOnlyList<int> GetArgumentToParameterMap()
@@ -852,7 +861,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			else
 				return null;
 		}
-		
+
 		/// <summary>
 		/// Returns the arguments for the method call in the order they were provided (not in the order of the parameters).
 		/// Arguments are wrapped in a <see cref="ConversionResolveResult"/> if an implicit conversion is being applied
@@ -865,7 +874,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			else
 				return GetArgumentsWithConversions(null, null);
 		}
-		
+
 		/// <summary>
 		/// Returns the arguments for the method call in the order they were provided (not in the order of the parameters).
 		/// Arguments are wrapped in a <see cref="ConversionResolveResult"/> if an implicit conversion is being applied
@@ -880,7 +889,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			else
 				return GetArgumentsWithConversions(null, GetBestCandidateWithSubstitutedTypeArguments());
 		}
-		
+
 		IList<ResolveResult> GetArgumentsWithConversions(ResolveResult targetResolveResult, IParameterizedMember bestCandidateForNamedArguments)
 		{
 			var conversions = this.ArgumentConversions;
@@ -913,7 +922,7 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			}
 			return args;
 		}
-		
+
 		public IParameterizedMember GetBestCandidateWithSubstitutedTypeArguments()
 		{
 			if (bestCandidate == null)
@@ -925,14 +934,14 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 				return bestCandidate.Member;
 			}
 		}
-		
+
 		TypeParameterSubstitution GetSubstitution(Candidate candidate)
 		{
 			// Do not compose the substitutions, but merge them.
 			// This is required for InvocationTests.SubstituteClassAndMethodTypeParametersAtOnce
 			return new TypeParameterSubstitution(candidate.Member.Substitution.ClassTypeArguments, candidate.InferredTypes);
 		}
-		
+
 		/// <summary>
 		/// Creates a ResolveResult representing the result of overload resolution.
 		/// </summary>
