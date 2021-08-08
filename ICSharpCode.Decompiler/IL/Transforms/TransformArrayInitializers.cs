@@ -19,10 +19,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using dnlib.DotNet;
 using dnlib.IO;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL.Transforms
 {
@@ -226,17 +229,34 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return false;
 			if (!dest.MatchLdLoc(v) || !src.MatchLdsFlda(out var field) || !size.MatchLdcI4((int)length))
 				return false;
-			if (!(field.MetadataToken is dnlib.DotNet.IField dnField))
+			if (!(v.IsSingleDefinition && v.LoadCount == 2))
 				return false;
-			if (!block.Instructions[pos + 1].MatchStLoc(out var finalStore, out var value))
+			if (field.MetadataToken is null)
 				return false;
-			if (!value.MatchLdLoc(v))
+			if (!block.Instructions[pos + 1].MatchStLoc(out var finalStore, out var value)) {
+				var otherLoadOfV = v.LoadInstructions.FirstOrDefault(l => !(l.Parent is Cpblk));
+				if (otherLoadOfV == null)
+					return false;
+				finalStore = otherLoadOfV.Parent.Extract();
+				value = ((StLoc)finalStore.StoreInstructions[0]).Value;
+				if (finalStore == null)
+					return false;
+			}
+			var fd = (FieldDef)field.MetadataToken;
+			if (fd.InitialValue == null)
 				return false;
-			var resolved = dnField.ResolveFieldWithinSameModule();
-			if (resolved.InitialValue == null)
+			if (value.MatchLdLoc(v)) {
+				elementType = ((PointerType)finalStore.Type).ElementType;
+			} else if (value is NewObj { Arguments: { Count: 2 } } newObj
+					&& newObj.Method.DeclaringType.IsKnownType(KnownTypeCode.SpanOfT)
+					&& newObj.Arguments[0].MatchLdLoc(v)
+					&& newObj.Arguments[1].MatchLdcI4((int)length))
+			{
+				elementType = ((ParameterizedType)newObj.Method.DeclaringType).TypeArguments[0];
+			} else {
 				return false;
-			blob = resolved.InitialValue;
-			elementType = ((PointerType)finalStore.Type).ElementType;
+			}
+			blob = fd.InitialValue;
 			return true;
 		}
 
