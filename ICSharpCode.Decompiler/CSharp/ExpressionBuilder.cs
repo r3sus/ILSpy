@@ -124,6 +124,20 @@ namespace ICSharpCode.Decompiler.CSharp
 			return new ExpressionWithResolveResult(expr, exprRR);
 		}
 
+		public ExpressionWithResolveResult ConvertConstantValue(ResolveResult rr,
+			bool allowImplicitConversion = false, bool displayAsHex = false)
+		{
+			astBuilder.PrintIntegralValuesAsHex = displayAsHex;
+			try
+			{
+				return ConvertConstantValue(rr, allowImplicitConversion);
+			}
+			finally
+			{
+				astBuilder.PrintIntegralValuesAsHex = false;
+			}
+		}
+
 		public TranslatedExpression Translate(ILInstruction inst, IType typeHint = null)
 		{
 			Debug.Assert(inst != null);
@@ -446,13 +460,11 @@ namespace ICSharpCode.Decompiler.CSharp
 				);
 			}
 			rr = AdjustConstantToType(rr, context.TypeHint);
-			astBuilder.PrintIntegralValuesAsHex = ShouldDisplayAsHex(inst.Value, inst.Parent);
-			try {
-				return ConvertConstantValue(rr, allowImplicitConversion: true)
-					.WithILInstruction(inst);
-			} finally {
-				astBuilder.PrintIntegralValuesAsHex = false;
-			}
+			return ConvertConstantValue(
+				rr,
+				allowImplicitConversion: true,
+				ShouldDisplayAsHex(inst.Value, rr.Type, inst.Parent)
+			).WithILInstruction(inst);
 		}
 
 		protected internal override TranslatedExpression VisitLdcI8(LdcI8 inst, TranslationContext context)
@@ -470,20 +482,20 @@ namespace ICSharpCode.Decompiler.CSharp
 				);
 			}
 			rr = AdjustConstantToType(rr, context.TypeHint);
-			astBuilder.PrintIntegralValuesAsHex = ShouldDisplayAsHex(inst.Value, inst.Parent);
-			try {
-				return ConvertConstantValue(rr, allowImplicitConversion: true)
-					.WithILInstruction(inst);
-			} finally {
-				astBuilder.PrintIntegralValuesAsHex = false;
-			}
+			return ConvertConstantValue(
+				rr,
+				allowImplicitConversion: true,
+				ShouldDisplayAsHex(inst.Value, rr.Type, inst.Parent)
+			).WithILInstruction(inst);
 		}
 
-		private bool ShouldDisplayAsHex(long value, ILInstruction parent)
+		private bool ShouldDisplayAsHex(long value, IType type, ILInstruction parent)
 		{
 			if (parent is Conv conv)
 				parent = conv.Parent;
-			if (value <= 9)
+			if (value >= 0 && value <= 9)
+				return false;
+			if (value < 0 && type.GetSign() == Sign.Signed)
 				return false;
 			switch (parent) {
 				case BinaryNumericInstruction bni:
@@ -1246,8 +1258,8 @@ namespace ICSharpCode.Decompiler.CSharp
 		TranslatedExpression HandleBinaryNumeric(BinaryNumericInstruction inst, BinaryOperatorType op, TranslationContext context)
 		{
 			var resolverWithOverflowCheck = resolver.WithCheckForOverflow(inst.CheckForOverflow);
-			var left = Translate(inst.Left);
-			var right = Translate(inst.Right);
+			var left = Translate(inst.Left, op.IsBitwise() ? context.TypeHint : null);
+			var right = Translate(inst.Right, op.IsBitwise() ? context.TypeHint : null);
 
 			if (left.Type.Kind == TypeKind.ByReference || right.Type.Kind == TypeKind.ByReference) {
 				var ptrResult = HandleManagedPointerArithmetic(inst, left, right);
@@ -1306,11 +1318,38 @@ namespace ICSharpCode.Decompiler.CSharp
 				if (sign == Sign.None) {
 					// If the sign doesn't matter, try to use the same sign as expected by the context
 					sign = context.TypeHint.GetSign();
+					if (sign == Sign.None)
+					{
+						sign = op.IsBitwise() ? Sign.Unsigned : Sign.Signed;
+					}
 				}
 				IType targetType = FindArithmeticType(inst.UnderlyingResultType, sign);
 				left = left.ConvertTo(NullableType.IsNullable(left.Type) ? NullableType.Create(compilation, targetType) : targetType, this);
 				right = right.ConvertTo(NullableType.IsNullable(right.Type) ? NullableType.Create(compilation, targetType) : targetType, this);
 				rr = resolverWithOverflowCheck.ResolveBinaryOperator(op, left.ResolveResult, right.ResolveResult);
+			}
+			if (op.IsBitwise())
+			{
+				if (left.ResolveResult.ConstantValue != null)
+				{
+					long value = (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, left.ResolveResult.ConstantValue, checkForOverflow: false);
+
+					left = ConvertConstantValue(
+						left.ResolveResult,
+						allowImplicitConversion: false,
+						ShouldDisplayAsHex(value, left.Type, inst)
+					).WithILInstruction(left.ILInstructions);
+				}
+				if (right.ResolveResult.ConstantValue != null)
+				{
+					long value = (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, right.ResolveResult.ConstantValue, checkForOverflow: false);
+
+					right = ConvertConstantValue(
+						right.ResolveResult,
+						allowImplicitConversion: false,
+						ShouldDisplayAsHex(value, right.Type, inst)
+					).WithILInstruction(right.ILInstructions);
+				}
 			}
 			var resultExpr = new BinaryOperatorExpression(left.Expression, op, right.Expression)
 				.WithILInstruction(inst)
