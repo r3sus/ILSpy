@@ -85,6 +85,7 @@
 
   <ItemGroup>
     <Compile Include="TestCases\Correctness\StringConcat.cs" />
+    <Compile Include="TestCases\Pretty\SwitchExpressions.cs" />
     <None Include="TestCases\Pretty\NativeInts.cs" />
     <None Include="TestCases\ILPretty\CallIndirect.cs" />
     <Compile Include="TestCases\ILPretty\Issue1681.cs" />
