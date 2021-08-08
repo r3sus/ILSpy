@@ -28,9 +28,9 @@ using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 namespace ICSharpCode.Decompiler.IL.Transforms
 {
 	/// <summary>
-	///
+	/// Transforms anonymous methods and lambdas by creating nested ILFunctions.
 	/// </summary>
-	class DelegateConstruction : IILTransform
+	public class DelegateConstruction : IILTransform
 	{
 		ILTransformContext context;
 		ITypeResolveContext decompilationContext;

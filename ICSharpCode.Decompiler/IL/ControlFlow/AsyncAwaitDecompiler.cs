@@ -35,7 +35,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 	/// <summary>
 	/// Decompiler step for C# 5 async/await.
 	/// </summary>
-	class AsyncAwaitDecompiler : IILTransform
+	public class AsyncAwaitDecompiler : IILTransform
 	{
 		public static bool IsCompilerGeneratedStateMachine(dnlib.DotNet.TypeDef type)
 		{
@@ -652,7 +652,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 			// 	if (comp.o(ldfld <>x__combinedTokens(ldloc this) == ldnull)) br setResultAndExit
 			// 	br disposeCombinedTokens
 			// }
-			// 
+			//
 			// Block disposeCombinedTokens (incoming: 1) {
 			// 	callvirt Dispose(ldfld <>x__combinedTokens(ldloc this))
 			// 	stfld <>x__combinedTokens(ldloc this, ldnull)
