@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+
+using ICSharpCode.Decompiler.IL.ControlFlow;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 
@@ -363,6 +365,12 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			if (definition == null)
 				return false;
 			if (definition.ParentModule.PEFile != context.PEFile)
+				return false;
+			// We do not want to accidentially transform state-machines and thus destroy them.
+			var token = (dnlib.DotNet.TypeDef)definition.MetadataToken;
+			if (YieldReturnDecompiler.IsCompilerGeneratorEnumerator(token))
+				return false;
+			if (AsyncAwaitDecompiler.IsCompilerGeneratedStateMachine(token))
 				return false;
 			if (!context.Settings.AggressiveScalarReplacementOfAggregates) {
 				if (definition.DeclaringTypeDefinition == null)
