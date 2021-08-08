@@ -50,6 +50,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		IType returnType;
 		volatile ThreeState returnTypeIsRefReadonly = ThreeState.Unknown;
 		volatile ThreeState thisIsRefReadonly = ThreeState.Unknown;
+		bool isInitOnly;
 
 		internal MetadataMethod(MetadataModule module, MethodDef handle)
 		{
@@ -195,10 +196,22 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var genericContext = new GenericContext(DeclaringType.TypeParameters, this.TypeParameters);
 				var sig = handle.ReturnType.DecodeSignature(module, genericContext);
 
+				isInitOnly = sig is ModifiedType {
+					Modifier: { Name: "IsExternalInit", Namespace: "System.Runtime.CompilerServices" }
+				};
+
 				var retType = ApplyAttributeTypeVisitor.ApplyAttributesToType(sig,
 					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.OptionsForEntity(this), NullableContext);
 
 				return LazyInit.GetOrSet(ref this.returnType, retType);
+			}
+		}
+
+		public bool IsInitOnly {
+			get {
+				_ = ReturnType;
+
+				return this.isInitOnly;
 			}
 		}
 
