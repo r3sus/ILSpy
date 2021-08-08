@@ -798,9 +798,14 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				IType underlyingType = NullableType.GetUnderlyingType(type);
 				if (underlyingType.Kind == TypeKind.Enum) {
 					return ConvertEnumValue(underlyingType, (long)CSharpPrimitiveCast.Cast(TypeCode.Int64, constantValue, false));
-				} else {
-					if (IsSpecialConstant(underlyingType, constantValue, out var expr))
+				}
+				else
+				{
+					if (!(PrintIntegralValuesAsHex && underlyingType.IsCSharpPrimitiveIntegerType())
+						&& IsSpecialConstant(underlyingType, constantValue, out var expr))
+					{
 						return expr;
+					}
 					if (underlyingType.IsKnownType(KnownTypeCode.Double) || underlyingType.IsKnownType(KnownTypeCode.Single))
 						return ConvertFloatingPointLiteral(underlyingType, constantValue);
 					IType literalType = underlyingType;
