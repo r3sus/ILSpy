@@ -408,8 +408,16 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				} else {
 					return new DecompilerSettings(CSharp.LanguageVersion.CSharp8_0);
 				}
-			} else {
-				return new DecompilerSettings(CSharp.LanguageVersion.CSharp5);
+			}
+			else
+			{
+				var settings= new DecompilerSettings(CSharp.LanguageVersion.CSharp5);
+				if (cscOptions.HasFlag(CompilerOptions.UseMcs))
+				{
+					// we don't recompile with mcs but with roslyn, so we can use ref locals
+					settings.UseRefLocalsForAccurateOrderOfEvaluation = true;
+				}
+				return settings;
 			}
 		}
 		
