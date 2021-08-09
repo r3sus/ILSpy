@@ -292,7 +292,17 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				var astType = new FunctionPointerAstType();
 				if (fpt.CallingConvention != dnlib.DotNet.CallingConvention.Default)
 				{
-					astType.CallingConvention = fpt.CallingConvention.ToString().ToLowerInvariant();
+					string callconvName = fpt.CallingConvention switch
+					{
+						dnlib.DotNet.CallingConvention.Default => "",
+						dnlib.DotNet.CallingConvention.C => "Cdecl",
+						dnlib.DotNet.CallingConvention.StdCall => "Stdcall",
+						dnlib.DotNet.CallingConvention.ThisCall => "Thiscall",
+						dnlib.DotNet.CallingConvention.FastCall => "Fastcall",
+						dnlib.DotNet.CallingConvention.VarArg => "Varargs",
+						_ => fpt.CallingConvention.ToString()
+					};
+					astType.CallingConvention = new PrimitiveType(callconvName);
 				}
 				for (int i = 0; i < fpt.ParameterTypes.Length; i++)
 				{
