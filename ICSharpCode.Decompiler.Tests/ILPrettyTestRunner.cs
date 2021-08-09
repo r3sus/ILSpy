@@ -125,6 +125,12 @@ namespace ICSharpCode.Decompiler.Tests
 		}
 
 		[Test]
+		public void EvalOrder()
+		{
+			Run();
+		}
+
+		[Test]
 		public void CS1xSwitch_Debug()
 		{
 			Run(settings: new DecompilerSettings { SwitchExpressions = false });

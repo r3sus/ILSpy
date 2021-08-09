@@ -22,7 +22,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using ICSharpCode.Decompiler.TypeSystem;
-using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.IL.Transforms
 {
@@ -272,14 +271,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 		protected internal override void VisitCall(Call inst)
 		{
-			var expr = EarlyExpressionTransforms.HandleCall(inst, context);
-			if (expr != null) {
-				// The resulting expression may trigger further rules, so continue visiting the replacement:
-				expr.AcceptVisitor(this);
-			} else {
-				base.VisitCall(inst);
-				TransformAssignment.HandleCompoundAssign(inst, context);
-			}
+			base.VisitCall(inst);
+			TransformAssignment.HandleCompoundAssign(inst, context);
 		}
 
 		protected internal override void VisitCallVirt(CallVirt inst)
