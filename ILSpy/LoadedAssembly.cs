@@ -61,7 +61,7 @@ namespace ICSharpCode.ILSpy
 		public async Task<string> GetTargetFrameworkIdAsync()
 		{
 			var assembly = await GetAssemblyDefinitionAsync().ConfigureAwait(false);
-			return (assembly.ManifestModule as ModuleDefMD)?.DetectTargetFrameworkId() ?? string.Empty;
+			return (assembly as ModuleDefMD)?.DetectTargetFrameworkId(assembly.Location) ?? string.Empty;
 		}
 
 		public ReferenceLoadInfo LoadedAssemblyReferencesInfo { get; } = new ReferenceLoadInfo();
@@ -91,10 +91,10 @@ namespace ICSharpCode.ILSpy
 		/// <summary>
 		/// Gets the Cecil AssemblyDefinition.
 		/// </summary>
-		public async Task<dnlib.DotNet.AssemblyDef> GetAssemblyDefinitionAsync()
+		public async Task<dnlib.DotNet.ModuleDef> GetAssemblyDefinitionAsync()
 		{
 			var module = await assemblyTask.ConfigureAwait(false);
-			return module != null ? module.Assembly : null;
+			return module != null ? module : null;
 		}
 
 		/// <summary>
@@ -104,7 +104,8 @@ namespace ICSharpCode.ILSpy
 		public dnlib.DotNet.AssemblyDef GetAssemblyDefinitionOrNull()
 		{
 			try {
-				return GetAssemblyDefinitionAsync().Result;
+				var res = GetAssemblyDefinitionAsync().Result;
+				return res.Assembly;
 			} catch (Exception ex) {
 				System.Diagnostics.Trace.TraceError(ex.ToString());
 				return null;

@@ -8,9 +8,18 @@ namespace ICSharpCode.Decompiler
 {
 	public static class DotNetCorePathFinderExtensions
 	{
+		static readonly string PathPattern =
+			@"(Reference Assemblies[/\\]Microsoft[/\\]Framework[/\\](?<type>.NETFramework)[/\\]v(?<version>[^/\\]+)[/\\])" +
+			@"|((?<type>Microsoft\.NET)[/\\]assembly[/\\]GAC_(MSIL|32|64)[/\\])" +
+			@"|((?<type>Microsoft\.NET)[/\\]Framework(64)?[/\\](?<version>[^/\\]+)[/\\])" +
+			@"|(NuGetFallbackFolder[/\\](?<type>[^/\\]+)\\(?<version>[^/\\]+)([/\\].*)?[/\\]ref[/\\])" +
+			@"|(shared[/\\](?<type>[^/\\]+)\\(?<version>[^/\\]+)([/\\].*)?[/\\])" +
+			@"|(packs[/\\](?<type>[^/\\]+)\\(?<version>[^/\\]+)\\ref([/\\].*)?[/\\])";
+
 		static readonly string RefPathPattern =
-			@"(Reference Assemblies[/\\]Microsoft[/\\]Framework[/\\](?<1>.NETFramework)[/\\]v(?<2>[^/\\]+)[/\\])" +
-			@"|(NuGetFallbackFolder[/\\](?<1>[^/\\]+)\\(?<2>[^/\\]+)([/\\].*)?[/\\]ref[/\\])";
+			@"(Reference Assemblies[/\\]Microsoft[/\\]Framework[/\\](?<type>.NETFramework)[/\\]v(?<version>[^/\\]+)[/\\])" +
+			@"|(NuGetFallbackFolder[/\\](?<type>[^/\\]+)\\(?<version>[^/\\]+)([/\\].*)?[/\\]ref[/\\])" +
+			@"|(packs[/\\](?<type>[^/\\]+)\\(?<version>[^/\\]+)\\ref([/\\].*)?[/\\])";
 
 		public static string DetectTargetFrameworkId(this ModuleDefMD module, string assemblyPath = null)
 		{
@@ -68,7 +77,8 @@ namespace ICSharpCode.Decompiler
 			}
 
 			// Optionally try to detect target version through assembly path as a fallback (use case: reference assemblies)
-			if (assemblyPath != null) {
+			if (assemblyPath != null)
+			{
 				/*
 				 * Detected path patterns (examples):
 				 *
@@ -76,19 +86,31 @@ namespace ICSharpCode.Decompiler
 				 * - .NETCore      -> C:\Program Files\dotnet\sdk\NuGetFallbackFolder\microsoft.netcore.app\2.1.0\ref\netcoreapp2.1\System.Console.dll
 				 * - .NETStandard  -> C:\Program Files\dotnet\sdk\NuGetFallbackFolder\netstandard.library\2.0.3\build\netstandard2.0\ref\netstandard.dll
 				 */
-				var pathMatch = Regex.Match(assemblyPath, RefPathPattern,
+				var pathMatch = Regex.Match(assemblyPath, PathPattern,
 					RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-				if (pathMatch.Success) {
-					var type = pathMatch.Groups[1].Value;
-					var version = pathMatch.Groups[2].Value;
+				if (pathMatch.Success)
+				{
+					var type = pathMatch.Groups["type"].Value;
+					var version = pathMatch.Groups["version"].Value;
+					if (string.IsNullOrEmpty(version))
+						version = module.RuntimeVersion;
 
-					if (type == ".NETFramework") {
-						return $".NETFramework,Version=v{version}";
-					} else if (type.Contains("netcore")) {
+					if (type == "Microsoft.NET" || type == ".NETFramework")
+					{
+						return $".NETFramework,Version=v{version.TrimStart('v').Substring(0, 3)}";
+					}
+					else if (type.IndexOf("netcore", StringComparison.OrdinalIgnoreCase) >= 0)
+					{
 						return $".NETCoreApp,Version=v{version}";
-					} else if (type.Contains("netstandard")) {
+					}
+					else if (type.IndexOf("netstandard", StringComparison.OrdinalIgnoreCase) >= 0)
+					{
 						return $".NETStandard,Version=v{version}";
 					}
+				}
+				else
+				{
+					return $".NETFramework,Version={module.RuntimeVersion.Substring(0, 4)}";
 				}
 			}
 

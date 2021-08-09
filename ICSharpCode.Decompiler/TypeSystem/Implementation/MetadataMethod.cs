@@ -47,6 +47,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		ITypeDefinition declaringType;
 		string name;
 		IParameter[] parameters;
+		IMember accessorMember;
 		IType returnType;
 		volatile ThreeState returnTypeIsRefReadonly = ThreeState.Unknown;
 		volatile ThreeState thisIsRefReadonly = ThreeState.Unknown;
@@ -151,12 +152,17 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			get {
 				if (accessorOwner is null)
 					return null;
+
+				IMember accessorMember = LazyInit.VolatileRead(ref this.accessorMember);
+				if (accessorMember != null)
+					return accessorMember;
+
 				if (accessorOwner is PropertyDef propertyDef)
-					return module.GetDefinition(propertyDef);
+					accessorMember = module.GetDefinition(propertyDef);
 				else if (accessorOwner is EventDef eventDef)
-					return module.GetDefinition(eventDef);
-				else
-					return null;
+					accessorMember = module.GetDefinition(eventDef);
+
+				return LazyInit.GetOrSet(ref this.accessorMember, accessorMember);
 			}
 		}
 

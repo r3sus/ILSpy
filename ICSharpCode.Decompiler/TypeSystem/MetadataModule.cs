@@ -68,7 +68,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			this.NullableContext = customAttrs.GetNullableContext() ?? Nullability.Oblivious;
 			this.minAccessibilityForNRT = FindMinimumAccessibilityForNRT(customAttrs);
 			this.rootNamespace = new MetadataNamespace(this, null, string.Empty,
-				NamespaceDefinition.GetUnresolvedRootNamespace(compilation.NameComparer, metadata.Types));
+				NamespaceDefinition.GetRootNamespace(compilation.NameComparer, metadata.Types));
 
 			if (!options.HasFlag(TypeSystemOptions.Uncached)) {
 				// create arrays for resolved entities, indexed by row index
@@ -403,6 +403,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				// We'll have to search the member directly on declaringTypeDefinition.
 				string name = memberRef.Name;
 				vaRAgCtx = new GenericContext(declaringTypeDefinition?.TypeParameters);
+				var returnType = memberRef.MethodSig.RetType.DecodeSignature(this, vaRAgCtx);
 				if (declaringTypeDefinition != null) {
 					// Find the set of overloads to search:
 					IEnumerable<IMethod> methods;
@@ -426,7 +427,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					}
 					// Search for the matching method:
 					method = null;
-					var returnType = memberRef.MethodSig.RetType.DecodeSignature(this, vaRAgCtx);
 					foreach (var m in methods) {
 						if (m.TypeParameters.Count != ((dnlib.DotNet.IMethod)memberRef).NumberOfGenericParameters)
 							continue;
@@ -441,7 +441,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (method == null) {
 					var param = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 										 .ToList();
-					method = CreateFakeMethod(declaringType, name, !memberRef.HasThis, declaringType,
+					method = CreateFakeMethod(declaringType, name, !memberRef.HasThis, returnType,
 						((dnlib.DotNet.IMethod)memberRef).NumberOfGenericParameters, param);
 				}
 			}

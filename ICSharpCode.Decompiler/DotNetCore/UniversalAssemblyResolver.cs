@@ -50,11 +50,13 @@ namespace ICSharpCode.Decompiler
 		public void AddSearchDirectory(string directory)
 		{
 			directories.Add(directory);
+			dotNetCorePathFinder?.AddSearchDirectory(directory);
 		}
 
 		public void RemoveSearchDirectory(string directory)
 		{
 			directories.Remove(directory);
+			dotNetCorePathFinder?.RemoveSearchDirectory(directory);
 		}
 
 		public string[] GetSearchDirectories()
@@ -81,7 +83,7 @@ namespace ICSharpCode.Decompiler
 		public static ModuleDefMD LoadMainModule(string mainAssemblyFileName, bool throwOnError = true, bool inMemory = false)
 		{
 			var module = ModuleDefMD.Load(mainAssemblyFileName);
-			var resolver = new UniversalAssemblyResolver(mainAssemblyFileName, throwOnError, module.DetectTargetFrameworkId());
+			var resolver = new UniversalAssemblyResolver(mainAssemblyFileName, throwOnError, module.DetectTargetFrameworkId(mainAssemblyFileName));
 			module.Context.AssemblyResolver = resolver;
 			module.Context.Resolver = new Resolver(resolver);
 			module.Location = mainAssemblyFileName;
@@ -163,6 +165,9 @@ namespace ICSharpCode.Decompiler
 						goto default;
 					if (dotNetCorePathFinder == null) {
 						dotNetCorePathFinder = new DotNetCorePathFinder(mainAssemblyFileName, targetFramework, targetFrameworkIdentifier, targetFrameworkVersion);
+						foreach (var directory in directories) {
+							dotNetCorePathFinder.AddSearchDirectory(directory);
+						}
 					}
 					file = dotNetCorePathFinder.TryResolveDotNetCore(name);
 					if (file != null)
