@@ -181,9 +181,17 @@ namespace ICSharpCode.Decompiler.CSharp
 			caseLabelMapping = new Dictionary<Block, ConstantResolveResult>();
 
 			TranslatedExpression value;
-			if (inst.Value is StringToInt strToInt) {
-				value = exprBuilder.Translate(strToInt.Argument);
-			} else {
+			if (inst.Value is StringToInt strToInt)
+			{
+				value = exprBuilder.Translate(strToInt.Argument)
+					.ConvertTo(
+						typeSystem.FindType(KnownTypeCode.String),
+						exprBuilder,
+						allowImplicitConversion: true
+					);
+			}
+			else
+			{
 				strToInt = null;
 				value = exprBuilder.Translate(inst.Value);
 			}

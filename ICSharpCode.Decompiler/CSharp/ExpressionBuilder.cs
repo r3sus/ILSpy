@@ -3005,9 +3005,17 @@ namespace ICSharpCode.Decompiler.CSharp
 		protected internal override TranslatedExpression VisitSwitchInstruction(SwitchInstruction inst, TranslationContext context)
 		{
 			TranslatedExpression value;
-			if (inst.Value is StringToInt strToInt) {
-				value = Translate(strToInt.Argument);
-			} else {
+			if (inst.Value is StringToInt strToInt)
+			{
+				value = Translate(strToInt.Argument)
+					.ConvertTo(
+						typeSystem.FindType(KnownTypeCode.String),
+						this,
+						allowImplicitConversion: true
+					);
+			}
+			else
+			{
 				strToInt = null;
 				value = Translate(inst.Value);
 			}
