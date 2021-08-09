@@ -165,7 +165,7 @@ namespace ICSharpCode.Decompiler.IL
 		{
 			VariableKind kind = IsPinned(v.Type) ? VariableKind.PinnedLocal : VariableKind.Local;
 
-			IType localType = module.ResolveType(v.Type, genericContext);
+			IType localType = module.IntroduceTupleTypes(v.Type.DecodeSignature(module, genericContext));
 			if (kind == VariableKind.PinnedLocal && localType.SkipModifiers() is PinnedType pinnedType)
 				localType = pinnedType.ElementType;
 

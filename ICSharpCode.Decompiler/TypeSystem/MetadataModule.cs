@@ -329,7 +329,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return ty;
 		}
 
-		IType IntroduceTupleTypes(IType ty)
+		public IType IntroduceTupleTypes(IType ty)
 		{
 			// run ApplyAttributeTypeVisitor without attributes, in order to introduce tuple types
 			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, Nullability.Oblivious);

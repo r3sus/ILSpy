@@ -212,6 +212,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			foreach (Local local in method.Variables) {
 				var decoded = local.Type.DecodeSignature(module, genericContext);
+				decoded = module.IntroduceTupleTypes(decoded);
 				CollectNamespacesForTypeReference(decoded);
 			}
 
