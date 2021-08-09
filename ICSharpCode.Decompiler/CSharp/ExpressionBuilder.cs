@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -3477,7 +3478,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			// C# 9 function pointer
 			var ftp = new FunctionPointerType(
 				typeSystem.MainModule,
-				dnlib.DotNet.CallingConvention.Default, // TODO
+				// TODO: calling convention
+				dnlib.DotNet.CallingConvention.Default, ImmutableArray.Create<IType>(),
 				inst.Method.ReturnType, inst.Method.ReturnTypeIsRefReadOnly,
 				inst.Method.Parameters.SelectImmutableArray(p => p.Type),
 				inst.Method.Parameters.SelectImmutableArray(p => p.ReferenceKind)
