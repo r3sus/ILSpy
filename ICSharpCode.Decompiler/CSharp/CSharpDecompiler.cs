@@ -257,8 +257,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (method != null) {
 				if (method.IsGetter || method.IsSetter || method.IsAddOn || method.IsRemoveOn)
 					return true;
-				if (LocalFunctionDecompiler.IsLocalFunctionMethod(null, method))
-					return settings.LocalFunctions;
+				if (settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionMethod(null, method))
+					return true;
 				if (settings.AnonymousMethods && method.HasGeneratedName() && method.IsCompilerGenerated())
 					return true;
 				if (settings.AsyncAwait && AsyncAwaitDecompiler.IsCompilerGeneratedMainMethod(method))
@@ -268,8 +268,8 @@ namespace ICSharpCode.Decompiler.CSharp
 			TypeDef type = member as TypeDef;
 			if (type != null) {
 				if (type.DeclaringType != null) {
-					if (LocalFunctionDecompiler.IsLocalFunctionDisplayClass(null, type))
-						return settings.LocalFunctions;
+					if (settings.LocalFunctions && LocalFunctionDecompiler.IsLocalFunctionDisplayClass(null, type))
+						return true;
 					if (settings.AnonymousMethods && IsClosureType(type))
 						return true;
 					if (settings.YieldReturn && YieldReturnDecompiler.IsCompilerGeneratorEnumerator(type))
