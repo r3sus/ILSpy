@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2020 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -35,7 +35,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		/// If this property is false, it will insert parentheses only where strictly required by the language spec.
 		/// </summary>
 		public bool InsertParenthesesForReadability { get; set; }
-		
+
 		enum PrecedenceLevel
 		{
 			// Higher integer value = higher precedence.
@@ -59,7 +59,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			NullableRewrap,
 			Primary
 		}
-		
+
 		/// <summary>
 		/// Gets the row number in the C# 4.0 spec operator precedence table.
 		/// </summary>
@@ -151,7 +151,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			// anything else: primary expression
 			return PrecedenceLevel.Primary;
 		}
-		
+
 		/// <summary>
 		/// Parenthesizes the expression if it does not have the minimum required precedence.
 		/// </summary>
@@ -166,26 +166,26 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		{
 			expr.ReplaceWith(e => new ParenthesizedExpression { Expression = e });
 		}
-		
+
 		// Primary expressions
 		public override void VisitMemberReferenceExpression(MemberReferenceExpression memberReferenceExpression)
 		{
 			ParenthesizeIfRequired(memberReferenceExpression.Target, PrecedenceLevel.Primary);
 			base.VisitMemberReferenceExpression(memberReferenceExpression);
 		}
-		
+
 		public override void VisitPointerReferenceExpression(PointerReferenceExpression pointerReferenceExpression)
 		{
 			ParenthesizeIfRequired(pointerReferenceExpression.Target, PrecedenceLevel.Primary);
 			base.VisitPointerReferenceExpression(pointerReferenceExpression);
 		}
-		
+
 		public override void VisitInvocationExpression(InvocationExpression invocationExpression)
 		{
 			ParenthesizeIfRequired(invocationExpression.Target, PrecedenceLevel.Primary);
 			base.VisitInvocationExpression(invocationExpression);
 		}
-		
+
 		public override void VisitIndexerExpression(IndexerExpression indexerExpression)
 		{
 			ParenthesizeIfRequired(indexerExpression.Target, PrecedenceLevel.Primary);
@@ -201,7 +201,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			base.VisitIndexerExpression(indexerExpression);
 		}
-		
+
 		// Unary expressions
 		public override void VisitUnaryOperatorExpression(UnaryOperatorExpression unaryOperatorExpression)
 		{
@@ -211,7 +211,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				Parenthesize(child);
 			base.VisitUnaryOperatorExpression(unaryOperatorExpression);
 		}
-		
+
 		public override void VisitCastExpression(CastExpression castExpression)
 		{
 			// Even in readability mode, don't parenthesize casts of casts.
@@ -263,7 +263,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			base.VisitCastExpression(castExpression);
 		}
-		
+
 		static bool TypeCanBeMisinterpretedAsExpression(AstType type)
 		{
 			// SimpleTypes can always be misinterpreted as IdentifierExpressions
@@ -275,7 +275,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			else
 				return type is SimpleType;
 		}
-		
+
 		// Binary Operators
 		public override void VisitBinaryOperatorExpression(BinaryOperatorExpression binaryOperatorExpression)
 		{
@@ -328,7 +328,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			else
 				return null;
 		}
-		
+
 		public override void VisitIsExpression(IsExpression isExpression)
 		{
 			if (InsertParenthesesForReadability) {
@@ -339,7 +339,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			base.VisitIsExpression(isExpression);
 		}
-		
+
 		public override void VisitAsExpression(AsExpression asExpression)
 		{
 			if (InsertParenthesesForReadability) {
@@ -350,7 +350,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			base.VisitAsExpression(asExpression);
 		}
-		
+
 		// Conditional operator
 		public override void VisitConditionalExpression(ConditionalExpression conditionalExpression)
 		{
@@ -386,16 +386,30 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		{
 			// assignment is right-associative
 			ParenthesizeIfRequired(assignmentExpression.Left, PrecedenceLevel.Assignment + 1);
-			if (InsertParenthesesForReadability && !(assignmentExpression.Right is DirectionExpression)) {
-				ParenthesizeIfRequired(assignmentExpression.Right, PrecedenceLevel.RelationalAndTypeTesting + 1);
-			} else {
-				ParenthesizeIfRequired(assignmentExpression.Right, PrecedenceLevel.Assignment);
-			}
+			HandleAssignmentRHS(assignmentExpression.Right);
 			base.VisitAssignmentExpression(assignmentExpression);
 		}
-		
+
+		private void HandleAssignmentRHS(Expression right)
+		{
+			if (InsertParenthesesForReadability && !(right is DirectionExpression))
+			{
+				ParenthesizeIfRequired(right, PrecedenceLevel.Conditional + 1);
+			}
+			else
+			{
+				ParenthesizeIfRequired(right, PrecedenceLevel.Assignment);
+			}
+		}
+
+		public override void VisitVariableInitializer(VariableInitializer variableInitializer)
+		{
+			if (!variableInitializer.Initializer.IsNull)
+				HandleAssignmentRHS(variableInitializer.Initializer);
+			base.VisitVariableInitializer(variableInitializer);
+		}
+
 		// don't need to handle lambdas, they have lowest precedence and unambiguous associativity
-		
 		public override void VisitQueryExpression(QueryExpression queryExpression)
 		{
 			// Query expressions are strange beasts:
