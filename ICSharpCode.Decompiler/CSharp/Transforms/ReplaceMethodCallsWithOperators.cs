@@ -16,11 +16,8 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using ICSharpCode.Decompiler.Semantics;
@@ -58,7 +55,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			var arguments = invocationExpression.Arguments.ToArray();
 
 			// Reduce "String.Concat(a, b)" to "a + b"
-			if (IsStringConcat(method) && CheckArgumentsForStringConcat(arguments)) {
+			if (IsStringConcat(method) && context.Settings.StringConcat && CheckArgumentsForStringConcat(arguments))
+			{
 				bool isInExpressionTree = invocationExpression.Ancestors.OfType<LambdaExpression>().Any(
 					lambda => lambda.Annotation<IL.ILFunction>()?.Kind == IL.ILFunctionKind.ExpressionTree);
 				Expression arg0 = arguments[0].Detach();
@@ -186,7 +184,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 			return;
 		}
-		
+
 		bool IsInstantiableTypeParameter(IType type)
 		{
 			return type is ITypeParameter tp && tp.HasDefaultConstructorConstraint;
