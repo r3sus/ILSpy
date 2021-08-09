@@ -69,8 +69,7 @@ internal sealed class ExtraUnsafeTests
 
 	private static void Issue2148(string[] args)
 	{
-		for (int/*pinned*/ i = 0; i < 100; i++)
-		{
+		for (int/*pinned*/ i = 0; i < 100; i++) {
 			Console.WriteLine("Hello World!");
 		}
 	}

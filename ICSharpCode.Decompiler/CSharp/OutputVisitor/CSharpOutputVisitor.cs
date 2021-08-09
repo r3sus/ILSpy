@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
+// Copyright (c) 2010-2020 AlphaSierraPapa for the SharpDevelop Team
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
@@ -1940,7 +1940,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			localFunctionDeclarationStatement.Declaration.AcceptVisitor(this);
 			EndNode(localFunctionDeclarationStatement);
 		}
-		
+
 		public virtual void VisitWhileStatement(WhileStatement whileStatement)
 		{
 			StartNode(whileStatement);
@@ -2386,16 +2386,20 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			EndNode(tupleTypeElement);
 		}
 
-		public virtual void VisitFunctionPointerType(FunctionPointerType functionPointerType)
+		public virtual void VisitFunctionPointerType(FunctionPointerAstType functionPointerType)
 		{
 			StartNode(functionPointerType);
 			WriteKeyword(Roles.DelegateKeyword);
-			WriteToken(FunctionPointerType.PointerRole);
-			if (!functionPointerType.CallingConventionIdentifier.IsNull) {
+			WriteToken(FunctionPointerAstType.PointerRole);
+			if (!functionPointerType.CallingConventionIdentifier.IsNull)
+			{
 				Space();
 				WriteIdentifier(functionPointerType.CallingConventionIdentifier);
 			}
-			WriteTypeArguments(functionPointerType.TypeArguments);
+			WriteToken(Roles.LChevron);
+			WriteCommaSeparatedList(
+				functionPointerType.Parameters.Concat<AstNode>(new[] { functionPointerType.ReturnType }));
+			WriteToken(Roles.RChevron);
 			EndNode(functionPointerType);
 		}
 

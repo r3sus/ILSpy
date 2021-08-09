@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2011 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -34,7 +34,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		{
 			return node.AcceptVisitor(new IntroduceUnsafeModifier());
 		}
-		
+
 		protected override bool VisitChildren(AstNode node)
 		{
 			bool result = false;
@@ -51,7 +51,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			return result;
 		}
-		
+
 		public override bool VisitPointerReferenceExpression(PointerReferenceExpression pointerReferenceExpression)
 		{
 			base.VisitPointerReferenceExpression(pointerReferenceExpression);
@@ -74,7 +74,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				return base.VisitComposedType(composedType);
 		}
 
-		public override bool VisitFunctionPointerType(FunctionPointerType functionPointerType)
+		public override bool VisitFunctionPointerType(FunctionPointerAstType functionPointerType)
 		{
 			return true;
 		}
@@ -84,7 +84,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			bool result = base.VisitUnaryOperatorExpression(unaryOperatorExpression);
 			if (unaryOperatorExpression.Operator == UnaryOperatorType.Dereference) {
 				var bop = unaryOperatorExpression.Expression as BinaryOperatorExpression;
-				if (bop != null && bop.Operator == BinaryOperatorType.Add 
+				if (bop != null && bop.Operator == BinaryOperatorType.Add
 					&& bop.GetResolveResult() is OperatorResolveResult orr
 					&& orr.Operands.FirstOrDefault()?.Type.Kind == TypeKind.Pointer)
 				{
@@ -103,7 +103,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				return result;
 			}
 		}
-		
+
 		public override bool VisitMemberReferenceExpression(MemberReferenceExpression memberReferenceExpression)
 		{
 			bool result = base.VisitMemberReferenceExpression(memberReferenceExpression);
@@ -119,12 +119,13 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 				memberReferenceExpression.ReplaceWith(pre);
 			}
 			var rr = memberReferenceExpression.GetResolveResult();
-			if (rr != null) {
-				if (rr.Type is PointerType)
+			if (rr != null)
+			{
+				if (IsPointer(rr.Type))
 					return true;
 				if (rr is MemberResolveResult mrr && mrr.Member.ReturnType.Kind == TypeKind.Delegate) {
 					var method = mrr.Member.ReturnType.GetDefinition()?.GetDelegateInvokeMethod();
-					if (method != null && (method.ReturnType is PointerType || method.Parameters.Any(p => p.Type is PointerType)))
+					if (method != null && (IsPointer(method.ReturnType) || method.Parameters.Any(p => IsPointer(p.Type))))
 						return true;
 				}
 			}
@@ -136,12 +137,13 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		{
 			bool result = base.VisitIdentifierExpression(identifierExpression);
 			var rr = identifierExpression.GetResolveResult();
-			if (rr != null) {
-				if (rr.Type is PointerType)
+			if (rr != null)
+			{
+				if (IsPointer(rr.Type))
 					return true;
 				if (rr is MemberResolveResult mrr && mrr.Member.ReturnType.Kind == TypeKind.Delegate) {
 					var method = mrr.Member.ReturnType.GetDefinition()?.GetDelegateInvokeMethod();
-					if (method != null && (method.ReturnType is PointerType || method.Parameters.Any(p => p.Type is PointerType)))
+					if (method != null && (IsPointer(method.ReturnType) || method.Parameters.Any(p => IsPointer(p.Type))))
 						return true;
 				}
 			}
@@ -153,16 +155,16 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		{
 			bool result = base.VisitStackAllocExpression(stackAllocExpression);
 			var rr = stackAllocExpression.GetResolveResult();
-			if (rr?.Type is PointerType)
+			if (IsPointer(rr?.Type))
 				return true;
 			return result;
 		}
-		
+
 		public override bool VisitInvocationExpression(InvocationExpression invocationExpression)
 		{
 			bool result = base.VisitInvocationExpression(invocationExpression);
 			var rr = invocationExpression.GetResolveResult();
-			if (rr != null && rr.Type is PointerType)
+			if (IsPointer(rr?.Type))
 				return true;
 			return result;
 		}
@@ -171,6 +173,20 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		{
 			base.VisitFixedVariableInitializer(fixedVariableInitializer);
 			return true;
+		}
+
+		private bool IsPointer(IType type)
+		{
+			switch (type?.Kind)
+			{
+				case TypeKind.Pointer:
+				case TypeKind.FunctionPointer:
+					return true;
+				case TypeKind.ByReference:
+					return IsPointer(((ByReferenceType)type).ElementType);
+				default:
+					return false;
+			}
 		}
 	}
 }

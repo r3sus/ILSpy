@@ -109,11 +109,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		NativeIntegers = 0x1000,
 		/// <summary>
+		/// Allow function pointer types. If this option is not enabled, function pointers are
+		/// replaced with the 'IntPtr' type.
+		/// </summary>
+		FunctionPointers = 0x2000,
+		/// <summary>
 		/// Default settings: typical options for the decompiler, with all C# languages features enabled.
 		/// </summary>
 		Default = Dynamic | Tuple | ExtensionMethods | DecimalConstants | ReadOnlyStructsAndParameters
 			| RefStructs | UnmanagedConstraints | NullabilityAnnotations | ReadOnlyMethods
-			| NativeIntegers
+			| NativeIntegers | FunctionPointers
 	}
 
 	/// <summary>
@@ -147,6 +152,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				typeSystemOptions |= TypeSystemOptions.ReadOnlyMethods;
 			if (settings.NativeIntegers)
 				typeSystemOptions |= TypeSystemOptions.NativeIntegers;
+			if (settings.FunctionPointers)
+				typeSystemOptions |= TypeSystemOptions.FunctionPointers;
 			return typeSystemOptions;
 		}
 

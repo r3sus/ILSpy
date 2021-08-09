@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using dnlib.DotNet;
@@ -26,8 +27,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					return context.GetMethodTypeParameter((int)mVar.Number);
 				case GenericVar tVar:
 					return context.GetClassTypeParameter((int)tVar.Number);
-				case FnPtrSig _:
+				case FnPtrSig fnPtr: {
+					// pointers to member functions are not supported even in C# 9
+					if (!fnPtr.Signature.HasThis && fnPtr.Signature is MethodBaseSig mSig) {
+						var retType = mSig.RetType.DecodeSignature(module, context);
+						var paramTypes = mSig.Params.Select(t => t.DecodeSignature(module, context)).ToList();
+						return FunctionPointerType.FromSignature(retType, paramTypes, mSig.CallingConvention, module);
+					}
+
 					return module.Compilation.FindType(KnownTypeCode.IntPtr);
+				}
 				case GenericInstSig instSig:
 					return new ParameterizedType(instSig.GenericType.DecodeSignature(module, context),
 						instSig.GenericArguments.Select(x => x.DecodeSignature(module, context)));

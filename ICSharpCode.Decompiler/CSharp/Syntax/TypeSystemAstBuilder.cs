@@ -286,7 +286,54 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 					});
 				}
 				return astType;
-			} else {
+			}
+			else if (type is FunctionPointerType fpt)
+			{
+				var astType = new FunctionPointerAstType();
+				if (fpt.CallingConvention != dnlib.DotNet.CallingConvention.Default)
+				{
+					astType.CallingConvention = fpt.CallingConvention.ToString().ToLowerInvariant();
+				}
+				for (int i = 0; i < fpt.ParameterTypes.Length; i++)
+				{
+					var paramDecl = new ParameterDeclaration();
+					paramDecl.ParameterModifier = fpt.ParameterReferenceKinds[i] switch
+					{
+						ReferenceKind.In => ParameterModifier.In,
+						ReferenceKind.Ref => ParameterModifier.Ref,
+						ReferenceKind.Out => ParameterModifier.Out,
+						_ => ParameterModifier.None,
+					};
+					IType parameterType = fpt.ParameterTypes[i];
+					if (paramDecl.ParameterModifier != ParameterModifier.None && parameterType is ByReferenceType brt)
+					{
+						paramDecl.Type = ConvertType(brt.ElementType);
+					}
+					else
+					{
+						paramDecl.Type = ConvertType(parameterType);
+					}
+					astType.Parameters.Add(paramDecl);
+				}
+				astType.ReturnType = ConvertType(fpt.ReturnType);
+				if (fpt.ReturnIsRefReadOnly && astType.ReturnType is ComposedType ct && ct.HasRefSpecifier)
+				{
+					ct.HasReadOnlySpecifier = true;
+				}
+				ITypeDefinition treatedAs = fpt.GetDefinition();
+				if (treatedAs != null)
+				{
+					var result = ConvertTypeHelper(treatedAs);
+					result.AddChild(new Comment(astType.ToString(), CommentType.MultiLine), Roles.Comment);
+					return result;
+				}
+				else
+				{
+					return astType;
+				}
+			}
+			else
+			{
 				AstType astType;
 				switch (type) {
 					case ITypeDefinition _:
@@ -1045,9 +1092,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				const ulong m4 = 0x0f0f0f0f0f0f0f0f; //binary:  4 zeros,  4 ones ...
 				const ulong h01 = 0x0101010101010101; //the sum of 256 to the power of 0,1,2,3...
 				ulong x = value - ((value >> 1) & m1); //put count of each 2 bits into those 2 bits
-				x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits 
-				x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits 
-				return unchecked((int)((x * h01) >> 56));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+				x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits
+				x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits
+				return unchecked((int)((x * h01) >> 56));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
 			}
 		}
 

@@ -156,7 +156,7 @@ namespace ICSharpCode.Decompiler.IL
 				case CallVirt callVirt:
 					return callVirt.Method.ReturnType;
 				case CallIndirect calli:
-					return calli.ReturnType;
+					return calli.FunctionPointerType.ReturnType;
 				case UserDefinedLogicOperator logicOp:
 					return logicOp.Method.ReturnType;
 				case LdObj ldobj:

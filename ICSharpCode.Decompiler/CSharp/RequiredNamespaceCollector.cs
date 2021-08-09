@@ -150,6 +150,13 @@ namespace ICSharpCode.Decompiler.CSharp
 						CollectNamespacesForTypeReference(elementType);
 					}
 					break;
+				case FunctionPointerType fnPtrType:
+					CollectNamespacesForTypeReference(fnPtrType.ReturnType);
+					foreach (var paramType in fnPtrType.ParameterTypes)
+					{
+						CollectNamespacesForTypeReference(paramType);
+					}
+					break;
 				default:
 					namespaces.Add(type.Namespace);
 					break;

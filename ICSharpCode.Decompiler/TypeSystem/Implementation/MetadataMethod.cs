@@ -201,7 +201,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				};
 
 				var retType = ApplyAttributeTypeVisitor.ApplyAttributesToType(sig,
-					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.OptionsForEntity(this), NullableContext);
+					module.Compilation, handle.Parameters.ReturnParameter.ParamDef, module.metadata, module.OptionsForEntity(this), NullableContext, isSignatureReturnType: true);
 
 				return LazyInit.GetOrSet(ref this.returnType, retType);
 			}

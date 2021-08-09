@@ -1423,25 +1423,23 @@ namespace ICSharpCode.Decompiler.IL
 
 		ILInstruction DecodeCallIndirect()
 		{
+			var signatureHandle = (dnlib.DotNet.MethodSig)currentInstruction.Operand;
+			var fpt = module.DecodeMethodSignature(signatureHandle, genericContext);
 			var functionPointer = Pop(StackType.I);
-			var signature = (dnlib.DotNet.MethodSig)currentInstruction.Operand;
-			Debug.Assert(!signature.HasThis);
-			int firstArgument = signature.HasThis ? 1 : 0;
-			var parameterTypes = new IType[signature.Params.Count];
-			var arguments = new ILInstruction[firstArgument + parameterTypes.Length];
-			for (int i = signature.Params.Count - 1; i >= 0; i--) {
-				parameterTypes[i] = module.ResolveType(signature.Params[i], genericContext);
-				arguments[firstArgument + i] = Pop(parameterTypes[i].GetStackType());
+			int firstArgument = signatureHandle.HasThis ? 1 : 0;
+			var arguments = new ILInstruction[firstArgument + fpt.ParameterTypes.Length];
+			for (int i = fpt.ParameterTypes.Length - 1; i >= 0; i--)
+			{
+				arguments[firstArgument + i] = Pop(fpt.ParameterTypes[i].GetStackType());
 			}
-			if (firstArgument == 1) {
+			if (firstArgument == 1)
+			{
 				arguments[0] = Pop();
 			}
 			var call = new CallIndirect(
-				signature.HasThis,
-				signature.ExplicitThis,
-				signature.CallingConvention,
-				module.ResolveType(signature.RetType, genericContext),
-				parameterTypes.ToImmutableArray(),
+				signatureHandle.HasThis,
+				signatureHandle.ExplicitThis,
+				fpt,
 				functionPointer,
 				arguments
 			);

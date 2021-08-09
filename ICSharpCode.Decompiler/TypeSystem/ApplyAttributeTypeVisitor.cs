@@ -39,7 +39,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			ModuleDef metadata,
 			TypeSystemOptions options,
 			Nullability nullableContext,
-			bool typeChildrenOnly = false)
+			bool typeChildrenOnly = false,
+			bool isSignatureReturnType = false)
 		{
 			bool hasDynamicAttribute = false;
 			bool[] dynamicAttributeData = null;
@@ -104,6 +105,14 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					options, tupleElementNames,
 					nullability, nullableAttributeData
 				);
+				if (isSignatureReturnType && hasDynamicAttribute
+										  && inputType.SkipModifiers().Kind == TypeKind.ByReference
+										  && attributes.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly))
+				{
+					// crazy special case: `ref readonly` return takes one dynamic index more than
+					// a non-readonly `ref` return.
+					visitor.dynamicTypeIndex++;
+				}
 				if (typeChildrenOnly) {
 					return inputType.VisitChildren(visitor);
 				} else {
@@ -258,6 +267,34 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (!changed)
 				return type;
 			return new ParameterizedType(genericType, arguments);
+		}
+
+		public override IType VisitFunctionPointerType(FunctionPointerType type)
+		{
+			dynamicTypeIndex++;
+			if (type.ReturnIsRefReadOnly)
+			{
+				dynamicTypeIndex++;
+			}
+			var returnType = type.ReturnType.AcceptVisitor(this);
+			bool changed = type.ReturnType != returnType;
+			var parameters = new IType[type.ParameterTypes.Length];
+			for (int i = 0; i < parameters.Length; i++)
+			{
+				dynamicTypeIndex += type.ParameterReferenceKinds[i] switch
+				{
+					ReferenceKind.None => 1,
+					ReferenceKind.Ref => 1,
+					ReferenceKind.Out => 2, // in/out also count the modreq
+					ReferenceKind.In => 2,
+					_ => throw new NotSupportedException()
+				};
+				parameters[i] = type.ParameterTypes[i].AcceptVisitor(this);
+				changed = changed || parameters[i] != type.ParameterTypes[i];
+			}
+			if (!changed)
+				return type;
+			return type.WithSignature(returnType, parameters.ToImmutableArray());
 		}
 
 		public override IType VisitTypeDefinition(ITypeDefinition type)

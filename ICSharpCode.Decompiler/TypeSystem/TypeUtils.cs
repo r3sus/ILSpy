@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2015 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -117,7 +117,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		/// <summary>
 		/// Gets whether the type is a C# small integer type: byte, sbyte, short or ushort.
-		/// 
+		///
 		/// Unlike the ILAst, C# does not consider bool, char or enums to be small integers.
 		/// </summary>
 		public static bool IsCSharpSmallIntegerType(this IType type)
@@ -135,7 +135,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		/// <summary>
 		/// Gets whether the type is a C# 9 native integer type: nint or nuint.
-		/// 
+		///
 		/// Returns false for (U)IntPtr.
 		/// </summary>
 		public static bool IsCSharpNativeIntegerType(this IType type)
@@ -151,7 +151,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		/// <summary>
 		/// Gets whether the type is a C# primitive integer type: byte, sbyte, short, ushort, int, uint, long and ulong.
-		/// 
+		///
 		/// Unlike the ILAst, C# does not consider bool, enums, pointers or IntPtr to be integers.
 		/// </summary>
 		public static bool IsCSharpPrimitiveIntegerType(this IType type)
@@ -263,6 +263,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				case TypeKind.Pointer:
 				case TypeKind.NInt:
 				case TypeKind.NUInt:
+				case TypeKind.FunctionPointer:
 					return StackType.I;
 				case TypeKind.TypeParameter:
 					// Type parameters are always considered StackType.O, even
@@ -328,6 +329,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			switch (type.Kind) {
 				case TypeKind.Pointer:
 				case TypeKind.NUInt:
+				case TypeKind.FunctionPointer:
 					return Sign.Unsigned;
 				case TypeKind.NInt:
 					return Sign.Signed;
@@ -400,11 +402,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public static PrimitiveType ToPrimitiveType(this IType type)
 		{
 			type = type.SkipModifiers();
-			switch (type.Kind) {
-				case TypeKind.Unknown: return PrimitiveType.Unknown;
-				case TypeKind.ByReference: return PrimitiveType.Ref;
-				case TypeKind.NInt: return PrimitiveType.I;
-				case TypeKind.NUInt: return PrimitiveType.U;
+			switch (type.Kind)
+			{
+				case TypeKind.Unknown:
+					return PrimitiveType.Unknown;
+				case TypeKind.ByReference:
+					return PrimitiveType.Ref;
+				case TypeKind.NInt:
+				case TypeKind.FunctionPointer:
+					return PrimitiveType.I;
+				case TypeKind.NUInt:
+					return PrimitiveType.U;
 			}
 			var def = type.GetEnumUnderlyingType().GetDefinition();
 			return def != null ? def.KnownTypeCode.ToPrimitiveType() : PrimitiveType.None;

@@ -121,12 +121,13 @@ namespace ICSharpCode.Decompiler
 			if (languageVersion < CSharp.LanguageVersion.Preview) {
 				nativeIntegers = false;
 				initAccessors = false;
+				functionPointers = false;
 			}
 		}
 
 		public CSharp.LanguageVersion GetMinimumRequiredVersion()
 		{
-			if (nativeIntegers || initAccessors)
+			if (nativeIntegers || initAccessors || functionPointers)
 				return CSharp.LanguageVersion.Preview;
 			if (nullableReferenceTypes || readOnlyMethods || asyncEnumerator || asyncUsingAndForEachStatement || staticLocalFunctions || ranges || switchExpressions)
 				return CSharp.LanguageVersion.CSharp8_0;
@@ -180,6 +181,25 @@ namespace ICSharpCode.Decompiler
 			set {
 				if (initAccessors != value) {
 					initAccessors = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool functionPointers = true;
+
+		/// <summary>
+		/// Use C# 9 <c>delegate* unmanaged</c> types.
+		/// If this option is disabled, function pointers will instead be decompiled with type `IntPtr`.
+		/// </summary>
+		[Category("C# 9.0 (experimental)")]
+		[Description("DecompilerSettings.FunctionPointers")]
+		public bool FunctionPointers {
+			get { return functionPointers; }
+			set {
+				if (functionPointers != value)
+				{
+					functionPointers = value;
 					OnPropertyChanged();
 				}
 			}

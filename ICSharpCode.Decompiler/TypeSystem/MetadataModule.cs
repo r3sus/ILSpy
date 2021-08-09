@@ -63,7 +63,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				this.AssemblyName = moddef.Name;
 				this.FullAssemblyName = this.AssemblyName;
 			}
-			
+
 			var customAttrs = metadata.CustomAttributes;
 			this.NullableContext = customAttrs.GetNullableContext() ?? Nullability.Oblivious;
 			this.minAccessibilityForNRT = FindMinimumAccessibilityForNRT(customAttrs);
@@ -587,6 +587,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				};
 			}
 			return field;
+		}
+		#endregion
+
+		#region Decode Standalone Signature
+		public FunctionPointerType DecodeMethodSignature(MethodSig standaloneSignature, GenericContext genericContext)
+		{
+			if (standaloneSignature is null)
+				throw new BadImageFormatException("Expected Method signature");
+			var retType = standaloneSignature.RetType.DecodeSignature(this, genericContext);
+			var paramTypes = standaloneSignature.Params.Select(t => t.DecodeSignature(this, genericContext)).ToList();
+			var fpt = FunctionPointerType.FromSignature(retType, paramTypes, standaloneSignature.CallingConvention, this);
+			return (FunctionPointerType)IntroduceTupleTypes(fpt);
 		}
 		#endregion
 

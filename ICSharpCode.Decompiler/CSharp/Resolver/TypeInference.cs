@@ -608,6 +608,22 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					MakeExactInference(pU.GetTypeArgument(i), pV.GetTypeArgument(i));
 				}
 				Log.Unindent();
+				return;
+			}
+			// Handle pointer types:
+			if (U is PointerType ptrU && V is PointerType ptrV)
+			{
+				MakeExactInference(ptrU.ElementType, ptrV.ElementType);
+				return;
+			}
+			if (U is FunctionPointerType fnPtrU && V is FunctionPointerType fnPtrV)
+			{
+				MakeExactInference(fnPtrU.ReturnType, fnPtrV.ReturnType);
+				foreach (var (ptU, ptV) in fnPtrU.ParameterTypes.Zip(fnPtrV.ParameterTypes))
+				{
+					MakeExactInference(ptU, ptV);
+				}
+				return;
 			}
 		}
 		
@@ -706,6 +722,22 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					}
 				}
 				Log.Unindent();
+				return;
+			}
+			// Handle pointer types:
+			if (U is PointerType ptrU && V is PointerType ptrV)
+			{
+				MakeExactInference(ptrU.ElementType, ptrV.ElementType);
+				return;
+			}
+			if (U is FunctionPointerType fnPtrU && V is FunctionPointerType fnPtrV)
+			{
+				MakeLowerBoundInference(fnPtrU.ReturnType, fnPtrV.ReturnType);
+				foreach (var (ptU, ptV) in fnPtrU.ParameterTypes.Zip(fnPtrV.ParameterTypes))
+				{
+					MakeUpperBoundInference(ptU, ptV);
+				}
+				return;
 			}
 		}
 		
@@ -796,6 +828,22 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					}
 				}
 				Log.Unindent();
+				return;
+			}
+			// Handle pointer types:
+			if (U is PointerType ptrU && V is PointerType ptrV)
+			{
+				MakeExactInference(ptrU.ElementType, ptrV.ElementType);
+				return;
+			}
+			if (U is FunctionPointerType fnPtrU && V is FunctionPointerType fnPtrV)
+			{
+				MakeUpperBoundInference(fnPtrU.ReturnType, fnPtrV.ReturnType);
+				foreach (var (ptU, ptV) in fnPtrU.ParameterTypes.Zip(fnPtrV.ParameterTypes))
+				{
+					MakeLowerBoundInference(ptU, ptV);
+				}
+				return;
 			}
 		}
 		#endregion
