@@ -24,7 +24,10 @@ namespace ICSharpCode.Decompiler.IL
 			bool checkForOverflow,
 			bool unwrapZeroExtension = false)
 		{
-			if (byteOffsetInst is Conv conv && conv.InputType == StackType.I8 && conv.ResultType == StackType.I) {
+			if (pointerElementType == null)
+				return null;
+			if (byteOffsetInst is Conv conv && conv.InputType == StackType.I8 && conv.ResultType == StackType.I)
+			{
 				byteOffsetInst = conv.Argument;
 			}
 			int? elementSize = ComputeSizeOf(pointerElementType);
