@@ -152,14 +152,22 @@ namespace ICSharpCode.Decompiler.CSharp
 				if (inst.ResultType.IsIntegerType()) {
 					Debug.Assert(cexpr.Type.GetStackType().IsIntegerType(), "IL instructions of integer type must convert into C# expressions of integer type");
 					Debug.Assert(cexpr.Type.GetSign() != Sign.None, "Must have a sign specified for zero/sign-extension");
-				} else if (inst is ILiftableInstruction liftable && liftable.IsLifted) {
-					Debug.Assert(NullableType.IsNullable(cexpr.Type));
-					IType underlying = NullableType.GetUnderlyingType(cexpr.Type);
-					if (liftable.UnderlyingResultType.IsIntegerType()) {
-						Debug.Assert(underlying.GetStackType().IsIntegerType(), "IL instructions of integer type must convert into C# expressions of integer type");
-						Debug.Assert(underlying.GetSign() != Sign.None, "Must have a sign specified for zero/sign-extension");
-					} else {
-						Debug.Assert(underlying.GetStackType() == liftable.UnderlyingResultType);
+				}
+				else if (inst is ILiftableInstruction liftable && liftable.IsLifted)
+				{
+					if (liftable.UnderlyingResultType != StackType.Unknown)
+					{
+						Debug.Assert(NullableType.IsNullable(cexpr.Type));
+						IType underlying = NullableType.GetUnderlyingType(cexpr.Type);
+						if (liftable.UnderlyingResultType.IsIntegerType())
+						{
+							Debug.Assert(underlying.GetStackType().IsIntegerType(), "IL instructions of integer type must convert into C# expressions of integer type");
+							Debug.Assert(underlying.GetSign() != Sign.None, "Must have a sign specified for zero/sign-extension");
+						}
+						else
+						{
+							Debug.Assert(underlying.GetStackType() == liftable.UnderlyingResultType);
+						}
 					}
 				} else if (inst.ResultType == StackType.Ref) {
 					Debug.Assert(cexpr.Type.GetStackType() == StackType.Ref || cexpr.Type.GetStackType().IsIntegerType());
