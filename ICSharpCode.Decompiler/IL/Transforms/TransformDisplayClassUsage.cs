@@ -407,7 +407,11 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				if (!def.HasBody)
 					return false;
 				var body = def.Body;
-				if (body.HasVariables || body.HasExceptionHandlers)
+				// some compilers produce ctors with unused local variables
+				// see https://github.com/icsharpcode/ILSpy/issues/2174
+				//if (body.HasVariables)
+				//	return false;
+				if (body.HasExceptionHandlers)
 					return false;
 				var reader = body.Instructions;
 				if (reader.Count < 3)
