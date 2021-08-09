@@ -86,6 +86,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Output\InsertParenthesesVisitorTests.cs" />
     <Compile Include="TestCases\Correctness\DeconstructionTests.cs" />
     <Compile Include="TestCases\Correctness\StringConcat.cs" />
     <None Include="TestCases\Pretty\FunctionPointers.cs" />
