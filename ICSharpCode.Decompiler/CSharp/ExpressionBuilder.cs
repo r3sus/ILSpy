@@ -32,7 +32,6 @@ using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
 using ExpressionType = System.Linq.Expressions.ExpressionType;
 using PrimitiveType = ICSharpCode.Decompiler.CSharp.Syntax.PrimitiveType;
-using System.Threading;
 
 namespace ICSharpCode.Decompiler.CSharp
 {
@@ -1934,7 +1933,14 @@ namespace ICSharpCode.Decompiler.CSharp
 			ame.IsAsync = function.IsAsync;
 			ame.Parameters.AddRange(MakeParameters(function.Parameters, function));
 			ame.HasParameterList = ame.Parameters.Count > 0;
-			StatementBuilder builder = new StatementBuilder(typeSystem, this.decompilationContext, function, settings, cancellationToken);
+			var builder = new StatementBuilder(
+				typeSystem,
+				this.decompilationContext,
+				function,
+				settings,
+				statementBuilder.decompileRun,
+				cancellationToken
+			);
 			var body = builder.ConvertAsBlock(function.Body);
 
 			Comment prev = null;

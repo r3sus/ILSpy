@@ -272,14 +272,19 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 
 			var preprocessorSymbols = GetPreprocessorSymbols(flags);
 
-			if (flags.HasFlag(CompilerOptions.UseRoslyn)) {
+			if (flags.HasFlag(CompilerOptions.UseRoslyn))
+			{
+				var languageVersion = flags.HasFlag(CompilerOptions.Preview)
+					? Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview
+					: Microsoft.CodeAnalysis.CSharp.LanguageVersion.CSharp8;
 				var parseOptions = new CSharpParseOptions(
 					preprocessorSymbols: preprocessorSymbols.ToArray(),
-					languageVersion: flags.HasFlag(CompilerOptions.Preview) ? Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview : Microsoft.CodeAnalysis.CSharp.LanguageVersion.CSharp8
+					languageVersion: languageVersion
 				);
 				var syntaxTrees = sourceFileNames.Select(f => SyntaxFactory.ParseSyntaxTree(File.ReadAllText(f), parseOptions, path: f, encoding: Encoding.UTF8));
-				if (flags.HasFlag(CompilerOptions.ReferenceCore)) {
-					syntaxTrees = syntaxTrees.Concat(new[] { SyntaxFactory.ParseSyntaxTree(targetFrameworkAttributeSnippet) });
+				if (flags.HasFlag(CompilerOptions.ReferenceCore))
+				{
+					syntaxTrees = syntaxTrees.Concat(new[] { SyntaxFactory.ParseSyntaxTree(targetFrameworkAttributeSnippet, parseOptions) });
 				}
 				IEnumerable<MetadataReference> references;
 				if (flags.HasFlag(CompilerOptions.ReferenceCore)) {
@@ -420,7 +425,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				return settings;
 			}
 		}
-		
+
 		public static void CompileCSharpWithPdb(string assemblyName, Dictionary<string, string> sourceFiles)
 		{
 			var parseOptions = new CSharpParseOptions(languageVersion: Microsoft.CodeAnalysis.CSharp.LanguageVersion.Latest);
@@ -455,7 +460,7 @@ namespace ICSharpCode.Decompiler.Tests.Helpers
 				}
 			}
 		}
-		
+
 		public static CSharpDecompiler GetDecompilerForSnippet(string csharpText)
 		{
 			var syntaxTree = SyntaxFactory.ParseSyntaxTree(csharpText);

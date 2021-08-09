@@ -122,12 +122,13 @@ namespace ICSharpCode.Decompiler
 				nativeIntegers = false;
 				initAccessors = false;
 				functionPointers = false;
+				forEachWithGetEnumeratorExtension = false;
 			}
 		}
 
 		public CSharp.LanguageVersion GetMinimumRequiredVersion()
 		{
-			if (nativeIntegers || initAccessors || functionPointers)
+			if (nativeIntegers || initAccessors || functionPointers || forEachWithGetEnumeratorExtension)
 				return CSharp.LanguageVersion.Preview;
 			if (nullableReferenceTypes || readOnlyMethods || asyncEnumerator || asyncUsingAndForEachStatement || staticLocalFunctions || ranges || switchExpressions)
 				return CSharp.LanguageVersion.CSharp8_0;
@@ -542,6 +543,24 @@ namespace ICSharpCode.Decompiler
 			set {
 				if (forEachStatement != value) {
 					forEachStatement = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool forEachWithGetEnumeratorExtension = true;
+
+		/// <summary>
+		/// Support GetEnumerator extension methods in foreach.
+		/// </summary>
+		[Category("C# 9.0 (experimental)")]
+		[Description("DecompilerSettings.DecompileForEachWithGetEnumeratorExtension")]
+		public bool ForEachWithGetEnumeratorExtension {
+			get { return forEachWithGetEnumeratorExtension; }
+			set {
+				if (forEachWithGetEnumeratorExtension != value)
+				{
+					forEachWithGetEnumeratorExtension = value;
 					OnPropertyChanged();
 				}
 			}
