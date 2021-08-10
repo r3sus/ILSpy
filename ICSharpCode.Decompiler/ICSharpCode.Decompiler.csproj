@@ -53,6 +53,7 @@
     <Compile Include="CSharp\CodeMappingInfo.cs" />
     <Compile Include="CSharp\CSharpLanguageVersion.cs" />
     <Compile Include="CSharp\OutputVisitor\GenericGrammarAmbiguityVisitor.cs" />
+    <Compile Include="CSharp\RecordDecompiler.cs" />
     <Compile Include="CSharp\RequiredNamespaceCollector.cs" />
     <Compile Include="CSharp\SequencePointBuilder.cs" />
     <Compile Include="CSharp\Syntax\Expressions\DeclarationExpression.cs" />

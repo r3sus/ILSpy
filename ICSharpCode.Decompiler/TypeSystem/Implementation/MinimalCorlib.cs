@@ -299,6 +299,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				return EmptyList<IProperty>.Instance;
 			}
 
+			bool ITypeDefinition.IsRecord => false;
+
 			ITypeDefinition IType.GetDefinition() => this;
 			TypeParameterSubstitution IType.GetSubstitution() => TypeParameterSubstitution.Identity;
 

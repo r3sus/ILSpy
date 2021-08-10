@@ -353,6 +353,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			typeSystemAstBuilder.AddResolveResultAnnotations = true;
 			typeSystemAstBuilder.UseNullableSpecifierForValueTypes = settings.LiftNullables;
 			typeSystemAstBuilder.SupportInitAccessors = settings.InitAccessors;
+			typeSystemAstBuilder.SupportRecordClasses = settings.RecordClasses;
 			return typeSystemAstBuilder;
 		}
 
@@ -957,23 +958,39 @@ namespace ICSharpCode.Decompiler.CSharp
 					// e.g. DelegateDeclaration
 					return entityDecl;
 				}
-				foreach (var type in typeDef.NestedTypes) {
-					if (type.MetadataToken != null && !MemberIsHidden(type.MetadataToken, settings)) {
+				bool isRecord = settings.RecordClasses && typeDef.IsRecord;
+				RecordDecompiler recordDecompiler = isRecord ? new RecordDecompiler(typeSystem, typeDef, CancellationToken) : null;
+				foreach (var type in typeDef.NestedTypes)
+				{
+					if (!(type.MetadataToken is null) && !MemberIsHidden(type.MetadataToken, settings))
+					{
 						var nestedType = DoDecompile(type, decompileRun, decompilationContext.WithCurrentTypeDefinition(type));
 						SetNewModifier(nestedType);
 						typeDecl.Members.Add(nestedType);
 					}
 				}
-				foreach (var field in typeDef.Fields) {
-					if (field.MetadataToken != null && !MemberIsHidden(field.MetadataToken, settings)) {
+				// With C# 9 records, the relative order of fields and properties matters:
+				IEnumerable<IMember> fieldsAndProperties = recordDecompiler?.FieldsAndProperties
+					?? typeDef.Fields.Concat<IMember>(typeDef.Properties);
+				foreach (var fieldOrProperty in fieldsAndProperties)
+				{
+					if (fieldOrProperty.MetadataToken is null || MemberIsHidden(fieldOrProperty.MetadataToken, settings))
+					{
+						continue;
+					}
+					if (fieldOrProperty is ICSharpCode.Decompiler.TypeSystem.IField field)
+					{
 						if (typeDef.Kind == TypeKind.Enum && !field.IsConst)
 							continue;
 						var memberDecl = DoDecompile(field, decompileRun, decompilationContext.WithCurrentMember(field));
 						typeDecl.Members.Add(memberDecl);
 					}
-				}
-				foreach (var property in typeDef.Properties) {
-					if (property.MetadataToken != null && !MemberIsHidden(property.MetadataToken, settings)) {
+					else if (fieldOrProperty is IProperty property)
+					{
+						if (recordDecompiler?.PropertyIsGenerated(property) == true)
+						{
+							continue;
+						}
 						var propDecl = DoDecompile(property, decompileRun, decompilationContext.WithCurrentMember(property));
 						typeDecl.Members.Add(propDecl);
 					}
@@ -984,8 +1001,14 @@ namespace ICSharpCode.Decompiler.CSharp
 						typeDecl.Members.Add(eventDecl);
 					}
 				}
-				foreach (var method in typeDef.Methods) {
-					if (method.MetadataToken != null &&! MemberIsHidden(method.MetadataToken, settings)) {
+				foreach (var method in typeDef.Methods)
+				{
+					if (recordDecompiler?.MethodIsGenerated(method) == true)
+					{
+						continue;
+					}
+					if (!(method.MetadataToken is null) && !MemberIsHidden(method.MetadataToken, settings))
+					{
 						var memberDecl = DoDecompile(method, decompileRun, decompilationContext.WithCurrentMember(method));
 						typeDecl.Members.Add(memberDecl);
 						typeDecl.Members.AddRange(AddInterfaceImplHelpers(memberDecl, method, typeSystemAstBuilder));

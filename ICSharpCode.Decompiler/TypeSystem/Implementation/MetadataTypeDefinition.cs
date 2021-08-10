@@ -99,7 +99,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.Kind = TypeKind.Struct;
 					this.IsByRefLike = (module.TypeSystemOptions & TypeSystemOptions.RefStructs) == TypeSystemOptions.RefStructs
 									   && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsByRefLike);
-					this.IsReadOnly = (module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == TypeSystemOptions.ReadOnlyStructsAndParameters 
+					this.IsReadOnly = (module.TypeSystemOptions & TypeSystemOptions.ReadOnlyStructsAndParameters) == TypeSystemOptions.ReadOnlyStructsAndParameters
 									  && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.IsReadOnly);
 				}
 			} else if (handle.IsDelegate) {
@@ -595,6 +595,39 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				if (invoker != null && (filter == null || filter(invoker)))
 					yield return remover;
 			}
+		}
+		#endregion
+
+		#region IsRecord
+		volatile ThreeState isRecord = ThreeState.Unknown;
+
+		public bool IsRecord {
+			get {
+				if (isRecord == ThreeState.Unknown) {
+					isRecord = ComputeIsRecord().ToThreeState();
+				}
+				return isRecord == ThreeState.True;
+			}
+		}
+
+		private static readonly UTF8String opEqualityStr = new UTF8String("op_Equality");
+		private static readonly UTF8String opInequalityStr = new UTF8String("op_Inequality");
+		private static readonly UTF8String cloneStr = new UTF8String("<Clone>$");
+
+		private bool ComputeIsRecord()
+		{
+			if (Kind != TypeKind.Class)
+				return false;
+			bool opEquality = false;
+			bool opInequality = false;
+			bool clone = false;
+			foreach (var method in handle.Methods)
+			{
+				opEquality |= method.Name == opEqualityStr;
+				opInequality |= method.Name == opInequalityStr;
+				clone |= method.Name == cloneStr;
+			}
+			return opEquality & opInequality & clone;
 		}
 		#endregion
 	}

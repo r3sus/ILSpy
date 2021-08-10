@@ -1,21 +1,21 @@
-﻿// 
+﻿//
 // Roles.cs
-//  
+//
 // Author:
 //       Mike Krüger <mkrueger@xamarin.com>
-// 
+//
 // Copyright (c) 2012 Xamarin <http://xamarin.com>
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,7 +30,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 	public static class Roles
 	{
 		public static readonly Role<AstNode> Root = AstNode.RootRole;
-		
+
 		// some pre defined constants for common roles
 		public static readonly Role<Identifier> Identifier = new Role<Identifier> ("Identifier", Syntax.Identifier.Null);
 		public static readonly Role<BlockStatement> Body = new Role<BlockStatement> ("Body", BlockStatement.Null);
@@ -70,7 +70,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		public static readonly TokenRole Arrow = new TokenRole("=>");
 		public static readonly Role<Comment> Comment = new Role<Comment> ("Comment");
 		public static readonly Role<PreProcessorDirective> PreProcessorDirective = new Role<PreProcessorDirective> ("PreProcessorDirective");
-			
+
 		public readonly static Role<AstType> BaseType = new Role<AstType> ("BaseType", AstType.Null);
 
 		public static readonly Role<Attribute> Attribute = new Role<Attribute> ("Attribute");
@@ -83,11 +83,11 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		public static readonly TokenRole AliasKeyword = new TokenRole ("alias");
 		public static readonly TokenRole NamespaceKeyword = new TokenRole ("namespace");
 
-		public static readonly TokenRole EnumKeyword = new TokenRole ("enum");
-		public static readonly TokenRole InterfaceKeyword = new TokenRole ("interface");
-		public static readonly TokenRole StructKeyword = new TokenRole ("struct");
-		public static readonly TokenRole ClassKeyword = new TokenRole ("class");
+		public static readonly TokenRole EnumKeyword = new TokenRole("enum");
+		public static readonly TokenRole InterfaceKeyword = new TokenRole("interface");
+		public static readonly TokenRole StructKeyword = new TokenRole("struct");
+		public static readonly TokenRole ClassKeyword = new TokenRole("class");
+		public static readonly TokenRole RecordKeyword = new TokenRole("record");
 
 	}
 }
-
