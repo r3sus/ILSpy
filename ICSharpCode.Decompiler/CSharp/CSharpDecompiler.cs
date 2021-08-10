@@ -921,9 +921,13 @@ namespace ICSharpCode.Decompiler.CSharp
 						} else if (entity.SymbolKind == SymbolKind.Method) {
 							// A method introduced in a class or struct hides all non-method base class members with the same name, and all
 							// base class methods with the same signature (method name and parameter count, modifiers, and types).
-							if (baseType.GetMembers(m => m.SymbolKind != SymbolKind.Indexer && m.Name == entity.Name && lookup.IsAccessible(m, true))
-									.Any(m => m.SymbolKind != SymbolKind.Method || (((Decompiler.TypeSystem.IMethod)entity).TypeParameters.Count == ((Decompiler.TypeSystem.IMethod)m).TypeParameters.Count
-																					&& parameterListComparer.Equals(((Decompiler.TypeSystem.IMethod)entity).Parameters, ((Decompiler.TypeSystem.IMethod)m).Parameters))))
+							if (baseType.GetMembers(m => m.SymbolKind != SymbolKind.Indexer
+														 && m.SymbolKind != SymbolKind.Constructor
+														 && m.SymbolKind != SymbolKind.Destructor
+														 && m.Name == entity.Name && lookup.IsAccessible(m, true))
+										.Any(m => m.SymbolKind != SymbolKind.Method ||
+												  (((ICSharpCode.Decompiler.TypeSystem.IMethod)entity).TypeParameters.Count == ((ICSharpCode.Decompiler.TypeSystem.IMethod)m).TypeParameters.Count
+												   && parameterListComparer.Equals(((ICSharpCode.Decompiler.TypeSystem.IMethod)entity).Parameters, ((ICSharpCode.Decompiler.TypeSystem.IMethod)m).Parameters))))
 							{
 								return true;
 							}

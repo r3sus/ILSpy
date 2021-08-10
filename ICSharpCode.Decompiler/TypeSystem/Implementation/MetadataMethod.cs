@@ -74,9 +74,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.symbolKind = SymbolKind.Constructor;
 				else if (name.StartsWith("op_", StringComparison.Ordinal))
 					this.symbolKind = SymbolKind.Operator;
-			} else if ((attributes & finalizerAttributes) == finalizerAttributes) {
-				string name = this.Name;
-				if (name == "Finalize" && Parameters.Count == 0) {
+			}
+			else if ((attributes & finalizerAttributes) == finalizerAttributes)
+			{
+				if (Name == "Finalize" && Parameters.Count == 0 && ReturnType.IsKnownType(KnownTypeCode.Void)
+					&& (DeclaringTypeDefinition as MetadataTypeDefinition)?.Kind == TypeKind.Class)
+				{
 					this.symbolKind = SymbolKind.Destructor;
 				}
 			}
