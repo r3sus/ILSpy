@@ -476,13 +476,15 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				result.Target = ConvertTypeHelper(genericType.DeclaringType, typeArguments);
 			} else {
 				// Handle top-level types
-				if (string.IsNullOrEmpty(genericType.Namespace)) {
-					result.Target = new SimpleType("global");
-					if (AddResolveResultAnnotations && resolver != null)
-						result.Target.AddAnnotation(new NamespaceResolveResult(resolver.Compilation.RootNamespace));
+				if (string.IsNullOrEmpty(genericType.Namespace))
+				{
+					result.Target = MakeGlobal();
 					result.IsDoubleColon = true;
-				} else {
-					result.Target = ConvertNamespace(genericType.Namespace, out _);
+				}
+				else
+				{
+					result.Target = ConvertNamespace(genericType.Namespace,
+						out _, genericType.Namespace == genericType.Name);
 				}
 			}
 			result.MemberName = genericType.Name;
@@ -547,7 +549,13 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 
 		public AstType ConvertNamespace(string namespaceName, out NamespaceResolveResult nrr)
 		{
-			if (resolver != null) {
+			return ConvertNamespace(namespaceName, out nrr, requiresGlobalPrefix: false);
+		}
+
+		AstType ConvertNamespace(string namespaceName, out NamespaceResolveResult nrr, bool requiresGlobalPrefix)
+		{
+			if (resolver != null)
+			{
 				// Look if there's an alias to the target namespace
 				if (UseAliases) {
 					for (ResolvedUsingScope usingScope = resolver.CurrentUsingScope; usingScope != null; usingScope = usingScope.Parent) {
@@ -565,18 +573,31 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			}
 
 			int pos = namespaceName.LastIndexOf('.');
-			if (pos < 0) {
-				if (IsValidNamespace(namespaceName, out nrr)) {
-					var ns = MakeSimpleType(namespaceName);
+			if (pos < 0)
+			{
+				if (IsValidNamespace(namespaceName, out nrr))
+				{
+					AstType ns;
+					if (requiresGlobalPrefix)
+					{
+						ns = new MemberType {
+							Target = MakeGlobal(),
+							IsDoubleColon = true,
+							MemberName = namespaceName
+						};
+					}
+					else
+					{
+						ns = MakeSimpleType(namespaceName);
+					}
 					if (AddResolveResultAnnotations && nrr != null)
 						ns.AddAnnotation(nrr);
 					return ns;
-				} else {
-					var target = new SimpleType("global");
-					if (AddResolveResultAnnotations)
-						target.AddAnnotation(new NamespaceResolveResult(resolver.Compilation.RootNamespace));
+				}
+				else
+				{
 					var ns = new MemberType {
-						Target = target,
+						Target = MakeGlobal(),
 						IsDoubleColon = true,
 						MemberName = namespaceName
 					};
@@ -590,7 +611,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			} else {
 				string parentNamespace = namespaceName.Substring(0, pos);
 				string localNamespace = namespaceName.Substring(pos + 1);
-				var parentNS = ConvertNamespace(parentNamespace, out var parentNRR);
+				var parentNS = ConvertNamespace(parentNamespace, out var parentNRR, requiresGlobalPrefix);
 				var ns = new MemberType {
 					Target = parentNS,
 					MemberName = localNamespace
@@ -620,6 +641,14 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			if (name == "_")
 				return new SimpleType("@_");
 			return new SimpleType(name);
+		}
+
+		SimpleType MakeGlobal()
+		{
+			var global = new SimpleType("global");
+			if (AddResolveResultAnnotations && resolver != null)
+				global.AddAnnotation(new NamespaceResolveResult(resolver.Compilation.RootNamespace));
+			return global;
 		}
 
 		static MemberType MakeMemberType(AstType target, string name)

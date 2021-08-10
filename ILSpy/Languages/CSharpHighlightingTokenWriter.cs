@@ -142,7 +142,6 @@ namespace ICSharpCode.ILSpy
 				case "for":
 				case "foreach":
 				case "lock":
-				case "global":
 				case "await":
 					color = structureKeywordsColor;
 					break;
@@ -332,9 +331,20 @@ namespace ICSharpCode.ILSpy
 			{
 				color = valueKeywordColor;
 			}
-			if (identifier.Name == "var" && identifier.Parent is AstType)
-				color = queryKeywordsColor;
-			switch (GetCurrentDefinition()) {
+			if (identifier.Parent is AstType)
+			{
+				switch (identifier.Name)
+				{
+					case "var":
+						color = queryKeywordsColor;
+						break;
+					case "global":
+						color = structureKeywordsColor;
+						break;
+				}
+			}
+			switch (GetCurrentDefinition())
+			{
 				case ITypeDefinition t:
 					switch (t.Kind) {
 						case TypeKind.Delegate:
