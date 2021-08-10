@@ -416,8 +416,11 @@ namespace ICSharpCode.Decompiler.CSharp
 				// perform remaining pointer cast, if necessary
 				return pointerExpr.ConvertTo(targetType, expressionBuilder);
 			}
-			if (targetType.Kind == TypeKind.ByReference) {
-				if (NormalizeTypeVisitor.TypeErasure.EquivalentTypes(targetType, this.Type)) {
+			Expression expr;
+			if (targetType.Kind == TypeKind.ByReference)
+			{
+				if (NormalizeTypeVisitor.TypeErasure.EquivalentTypes(targetType, this.Type))
+				{
 					return this;
 				}
 				var elementType = ((ByReferenceType)targetType).ElementType;
@@ -441,7 +444,6 @@ namespace ICSharpCode.Decompiler.CSharp
 				// Convert from integer/pointer to reference.
 				// First, convert to the corresponding pointer type:
 				var arg = this.ConvertTo(new PointerType(elementType), expressionBuilder, checkForOverflow);
-				Expression expr;
 				ResolveResult elementRR;
 				if (arg.Expression is UnaryOperatorExpression unary && unary.Operator == UnaryOperatorType.AddressOf) {
 					// If we already have an address -> unwrap
@@ -508,7 +510,11 @@ namespace ICSharpCode.Decompiler.CSharp
 					return this;
 				}
 			}
-			var castExpr = new CastExpression(expressionBuilder.ConvertType(targetType), Expression);
+			// BaseReferenceExpression must not be used with CastExpressions
+			expr = Expression is BaseReferenceExpression
+				? new ThisReferenceExpression().WithILInstruction(this.ILInstructions)
+				: Expression;
+			var castExpr = new CastExpression(expressionBuilder.ConvertType(targetType), expr);
 			bool needsCheckAnnotation = targetUType.GetStackType().IsIntegerType();
 			if (needsCheckAnnotation) {
 				castExpr.AddAnnotation(checkForOverflow ? AddCheckedBlocks.CheckedAnnotation : AddCheckedBlocks.UncheckedAnnotation);

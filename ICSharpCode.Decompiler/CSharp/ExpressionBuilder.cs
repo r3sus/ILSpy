@@ -2204,11 +2204,15 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			// If references are missing member.IsStatic might not be set correctly.
 			// Additionally check target for null, in order to avoid a crash.
-			if (!memberStatic && target != null) {
-				if (ShouldUseBaseReference()) {
+			if (!memberStatic && target != null)
+			{
+				if (ShouldUseBaseReference())
+				{
+					var baseReferenceType = resolver.CurrentTypeDefinition.DirectBaseTypes
+						.FirstOrDefault(t => t.Kind != TypeKind.Interface);
 					return new BaseReferenceExpression()
 						.WithILInstruction(target)
-						.WithRR(new ThisResolveResult(memberDeclaringType, nonVirtualInvocation));
+						.WithRR(new ThisResolveResult(baseReferenceType ?? memberDeclaringType, nonVirtualInvocation));
 				}
 				else
 				{
