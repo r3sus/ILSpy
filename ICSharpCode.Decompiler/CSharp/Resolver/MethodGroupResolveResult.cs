@@ -257,9 +257,12 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 					extOr.AllowOptionalParameters = allowOptionalParameters;
 					extOr.IsExtensionMethodInvocation = true;
 					extOr.CheckForOverflow = checkForOverflow;
-					
-					foreach (var g in extensionMethods) {
-						foreach (var method in g) {
+					extOr.AllowImplicitIn = allowImplicitIn;
+
+					foreach (var g in extensionMethods)
+					{
+						foreach (var method in g)
+						{
 							Log.Indent();
 							OverloadResolutionErrors errors = extOr.AddCandidate(method);
 							Log.Unindent();
