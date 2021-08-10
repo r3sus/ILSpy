@@ -63,19 +63,28 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 			this.symbolKind = SymbolKind.Method;
 			const MethodAttributes finalizerAttributes = MethodAttributes.Virtual | MethodAttributes.Family | MethodAttributes.HideBySig;
+			this.typeParameters = MetadataTypeParameter.Create(module, this, handle.GenericParameters);
 			IHasSemantic owner = handle.SemanticsAttributes != 0 ? FindOwner(handle) : null;
 			if (owner != null) {
 				this.symbolKind = SymbolKind.Accessor;
 				this.accessorOwner = owner;
 				this.AccessorKind = handle.SemanticsAttributes;
-			} else if ((attributes & (MethodAttributes.SpecialName | MethodAttributes.RTSpecialName)) != 0) {
+			}
+			else if ((attributes & (MethodAttributes.SpecialName | MethodAttributes.RTSpecialName)) != 0
+						 && typeParameters.Length == 0)
+			{
 				string name = this.Name;
 				if (name == ".cctor" || name == ".ctor")
+				{
 					this.symbolKind = SymbolKind.Constructor;
-				else if (name.StartsWith("op_", StringComparison.Ordinal))
+				}
+				else if (name.StartsWith("op_", StringComparison.Ordinal)
+						 && CSharp.Syntax.OperatorDeclaration.GetOperatorType(name) != null)
+				{
 					this.symbolKind = SymbolKind.Operator;
+				}
 			}
-			else if ((attributes & finalizerAttributes) == finalizerAttributes)
+			else if ((attributes & finalizerAttributes) == finalizerAttributes && typeParameters.Length == 0)
 			{
 				if (Name == "Finalize" && Parameters.Count == 0 && ReturnType.IsKnownType(KnownTypeCode.Void)
 					&& (DeclaringTypeDefinition as MetadataTypeDefinition)?.Kind == TypeKind.Class)
@@ -83,7 +92,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					this.symbolKind = SymbolKind.Destructor;
 				}
 			}
-			this.typeParameters = MetadataTypeParameter.Create(module, this, handle.GenericParameters);
 			this.IsExtensionMethod = (attributes & MethodAttributes.Static) == MethodAttributes.Static
 									 && (module.TypeSystemOptions & TypeSystemOptions.ExtensionMethods) == TypeSystemOptions.ExtensionMethods
 									 && handle.CustomAttributes.HasKnownAttribute(KnownAttribute.Extension);
