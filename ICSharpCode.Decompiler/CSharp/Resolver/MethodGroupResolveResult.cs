@@ -219,10 +219,11 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 		}
 		
 		public OverloadResolution PerformOverloadResolution(ICompilation compilation, ResolveResult[] arguments, string[] argumentNames = null,
-		                                                    bool allowExtensionMethods = true,
-		                                                    bool allowExpandingParams = true, 
-		                                                    bool allowOptionalParameters = true,
-		                                                    bool checkForOverflow = false, CSharpConversions conversions = null)
+															bool allowExtensionMethods = true,
+															bool allowExpandingParams = true,
+															bool allowOptionalParameters = true,
+															bool allowImplicitIn = true,
+															bool checkForOverflow = false, CSharpConversions conversions = null)
 		{
 			Log.WriteLine("Performing overload resolution for " + this);
 			Log.WriteCollection("  Arguments: ", arguments);
@@ -232,7 +233,8 @@ namespace ICSharpCode.Decompiler.CSharp.Resolver
 			or.AllowExpandingParams = allowExpandingParams;
 			or.AllowOptionalParameters = allowOptionalParameters;
 			or.CheckForOverflow = checkForOverflow;
-			
+			or.AllowImplicitIn = allowImplicitIn;
+
 			or.AddMethodLists(methodLists);
 			
 			if (allowExtensionMethods && !or.FoundApplicableCandidate) {
