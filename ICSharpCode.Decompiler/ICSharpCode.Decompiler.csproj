@@ -42,7 +42,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Humanizer.Core" Version="2.2.0" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
     <PackageReference Include="dnlib" Version="3.3.3" />
     <PackageReference Include="System.ValueTuple" Version="4.3.0" />
@@ -60,6 +59,8 @@
     <Compile Include="CSharp\Syntax\Expressions\SwitchExpression.cs" />
     <Compile Include="CSharp\Syntax\FunctionPointerAstType.cs" />
     <Compile Include="CSharp\Syntax\VariableDesignation.cs" />
+    <Compile Include="Humanizer\Vocabularies.cs" />
+    <Compile Include="Humanizer\Vocabulary.cs" />
     <Compile Include="IL\Transforms\DeconstructionTransform.cs" />
     <Compile Include="IL\Transforms\FixLoneIsInst.cs" />
     <Compile Include="IL\Instructions\DeconstructInstruction.cs" />
@@ -594,6 +595,7 @@
     <Content Include="..\doc\Pattern Matching.html">
       <Link>CSharp\Syntax\PatternMatching\Pattern Matching.html</Link>
     </Content>
+    <Content Include="Humanizer\LICENSE" />
   </ItemGroup>
 
   <ItemGroup>

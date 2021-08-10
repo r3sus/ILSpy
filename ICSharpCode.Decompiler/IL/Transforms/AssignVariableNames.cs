@@ -20,7 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Humanizer;
+using Humanizer.Inflections;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
@@ -658,7 +658,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 		private static bool IsPlural(string baseName, ref string proposedName)
 		{
-			var newName = baseName.Singularize(inputIsKnownToBePlural: false);
+			var newName = Vocabularies.Default.Singularize(baseName, inputIsKnownToBePlural: false);
 			if (newName == baseName)
 				return false;
 			proposedName = newName;
