@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 using ICSharpCode.Decompiler.CSharp.Resolver;
@@ -297,8 +298,25 @@ namespace ICSharpCode.Decompiler.CSharp
 				if (field.IsCompilerGenerated()) {
 					if (settings.AnonymousMethods && IsAnonymousMethodCacheField(field))
 						return true;
-					if (settings.AutomaticProperties && IsAutomaticPropertyBackingField(field))
+					if (settings.AutomaticProperties && IsAutomaticPropertyBackingField(field, out var propertyName))
+					{
+						if (!settings.GetterOnlyAutomaticProperties && IsGetterOnlyProperty(propertyName))
+							return false;
+
+						bool IsGetterOnlyProperty(string propertyName)
+						{
+							var properties = field.DeclaringType.Properties;
+							foreach (var pd in properties)
+							{
+								if (pd.Name != propertyName)
+									continue;
+								return pd.GetMethod is not null && pd.SetMethod is null;
+							}
+							return false;
+						}
+
 						return true;
+					}
 					if (settings.SwitchStatementOnString && IsSwitchOnStringCache(field))
 						return true;
 				}
@@ -325,9 +343,20 @@ namespace ICSharpCode.Decompiler.CSharp
 			return field.Name.StartsWith("<>f__switch", StringComparison.Ordinal);
 		}
 
-		static bool IsAutomaticPropertyBackingField(dnlib.DotNet.IField field)
+		static readonly Regex automaticPropertyBackingFieldRegex = new Regex(@"^<(.*)>k__BackingField$",
+			RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+		static bool IsAutomaticPropertyBackingField(dnlib.DotNet.IField field, out string propertyName)
 		{
-			return field.HasGeneratedName() && field.Name.EndsWith("BackingField", StringComparison.Ordinal);
+			propertyName = null;
+			var name = field.Name;
+			var m = automaticPropertyBackingFieldRegex.Match(name);
+			if (m.Success)
+			{
+				propertyName = m.Groups[1].Value;
+				return true;
+			}
+			return false;
 		}
 
 		static bool IsAnonymousMethodCacheField(dnlib.DotNet.IField field)
