@@ -415,21 +415,35 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		ILFunction ReadLocalFunctionDefinition(ILFunction rootFunction, TypeSystem.IMethod targetMethod, int skipCount)
 		{
 			var methodDefinition = (MethodDef)targetMethod.MetadataToken;
-			if (!methodDefinition.HasBody)
-				return null;
-			var ilReader = context.CreateILReader();
 			var genericContext = GenericContextFromTypeArguments(targetMethod, skipCount);
 			if (genericContext == null)
 				return null;
-			var function = ilReader.ReadIL(methodDefinition, genericContext.GetValueOrDefault(), ILFunctionKind.LocalFunction, context.CancellationToken);
+			ILFunction function;
+			bool hasBody = methodDefinition.HasBody;
+			if (!hasBody)
+			{
+				function = new ILFunction(targetMethod, 0,
+					new GenericContext(genericContext?.ClassTypeParameters, genericContext?.MethodTypeParameters),
+					new Nop(), ILFunctionKind.LocalFunction);
+			}
+			else
+			{
+				var ilReader = context.CreateILReader();
+				function = ilReader.ReadIL(methodDefinition,
+					genericContext.GetValueOrDefault(), ILFunctionKind.LocalFunction,
+					context.CancellationToken);
+			}
 			// Embed the local function into the parent function's ILAst, so that "Show steps" can show
 			// how the local function body is being transformed.
 			rootFunction.LocalFunctions.Add(function);
-			function.DeclarationScope = (BlockContainer)rootFunction.Body;
-			function.CheckInvariant(ILPhase.Normal);
-			var nestedContext = new ILTransformContext(context, function);
-			function.RunTransforms(CSharpDecompiler.GetILTransforms().TakeWhile(t => !(t is LocalFunctionDecompiler)), nestedContext);
-			function.DeclarationScope = null;
+			if (hasBody)
+			{
+				function.DeclarationScope = (BlockContainer)rootFunction.Body;
+				function.CheckInvariant(ILPhase.Normal);
+				var nestedContext = new ILTransformContext(context, function);
+				function.RunTransforms(CSharpDecompiler.GetILTransforms().TakeWhile(t => !(t is LocalFunctionDecompiler)), nestedContext);
+				function.DeclarationScope = null;
+			}
 			function.ReducedMethod = ReduceToLocalFunction(function.Method, skipCount);
 			return function;
 		}

@@ -21,10 +21,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Collections.Immutable;
-
+using dnlib.DotNet;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
 
 namespace ICSharpCode.Decompiler.IL
 {
@@ -195,6 +197,21 @@ namespace ICSharpCode.Decompiler.IL
 			this.CecilMethod = cecilMethod;
 			this.Name = method.Name;
 			this.CodeSize = cecilMethod?.Body?.GetCodeSize() ?? 0;
+			this.GenericContext = genericContext;
+			this.ReturnType = method.ReturnType;
+			this.Parameters = method.Parameters;
+			this.Variables = new ILVariableCollection(this);
+			this.LocalFunctions = new InstructionCollection<ILFunction>(this, 1);
+			this.kind = kind;
+		}
+
+		internal ILFunction(IMethod method, int codeSize, GenericContext genericContext, ILInstruction body, ILFunctionKind kind = ILFunctionKind.TopLevelFunction) : base(OpCode.ILFunction)
+		{
+			this.Body = body;
+			this.Method = method;
+			this.CecilMethod = (MethodDef)method.MetadataToken;
+			this.Name = method.Name;
+			this.CodeSize = codeSize;
 			this.GenericContext = genericContext;
 			this.ReturnType = method.ReturnType;
 			this.Parameters = method.Parameters;
