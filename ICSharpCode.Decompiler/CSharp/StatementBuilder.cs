@@ -256,10 +256,13 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (switchContainer != null && stmt.SwitchSections.Count > 0) {
 				// Translate any remaining blocks:
 				var lastSectionStatements = stmt.SwitchSections.Last().Statements;
-				foreach (var block in switchContainer.Blocks.Skip(1)) {
-					if (caseLabelMapping.ContainsKey(block)) continue;
-					lastSectionStatements.Add(new LabelStatement { Label = block.Label });
-					foreach (var nestedInst in block.Instructions) {
+				foreach (var block in switchContainer.Blocks.Skip(1))
+				{
+					if (caseLabelMapping.ContainsKey(block))
+						continue;
+					lastSectionStatements.Add(new LabelStatement { Label = EnsureUniqueLabel(block) });
+					foreach (var nestedInst in block.Instructions)
+					{
 						var nestedStmt = Convert(nestedInst);
 						if (nestedStmt is BlockStatement b) {
 							foreach (var nested in b.Statements)
@@ -315,7 +318,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				return new GotoCaseStatement() { LabelExpression = exprBuilder.ConvertConstantValue(label, allowImplicitConversion: true) }
 					.WithILInstruction(inst);
 			}
-			return new GotoStatement(inst.TargetLabel).WithILInstruction(inst);
+			return new GotoStatement(EnsureUniqueLabel(inst.TargetBlock)).WithILInstruction(inst);
 		}
 
 		/// <summary>Target container that a 'break;' statement would break out of</summary>
@@ -1086,7 +1089,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						// We'll also remove any "continue;" in front of the label, as it's redundant.
 						if (blockStatement.LastOrDefault() is ContinueStatement)
 							blockStatement.Last().Remove();
-						blockStatement.Add(new LabelStatement { Label = container.EntryPoint.Label });
+						blockStatement.Add(new LabelStatement { Label = EnsureUniqueLabel(container.EntryPoint) });
 					}
 
 					if (blockStatement.LastOrDefault() is ContinueStatement continueStmt2)
@@ -1108,7 +1111,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					if (continueTarget.IncomingEdgeCount > continueCount) {
 						// if there are branches to the condition block, that were not converted
 						// to continue statements, we have to introduce an extra label.
-						blockStatement.Add(new LabelStatement { Label = continueTarget.Label });
+						blockStatement.Add(new LabelStatement { Label = EnsureUniqueLabel(continueTarget) });
 					}
 					DeclareLocalFunctions(currentFunction, container, blockStatement);
 					if (blockStatement.Statements.Count == 0) {
@@ -1141,7 +1144,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						forStmt.Iterators.Add(Convert(continueTarget.Instructions[i]));
 					}
 					if (continueTarget.IncomingEdgeCount > continueCount)
-						blockStatement.Add(new LabelStatement { Label = continueTarget.Label });
+						blockStatement.Add(new LabelStatement { Label = EnsureUniqueLabel(continueTarget) });
 					DeclareLocalFunctions(currentFunction, container, blockStatement);
 					return forStmt;
 				default:
@@ -1197,7 +1200,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			foreach (var block in blocks) {
 				if (block.IncomingEdgeCount > 1 || block != container.EntryPoint) {
 					// If there are any incoming branches to this block, add a label:
-					blockStatement.Add(new LabelStatement { Label = block.Label });
+					blockStatement.Add(new LabelStatement { Label = EnsureUniqueLabel(block) });
 				}
 				foreach (var inst in block.Instructions) {
 					if (!isLoop && inst is Leave leave && IsFinalLeave(leave)) {
@@ -1227,6 +1230,25 @@ namespace ICSharpCode.Decompiler.CSharp
 				}
 			}
 			return blockStatement;
+		}
+
+		readonly Dictionary<Block, string> labels = new Dictionary<Block, string>();
+		readonly Dictionary<string, int> duplicateLabels = new Dictionary<string, int>();
+
+		string EnsureUniqueLabel(Block block)
+		{
+			if (labels.TryGetValue(block, out string label))
+				return label;
+			if (!duplicateLabels.TryGetValue(block.Label, out int count))
+			{
+				labels.Add(block, block.Label);
+				duplicateLabels.Add(block.Label, 1);
+				return block.Label;
+			}
+			label = $"{block.Label}_{count + 1}";
+			duplicateLabels[block.Label]++;
+			labels.Add(block, label);
+			return label;
 		}
 
 		static bool IsFinalLeave(Leave leave)
