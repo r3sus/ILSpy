@@ -1392,7 +1392,13 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			WriteIdentifier(typeDeclaration.NameToken);
 			WriteTypeParameters(typeDeclaration.TypeParameters);
-			if (typeDeclaration.BaseTypes.Any()) {
+			if (typeDeclaration.PrimaryConstructorParameters.Count > 0)
+			{
+				Space(policy.SpaceBeforeMethodDeclarationParentheses);
+				WriteCommaSeparatedListInParenthesis(typeDeclaration.PrimaryConstructorParameters, policy.SpaceWithinMethodDeclarationParentheses);
+			}
+			if (typeDeclaration.BaseTypes.Any())
+			{
 				Space();
 				WriteToken(Roles.Colon);
 				Space();
@@ -1401,37 +1407,53 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			foreach (Constraint constraint in typeDeclaration.Constraints) {
 				constraint.AcceptVisitor(this);
 			}
-			OpenBrace(braceStyle);
-			if (typeDeclaration.ClassType == ClassType.Enum) {
-				bool first = true;
-				AstNode last = null;
-				foreach (var member in typeDeclaration.Members) {
-					if (first) {
-						first = false;
-					} else {
-						Comma(member, noSpaceAfterComma: true);
-						NewLine();
-					}
-					last = member;
-					member.AcceptVisitor(this);
-				}
-				if (last != null)
-					OptionalComma(last.NextSibling);
-				NewLine();
-			} else {
-				bool first = true;
-				foreach (var member in typeDeclaration.Members) {
-					if (!first) {
-						for (int i = 0; i < policy.MinimumBlankLinesBetweenMembers; i++)
-							NewLine();
-					}
-					first = false;
-					member.AcceptVisitor(this);
-				}
+			if (typeDeclaration.ClassType == ClassType.RecordClass && typeDeclaration.Members.Count == 0)
+			{
+				Semicolon();
 			}
-			CloseBrace(braceStyle);
-			OptionalSemicolon(typeDeclaration.LastChild);
-			NewLine();
+			else
+			{
+				OpenBrace(braceStyle);
+				if (typeDeclaration.ClassType == ClassType.Enum)
+				{
+					bool first = true;
+					AstNode last = null;
+					foreach (var member in typeDeclaration.Members)
+					{
+						if (first)
+						{
+							first = false;
+						}
+						else
+						{
+							Comma(member, noSpaceAfterComma: true);
+							NewLine();
+						}
+						last = member;
+						member.AcceptVisitor(this);
+					}
+					if (last != null)
+						OptionalComma(last.NextSibling);
+					NewLine();
+				}
+				else
+				{
+					bool first = true;
+					foreach (var member in typeDeclaration.Members)
+					{
+						if (!first)
+						{
+							for (int i = 0; i < policy.MinimumBlankLinesBetweenMembers; i++)
+								NewLine();
+						}
+						first = false;
+						member.AcceptVisitor(this);
+					}
+				}
+				CloseBrace(braceStyle);
+				OptionalSemicolon(typeDeclaration.LastChild);
+				NewLine();
+			}
 			EndNode(typeDeclaration);
 		}
 
@@ -2420,6 +2442,16 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				functionPointerType.Parameters.Concat<AstNode>(new[] { functionPointerType.ReturnType }));
 			WriteToken(Roles.RChevron);
 			EndNode(functionPointerType);
+		}
+
+		public virtual void VisitInvocationType(InvocationAstType invocationType)
+		{
+			StartNode(invocationType);
+			invocationType.BaseType.AcceptVisitor(this);
+			WriteToken(Roles.LPar);
+			WriteCommaSeparatedList(invocationType.Arguments);
+			WriteToken(Roles.RPar);
+			EndNode(invocationType);
 		}
 
 		public virtual void VisitComposedType(ComposedType composedType)

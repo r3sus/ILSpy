@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.TypeSystem;
 
@@ -13,6 +14,7 @@ namespace ICSharpCode.Decompiler
 		public HashSet<string> Namespaces { get; private set; } = new HashSet<string>();
 		public CancellationToken CancellationToken { get; set; }
 		public DecompilerSettings Settings { get; }
+		public Dictionary<ITypeDefinition, RecordDecompiler> RecordDecompilers { get; } = new Dictionary<ITypeDefinition, RecordDecompiler>();
 
 		Lazy<CSharp.TypeSystem.UsingScope> usingScope => new Lazy<CSharp.TypeSystem.UsingScope>(() => CreateUsingScope(Namespaces));
 		public CSharp.TypeSystem.UsingScope UsingScope => usingScope.Value;

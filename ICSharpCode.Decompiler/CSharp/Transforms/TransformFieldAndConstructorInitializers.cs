@@ -101,6 +101,22 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					// Remove the statement:
 					stmt.Remove();
 					break;
+				default:
+					return;
+			}
+			if (context.DecompileRun.RecordDecompilers.TryGetValue(currentCtor.DeclaringTypeDefinition, out var record)
+				&& currentCtor.Equals(record.PrimaryConstructor)
+				&& ci.ConstructorInitializerType == ConstructorInitializerType.Base)
+			{
+				if (constructorDeclaration.Parent is TypeDeclaration { BaseTypes: { Count: >= 1 } } typeDecl)
+				{
+					var baseType = typeDecl.BaseTypes.First();
+					var newBaseType = new InvocationAstType();
+					baseType.ReplaceWith(newBaseType);
+					newBaseType.BaseType = baseType;
+					ci.Arguments.MoveTo(newBaseType.Arguments);
+				}
+				constructorDeclaration.Remove();
 			}
 		}
 
@@ -146,6 +162,9 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 
 				bool ctorIsUnsafe = instanceCtorsNotChainingWithThis.All(c => c.HasModifier(Modifiers.Unsafe));
 
+				if (!context.DecompileRun.RecordDecompilers.TryGetValue(ctorMethodDef.DeclaringTypeDefinition, out var record))
+					record = null;
+
 				// Recognize field or property initializers:
 				// Translate first statement in all ctors (if all ctors have the same statement) into an initializer.
 				bool allSame;
@@ -157,13 +176,30 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					if (!(fieldOrPropertyOrEvent is IField) && !(fieldOrPropertyOrEvent is IProperty) && !(fieldOrPropertyOrEvent is IEvent))
 						break;
 					var fieldOrPropertyOrEventDecl = members.FirstOrDefault(f => f.GetSymbol() == fieldOrPropertyOrEvent) as EntityDeclaration;
-					// Cannot transform if member is not found or if it is a custom event.
-					if (fieldOrPropertyOrEventDecl == null || fieldOrPropertyOrEventDecl is CustomEventDeclaration)
+					// Cannot transform if it is a custom event.
+					if (fieldOrPropertyOrEventDecl is CustomEventDeclaration)
 						break;
+
+
 					Expression initializer = m.Get<Expression>("initializer").Single();
 					// 'this'/'base' cannot be used in initializers
 					if (initializer.DescendantsAndSelf.Any(n => n is ThisReferenceExpression || n is BaseReferenceExpression))
 						break;
+
+					if (initializer.Annotation<ILVariableResolveResult>()?.Variable.Kind == IL.VariableKind.Parameter)
+					{
+						// remove record ctor parameter assignments
+						if (IsPropertyDeclaredByPrimaryCtor(fieldOrPropertyOrEvent as IProperty, record))
+							initializer.Remove();
+						else
+							break;
+					}
+					else
+					{
+						// cannot transform if member is not found
+						if (fieldOrPropertyOrEventDecl == null)
+							break;
+					}
 
 					allSame = true;
 					for (int i = 1; i < instanceCtorsNotChainingWithThis.Length; i++) {
@@ -181,7 +217,10 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					if (allSame) {
 						foreach (var ctor in instanceCtorsNotChainingWithThis)
 							ctor.Body.First().Remove();
-						if (ctorIsUnsafe && IntroduceUnsafeModifier.IsUnsafe(initializer)) {
+						if (fieldOrPropertyOrEventDecl == null)
+							continue;
+						if (ctorIsUnsafe && IntroduceUnsafeModifier.IsUnsafe(initializer))
+						{
 							fieldOrPropertyOrEventDecl.Modifiers |= Modifiers.Unsafe;
 						}
 						if (fieldOrPropertyOrEventDecl is PropertyDeclaration pd) {
@@ -192,6 +231,13 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					}
 				} while (allSame);
 			}
+		}
+
+		bool IsPropertyDeclaredByPrimaryCtor(IProperty p, RecordDecompiler record)
+		{
+			if (p == null || record == null)
+				return false;
+			return record.IsPropertyDeclaredByPrimaryConstructor(p);
 		}
 
 		void RemoveSingleEmptyConstructor(IEnumerable<AstNode> members, ITypeDefinition contextTypeDefinition)
