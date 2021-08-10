@@ -63,37 +63,44 @@ namespace ICSharpCode.Decompiler
 		};
 
 		readonly DotNetCorePackageInfo[] packages;
-		ISet<string> packageBasePaths = new HashSet<string>(StringComparer.Ordinal);
-		readonly Version version;
+		readonly List<string> searchPaths = new List<string>();
+		readonly List<string> packageBasePaths = new List<string>();
+		readonly Version targetFrameworkVersion;
 		readonly string dotnetBasePath = FindDotNetExeDirectory();
 
-		public DotNetCorePathFinder(Version version)
+		public DotNetCorePathFinder(TargetFrameworkIdentifier targetFramework, Version targetFrameworkVersion)
 		{
-			this.version = version;
+			this.targetFrameworkVersion = targetFrameworkVersion;
+
+			if (targetFramework == TargetFrameworkIdentifier.NETStandard)
+			{
+				// .NET Standard 2.1 is implemented by .NET Core 3.0 or higher
+				if (targetFrameworkVersion.Major == 2 && targetFrameworkVersion.Minor == 1)
+				{
+					this.targetFrameworkVersion = new Version(3, 0, 0);
+				}
+			}
 		}
 
-		public DotNetCorePathFinder(string parentAssemblyFileName, string targetFrameworkIdString, TargetFrameworkIdentifier targetFramework, Version version, ReferenceLoadInfo loadInfo = null)
+		public DotNetCorePathFinder(string parentAssemblyFileName, string targetFrameworkIdString, TargetFrameworkIdentifier targetFramework, Version targetFrameworkVersion, ReferenceLoadInfo loadInfo = null)
+			: this(targetFramework, targetFrameworkVersion)
 		{
 			string assemblyName = Path.GetFileNameWithoutExtension(parentAssemblyFileName);
 			string basePath = Path.GetDirectoryName(parentAssemblyFileName);
-			this.version = version;
 
-			if (targetFramework == TargetFrameworkIdentifier.NETStandard) {
-				// .NET Standard 2.1 is implemented by .NET Core 3.0 or higher
-				if (version.Major == 2 && version.Minor == 1) {
-					this.version = new Version(3, 0, 0);
-				}
-			}
-
-			packageBasePaths.Add(basePath);
+			searchPaths.Add(basePath);
 
 			var depsJsonFileName = Path.Combine(basePath, $"{assemblyName}.deps.json");
-			if (File.Exists(depsJsonFileName)) {
+			if (File.Exists(depsJsonFileName))
+			{
 				packages = LoadPackageInfos(depsJsonFileName, targetFrameworkIdString).ToArray();
 
-				foreach (var path in LookupPaths) {
-					foreach (var p in packages) {
-						foreach (var item in p.RuntimeComponents) {
+				foreach (var path in LookupPaths)
+				{
+					foreach (var p in packages)
+					{
+						foreach (var item in p.RuntimeComponents)
+						{
 							var itemPath = Path.GetDirectoryName(item);
 							var fullPath = Path.Combine(path, p.Name, p.Version, itemPath).ToLowerInvariant();
 							if (Directory.Exists(fullPath))
@@ -101,39 +108,46 @@ namespace ICSharpCode.Decompiler
 						}
 					}
 				}
-			} else {
+			}
+			else
+			{
 				loadInfo?.AddMessage(assemblyName, MessageKind.Warning, $"{assemblyName}.deps.json could not be found!");
 			}
 		}
 
 		public void AddSearchDirectory(string path)
 		{
-			this.packageBasePaths.Add(path);
+			this.searchPaths.Add(path);
 		}
 
 		public void RemoveSearchDirectory(string path)
 		{
-			this.packageBasePaths.Remove(path);
+			this.searchPaths.Remove(path);
 		}
 
 		public string TryResolveDotNetCore(IAssembly name)
 		{
-			foreach (var basePath in packageBasePaths) {
-				if (File.Exists(Path.Combine(basePath, name.Name + ".dll"))) {
+			foreach (var basePath in searchPaths.Concat(packageBasePaths))
+			{
+				if (File.Exists(Path.Combine(basePath, name.Name + ".dll")))
+				{
 					return Path.Combine(basePath, name.Name + ".dll");
-				} else if (File.Exists(Path.Combine(basePath, name.Name + ".exe"))) {
+				}
+				else if (File.Exists(Path.Combine(basePath, name.Name + ".exe")))
+				{
 					return Path.Combine(basePath, name.Name + ".exe");
 				}
 			}
 
-			return FallbackToDotNetSharedDirectory(name, version);
+			return FallbackToDotNetSharedDirectory(name);
 		}
 
 		internal string GetReferenceAssemblyPath(string targetFramework)
 		{
 			var (tfi, version) = UniversalAssemblyResolver.ParseTargetFramework(targetFramework);
 			string identifier, identifierExt;
-			switch (tfi) {
+			switch (tfi)
+			{
 				case TargetFrameworkIdentifier.NETCoreApp:
 					identifier = "Microsoft.NETCore.App";
 					identifierExt = "netcoreapp" + version.Major + "." + version.Minor;
@@ -155,14 +169,17 @@ namespace ICSharpCode.Decompiler
 			var libraries = dependencies["libraries"].AsJsonObject;
 			if (runtimeInfos == null || libraries == null)
 				yield break;
-			foreach (var library in libraries) {
+			foreach (var library in libraries)
+			{
 				var type = library.Value["type"].AsString;
 				var path = library.Value["path"].AsString;
 				var runtimeInfo = runtimeInfos[library.Key].AsJsonObject?["runtime"].AsJsonObject;
 				string[] components = new string[runtimeInfo?.Count ?? 0];
-				if (runtimeInfo != null) {
+				if (runtimeInfo != null)
+				{
 					int i = 0;
-					foreach (var component in runtimeInfo) {
+					foreach (var component in runtimeInfo)
+					{
 						components[i] = component.Key;
 						i++;
 					}
@@ -171,18 +188,22 @@ namespace ICSharpCode.Decompiler
 			}
 		}
 
-		string FallbackToDotNetSharedDirectory(IAssembly name, Version version)
+		string FallbackToDotNetSharedDirectory(IAssembly name)
 		{
 			if (dotnetBasePath == null)
 				return null;
 			var basePaths = RuntimePacks.Select(pack => Path.Combine(dotnetBasePath, "shared", pack));
-			foreach (var basePath in basePaths) {
+			foreach (var basePath in basePaths)
+			{
 				if (!Directory.Exists(basePath))
 					continue;
-				var closestVersion = GetClosestVersionFolder(basePath, version);
-				if (File.Exists(Path.Combine(basePath, closestVersion, name.Name + ".dll"))) {
+				var closestVersion = GetClosestVersionFolder(basePath, targetFrameworkVersion);
+				if (File.Exists(Path.Combine(basePath, closestVersion, name.Name + ".dll")))
+				{
 					return Path.Combine(basePath, closestVersion, name.Name + ".dll");
-				} else if (File.Exists(Path.Combine(basePath, closestVersion, name.Name + ".exe"))) {
+				}
+				else if (File.Exists(Path.Combine(basePath, closestVersion, name.Name + ".exe")))
+				{
 					return Path.Combine(basePath, closestVersion, name.Name + ".exe");
 				}
 			}
@@ -191,44 +212,55 @@ namespace ICSharpCode.Decompiler
 
 		static string GetClosestVersionFolder(string basePath, Version version)
 		{
-			string result = null;
-			foreach (var folder in new DirectoryInfo(basePath).GetDirectories().Select(d => ConvertToVersion(d.Name)).Where(v => v.Item1 != null).OrderByDescending(v => v.Item1)) {
-				if (folder.Item1 >= version)
-					result = folder.Item2;
+			var foundVersions = new DirectoryInfo(basePath).GetDirectories()
+				.Select(d => ConvertToVersion(d.Name))
+				.Where(v => v.version != null);
+			foreach (var folder in foundVersions.OrderBy(v => v.Item1))
+			{
+				if (folder.version >= version)
+					return folder.directoryName;
 			}
-			return result ?? version.ToString();
+			return version.ToString();
 		}
 
-		internal static (Version, string) ConvertToVersion(string name)
+		internal static (Version version, string directoryName) ConvertToVersion(string name)
 		{
 			string RemoveTrailingVersionInfo()
 			{
 				string shortName = name;
 				int dashIndex = shortName.IndexOf('-');
-				if (dashIndex > 0) {
+				if (dashIndex > 0)
+				{
 					shortName = shortName.Remove(dashIndex);
 				}
 				return shortName;
 			}
 
-			try {
+			try
+			{
 				return (new Version(RemoveTrailingVersionInfo()), name);
-			} catch (Exception ex) {
+			}
+			catch (Exception ex)
+			{
 				Trace.TraceWarning(ex.ToString());
 				return (null, null);
 			}
 		}
 
-		static string FindDotNetExeDirectory()
+		public static string FindDotNetExeDirectory()
 		{
 			string dotnetExeName = (Environment.OSVersion.Platform == PlatformID.Unix) ? "dotnet" : "dotnet.exe";
-			foreach (var item in Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator)) {
-				try {
+			foreach (var item in Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator))
+			{
+				try
+				{
 					string fileName = Path.Combine(item, dotnetExeName);
 					if (!File.Exists(fileName))
 						continue;
-					if (Environment.OSVersion.Platform == PlatformID.Unix) {
-						if ((new FileInfo(fileName).Attributes & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint) {
+					if (Environment.OSVersion.Platform == PlatformID.Unix)
+					{
+						if ((new FileInfo(fileName).Attributes & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint)
+						{
 							var sb = new StringBuilder();
 							realpath(fileName, sb);
 							fileName = sb.ToString();
@@ -237,7 +269,8 @@ namespace ICSharpCode.Decompiler
 						}
 					}
 					return Path.GetDirectoryName(fileName);
-				} catch (ArgumentException) { }
+				}
+				catch (ArgumentException) { }
 			}
 			return null;
 		}
