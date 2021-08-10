@@ -200,11 +200,14 @@ namespace ICSharpCode.Decompiler.CSharp
 				// Ensure that the IdentifierExpression itself also gets a resolve result, as that might
 				// get used after the 'ref' is stripped away:
 				var elementType = ((ByReferenceType)variable.Type).ElementType;
-				expr.WithRR(new ILVariableResolveResult(variable, elementType));
+				var elementRR = new ILVariableResolveResult(variable, elementType);
+				expr.WithRR(elementRR);
 
 				expr = new DirectionExpression(FieldDirection.Ref, expr);
-				return expr.WithRR(new ByReferenceResolveResult(elementType, ReferenceKind.Ref));
-			} else {
+				return expr.WithRR(new ByReferenceResolveResult(elementRR, ReferenceKind.Ref));
+			}
+			else
+			{
 				return expr.WithRR(new ILVariableResolveResult(variable, variable.Type));
 			}
 		}
@@ -1171,7 +1174,7 @@ namespace ICSharpCode.Decompiler.CSharp
 							.WithILInstruction(inst)
 							.WithRR(new ResolveResult(elementType));
 						return new DirectionExpression(FieldDirection.Ref, expr)
-							.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.Type, ReferenceKind.Ref));
+							.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.ResolveResult, ReferenceKind.Ref));
 					}
 					right = Translate(offsetInst);
 					right = ConvertArrayIndex(right, inst.RightInputType, allowIntPtr: true);
@@ -2574,7 +2577,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			var expr = ConvertField(inst.Field).WithILInstruction(inst);
 			return new DirectionExpression(FieldDirection.Ref, expr)
-				.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.Type, ReferenceKind.Ref));
+				.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.ResolveResult, ReferenceKind.Ref));
 		}
 
 		protected internal override TranslatedExpression VisitLdElema(LdElema inst, TranslationContext context)
@@ -2598,7 +2601,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			}
 			TranslatedExpression expr = indexerExpr.WithILInstruction(inst).WithRR(new ResolveResult(arrayType.ElementType));
 			return new DirectionExpression(FieldDirection.Ref, expr)
-				.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.Type, ReferenceKind.Ref));
+				.WithoutILInstruction().WithRR(new ByReferenceResolveResult(expr.ResolveResult, ReferenceKind.Ref));
 		}
 
 		TranslatedExpression TranslateArrayIndex(ILInstruction i)
@@ -2746,7 +2749,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				Arguments = { Translate(inst.Argument).Expression, new TypeReferenceExpression(ConvertType(inst.Type)) }
 			}.WithRR(new ResolveResult(inst.Type));
 			return new DirectionExpression(FieldDirection.Ref, expr.WithILInstruction(inst)).WithoutILInstruction()
-				.WithRR(new ByReferenceResolveResult(inst.Type, ReferenceKind.Ref));
+				.WithRR(new ByReferenceResolveResult(expr.ResolveResult, ReferenceKind.Ref));
 		}
 
 		protected internal override TranslatedExpression VisitBlock(Block block, TranslationContext context)
