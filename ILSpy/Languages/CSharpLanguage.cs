@@ -556,6 +556,14 @@ namespace ICSharpCode.ILSpy
 			if (!settings.LiftNullables) {
 				flags &= ~ConversionFlags.UseNullableSpecifierForValueTypes;
 			}
+			if (settings.RecordClasses)
+			{
+				flags |= ConversionFlags.SupportRecordClasses;
+			}
+			if (settings.InitAccessors)
+			{
+				flags |= ConversionFlags.SupportInitAccessors;
+			}
 			if (symbol is IMethod m && m.IsLocalFunction) {
 				writer.WriteIdentifier(Identifier.Create("(local)"));
 			}
