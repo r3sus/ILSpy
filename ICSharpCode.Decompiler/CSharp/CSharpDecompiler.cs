@@ -339,7 +339,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		{
 			if (!type.HasGeneratedName() || !type.IsCompilerGenerated())
 				return false;
-			if (type.Name.Contains("DisplayClass") || type.Name.Contains("AnonStorey"))
+			if (type.Name.Contains("DisplayClass") || type.Name.Contains("AnonStorey")|| type.Name.Contains("Closure$"))
 				return true;
 			return type.BaseType.FullName == "System.Object" && !type.HasInterfaces;
 		}

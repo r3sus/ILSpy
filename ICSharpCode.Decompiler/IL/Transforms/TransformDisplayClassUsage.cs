@@ -625,9 +625,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				case TypeKind.Struct:
 					break;
 				case TypeKind.Class:
-					if (!potentialDisplayClass.IsSealed)
-						return false;
-					if (!allowTypeImplementingInterfaces) {
+					if (!allowTypeImplementingInterfaces)
+					{
 						if (!potentialDisplayClass.DirectBaseTypes.All(t => t.IsKnownType(KnownTypeCode.Object)))
 							return false;
 					}

@@ -166,7 +166,7 @@ namespace ICSharpCode.Decompiler
 
 		public static bool HasGeneratedName(this IMemberRef member)
 		{
-			return member.Name.StartsWith("<", StringComparison.Ordinal);
+			return member.Name.StartsWith("<", StringComparison.Ordinal) || member.Name.Contains("$");
 		}
 
 		public static string GetDefaultMemberName(this TypeDef type, out CustomAttribute defaultMemberAttribute)
