@@ -49,7 +49,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		};
 
 		ILTransformContext context;
-		string[] currentFieldNames;
+		string[] currentLowerCaseTypeOrMemberNames;
 		Dictionary<string, int> reservedVariableNames;
 		Dictionary<dnlib.DotNet.MethodDef, string> localFunctionMapping;
 		HashSet<ILVariable> loopCounters;
@@ -58,8 +58,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		public void Run(ILFunction function, ILTransformContext context)
 		{
 			this.context = context;
-			currentFieldNames = function.CecilMethod.DeclaringType.Fields.Select(f => f.Name.String).ToArray();
+
 			reservedVariableNames = new Dictionary<string, int>();
+			currentLowerCaseTypeOrMemberNames = CollectAllLowerCaseTypeOrMemberNames(function.Method.DeclaringTypeDefinition).ToArray();
 			localFunctionMapping = new Dictionary<dnlib.DotNet.MethodDef, string>();
 			loopCounters = CollectLoopCounters(function);
 			foreach (var f in function.Descendants.OfType<ILFunction>()) {
@@ -119,6 +120,28 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			}
 			foreach (ILFunction f in function.Descendants.OfType<ILFunction>().Reverse()) {
 				PerformAssignment(f);
+			}
+		}
+
+		IEnumerable<string> CollectAllLowerCaseTypeOrMemberNames(ITypeDefinition type)
+		{
+			foreach (var item in type.GetMembers(m => IsLowerCase(m.Name)))
+				yield return item.Name;
+
+			foreach (var item in type.ParentModule.TopLevelTypeDefinitions)
+			{
+				if (item.Namespace != type.Namespace)
+					continue;
+				if (IsLowerCase(item.Name))
+				{
+					AddExistingName(reservedVariableNames, item.Name);
+					yield return item.Name;
+				}
+			}
+
+			static bool IsLowerCase(string name)
+			{
+				return name.Length > 0 && char.IsLower(name[0]);
 			}
 		}
 
@@ -229,11 +252,12 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		/// </remarks>
 		internal static bool IsSupportedInstruction(object arg)
 		{
-			switch (arg) {
-				case LdObj ldobj:
-				case LdFlda ldflda:
-				case LdsFlda ldsflda:
-				case CallInstruction call:
+			switch (arg)
+			{
+				case LdObj _:
+				case LdFlda _:
+				case LdsFlda _:
+				case CallInstruction _:
 					return true;
 				default:
 					return false;
@@ -329,32 +353,36 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				var proposedNameForAddress = variable.AddressInstructions.OfType<LdLoca>()
 					.Select(arg => arg.Parent is CallInstruction c ? c.GetParameter(arg.ChildIndex)?.Name : null)
 					.Where(arg => !string.IsNullOrWhiteSpace(arg))
-					.Except(currentFieldNames).ToList();
-				if (proposedNameForAddress.Count > 0) {
+					.Except(currentLowerCaseTypeOrMemberNames).ToList();
+				if (proposedNameForAddress.Count > 0)
+				{
 					proposedName = proposedNameForAddress[0];
 				}
 			}
 			if (string.IsNullOrEmpty(proposedName)) {
 				var proposedNameForStores = variable.StoreInstructions.OfType<StLoc>()
 					.Select(expr => GetNameFromInstruction(expr.Value))
-					.Except(currentFieldNames).ToList();
-				if (proposedNameForStores.Count == 1) {
+					.Except(currentLowerCaseTypeOrMemberNames).ToList();
+				if (proposedNameForStores.Count == 1)
+				{
 					proposedName = proposedNameForStores[0];
 				}
 			}
 			if (string.IsNullOrEmpty(proposedName)) {
 				var proposedNameForLoads = variable.LoadInstructions
 					.Select(arg => GetNameForArgument(arg.Parent, arg.ChildIndex))
-					.Except(currentFieldNames).ToList();
-				if (proposedNameForLoads.Count == 1) {
+					.Except(currentLowerCaseTypeOrMemberNames).ToList();
+				if (proposedNameForLoads.Count == 1)
+				{
 					proposedName = proposedNameForLoads[0];
 				}
 			}
 			if (string.IsNullOrEmpty(proposedName) && variable.Kind == VariableKind.StackSlot) {
 				var proposedNameForStoresFromNewObj = variable.StoreInstructions.OfType<StLoc>()
 					.Select(expr => GetNameByType(GuessType(variable.Type, expr.Value, context)))
-					.Except(currentFieldNames).ToList();
-				if (proposedNameForStoresFromNewObj.Count == 1) {
+					.Except(currentLowerCaseTypeOrMemberNames).ToList();
+				if (proposedNameForStoresFromNewObj.Count == 1)
+				{
 					proposedName = proposedNameForStoresFromNewObj[0];
 				}
 			}
