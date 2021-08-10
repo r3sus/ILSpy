@@ -1134,6 +1134,15 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			EndNode(uncheckedExpression);
 		}
 
+		public virtual void VisitWithInitializerExpression(WithInitializerExpression withInitializerExpression)
+		{
+			StartNode(withInitializerExpression);
+			withInitializerExpression.Expression.AcceptVisitor(this);
+			WriteKeyword("with", WithInitializerExpression.WithKeywordRole);
+			withInitializerExpression.Initializer.AcceptVisitor(this);
+			EndNode(withInitializerExpression);
+		}
+
 		#endregion
 
 		#region Query Expressions

@@ -2713,6 +2713,8 @@ namespace ICSharpCode.Decompiler.CSharp
 				case BlockKind.CollectionInitializer:
 				case BlockKind.ObjectInitializer:
 					return TranslateObjectAndCollectionInitializer(block);
+				case BlockKind.WithInitializer:
+					return TranslateWithInitializer(block);
 				case BlockKind.CallInlineAssign:
 					return TranslateSetterCallAssignment(block);
 				case BlockKind.CallWithNamedArgs:
@@ -2771,7 +2773,13 @@ namespace ICSharpCode.Decompiler.CSharp
 				default:
 					throw new ArgumentException("given Block is invalid!");
 			}
-			// Build initializer expression
+			var oce = (ObjectCreateExpression)expr.Expression;
+			oce.Initializer = BuildArrayInitializerExpression(block, initObjRR);
+			return expr.WithILInstruction(block);
+		}
+
+		private ArrayInitializerExpression BuildArrayInitializerExpression(Block block, InitializedObjectResolveResult initObjRR)
+		{
 			var elementsStack = new Stack<List<TranslatedExpression>>();
 			var elements = new List<TranslatedExpression>(block.Instructions.Count);
 			elementsStack.Push(elements);
@@ -2846,9 +2854,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					MakeInitializerAssignment(initObjRR, methodElement, pathElement, values, indexVariables)
 				);
 			}
-			var oce = (ObjectCreateExpression)expr.Expression;
-			oce.Initializer = new ArrayInitializerExpression(elements.SelectArray(e => e.Expression));
-			return expr.WithILInstruction(block);
+			return new ArrayInitializerExpression(elements.SelectArray(e => e.Expression));
 		}
 
 		IEnumerable<ILInstruction> GetIndices(IEnumerable<ILInstruction> indices, Dictionary<ILVariable, ILInstruction> indexVariables)
@@ -3042,6 +3048,21 @@ namespace ICSharpCode.Decompiler.CSharp
 				expectedOffset++;
 			}
 			return stackAllocExpression.WithILInstruction(block)
+				.WithRR(new ResolveResult(stloc.Variable.Type));
+		}
+
+		TranslatedExpression TranslateWithInitializer(Block block)
+		{
+			var stloc = block.Instructions.FirstOrDefault() as StLoc;
+			var final = block.FinalInstruction as LdLoc;
+			if (stloc == null || final == null || stloc.Variable != final.Variable || stloc.Variable.Kind != VariableKind.InitializerTarget)
+				throw new ArgumentException("given Block is invalid!");
+
+			WithInitializerExpression withInitializerExpression = new WithInitializerExpression();
+			withInitializerExpression.Expression = Translate(stloc.Value, stloc.Variable.Type);
+			withInitializerExpression.Initializer = BuildArrayInitializerExpression(block, new InitializedObjectResolveResult(stloc.Variable.Type));
+
+			return withInitializerExpression.WithILInstruction(block)
 				.WithRR(new ResolveResult(stloc.Variable.Type));
 		}
 

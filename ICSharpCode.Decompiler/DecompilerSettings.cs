@@ -124,6 +124,7 @@ namespace ICSharpCode.Decompiler
 				functionPointers = false;
 				forEachWithGetEnumeratorExtension = false;
 				recordClasses = false;
+				withExpressions = false;
 			}
 		}
 
@@ -201,6 +202,24 @@ namespace ICSharpCode.Decompiler
 				if (recordClasses != value)
 				{
 					recordClasses = value;
+					OnPropertyChanged();
+				}
+			}
+		}
+
+		bool withExpressions = true;
+
+		/// <summary>
+		/// Use C# 9 <c>with</c> initializer expressions.
+		/// </summary>
+		[Category("C# 9.0 / VS 2019.8")]
+		[Description("DecompilerSettings.WithExpressions")]
+		public bool WithExpressions {
+			get { return withExpressions; }
+			set {
+				if (withExpressions != value)
+				{
+					withExpressions = value;
 					OnPropertyChanged();
 				}
 			}
