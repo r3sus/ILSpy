@@ -202,6 +202,11 @@ namespace System.Runtime.CompilerServices
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void SkipInit<T>(out T value)
+		{
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public unsafe static int SizeOf<T>()
 		{
 			return sizeof(T);
@@ -312,7 +317,19 @@ namespace System.Runtime.CompilerServices
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ref T Add<T>(ref T source, UIntPtr elementOffset)
+		{
+			return ref Unsafe.Add(ref source, elementOffset);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref T AddByteOffset<T>(ref T source, IntPtr byteOffset)
+		{
+			return ref Unsafe.AddByteOffset(ref source, byteOffset);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ref T AddByteOffset<T>(ref T source, UIntPtr byteOffset)
 		{
 			return ref Unsafe.AddByteOffset(ref source, byteOffset);
 		}
@@ -336,7 +353,19 @@ namespace System.Runtime.CompilerServices
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ref T Subtract<T>(ref T source, UIntPtr elementOffset)
+		{
+			return ref Unsafe.Subtract(ref source, elementOffset);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref T SubtractByteOffset<T>(ref T source, IntPtr byteOffset)
+		{
+			return ref Unsafe.SubtractByteOffset(ref source, byteOffset);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ref T SubtractByteOffset<T>(ref T source, UIntPtr byteOffset)
 		{
 			return ref Unsafe.SubtractByteOffset(ref source, byteOffset);
 		}
@@ -363,6 +392,18 @@ namespace System.Runtime.CompilerServices
 		public static bool IsAddressLessThan<T>(ref T left, ref T right)
 		{
 			return (ref left) < (ref right);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public unsafe static bool IsNullRef<T>(ref T source)
+		{
+			return Unsafe.AsPointer(ref source) == null;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public unsafe static ref T NullRef<T>()
+		{
+			return ref *(T*)null;
 		}
 	}
 }

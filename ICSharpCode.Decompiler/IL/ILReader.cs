@@ -1479,15 +1479,21 @@ namespace ICSharpCode.Decompiler.IL
 			var right = Pop();
 			var left = Pop();
 
-			if (left.ResultType == StackType.O && right.ResultType.IsIntegerType()) {
+			if ((left.ResultType == StackType.O || left.ResultType == StackType.Ref) && right.ResultType.IsIntegerType())
+			{
 				// C++/CLI sometimes compares object references with integers.
-				if (right.ResultType == StackType.I4) {
+				// Also happens with Ref==I in Unsafe.IsNullRef().
+				if (right.ResultType == StackType.I4)
+				{
 					// ensure we compare at least native integer size
 					right = new Conv(right, PrimitiveType.I, false, Sign.None);
 				}
 				left = new Conv(left, right.ResultType.ToPrimitiveType(), false, Sign.None);
-			} else if (right.ResultType == StackType.O && left.ResultType.IsIntegerType()) {
-				if (left.ResultType == StackType.I4) {
+			}
+			else if ((right.ResultType == StackType.O || right.ResultType == StackType.Ref) && left.ResultType.IsIntegerType())
+			{
+				if (left.ResultType == StackType.I4)
+				{
 					left = new Conv(left, PrimitiveType.I, false, Sign.None);
 				}
 				right = new Conv(right, left.ResultType.ToPrimitiveType(), false, Sign.None);
