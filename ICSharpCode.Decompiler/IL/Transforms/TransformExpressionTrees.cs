@@ -233,15 +233,15 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 							return false;
 						if (!this.parameters.TryGetValue(v, out var value))
 							return false;
-						// Parameter variable cannot be used in two different compiler-generated expression trees,
-						// therefore we have to abort if the parameter is already mapped to a variable.
-						if (this.parameterMapping.ContainsKey(v))
-							return false;
-						var param = new ILVariable(VariableKind.Parameter, value.Item1, i) { Name = value.Item2 };
-						parameterMapping.Add(v, param);
-						parameterVariables.Add(param);
-						parameters.Add(new DefaultParameter(value.Item1, value.Item2));
-						instructionsToRemove.Add((ILInstruction)v.StoreInstructions[0]);
+						// Add parameter variable only once to mapping.
+						if (!this.parameterMapping.ContainsKey(v))
+						{
+							var param = new ILVariable(VariableKind.Parameter, value.Item1, i) { Name = value.Item2 };
+							parameterMapping.Add(v, param);
+							parameterVariables.Add(param);
+							parameters.Add(new DefaultParameter(value.Item1, value.Item2));
+							instructionsToRemove.Add((ILInstruction)v.StoreInstructions[0]);
+						}
 						i++;
 					}
 					return true;
@@ -1186,7 +1186,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 			switch (invocation.Arguments.Count) {
 				case 1:
 					ILInstruction left;
-					switch (argumentType.GetStackType()) {
+					var underlyingType = NullableType.GetUnderlyingType(argumentType);
+					switch (underlyingType.GetStackType())
+					{
 						case StackType.I4:
 							left = new LdcI4(0);
 							break;
@@ -1201,6 +1203,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 							break;
 						case StackType.F8:
 							left = new LdcF8(0);
+							break;
+						case StackType.O when underlyingType.IsKnownType(KnownTypeCode.Decimal):
+							left = new LdcDecimal(0);
 							break;
 						default:
 							return (null, SpecialType.UnknownType);
