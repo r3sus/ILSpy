@@ -329,8 +329,10 @@ namespace ICSharpCode.Decompiler.CSharp
 						.ConvertTo(targetType, expressionBuilder, checkForOverflow, allowImplicitConversion);
 				}
 			}
-			if (targetUType.IsKnownType(KnownTypeCode.IntPtr)) { // Conversion to IntPtr
-				if (type.IsKnownType(KnownTypeCode.Int32) || type.Kind == TypeKind.NInt) {
+			if (targetUType.IsKnownType(KnownTypeCode.IntPtr) && utype.GetStackType().IsIntegerType())
+			{ // Conversion to IntPtr
+				if (type.IsKnownType(KnownTypeCode.Int32) || type.Kind == TypeKind.NInt)
+				{
 					// normal casts work for int/nint (both in checked and unchecked context)
 					// note that pointers only allow normal casts in unchecked contexts
 				} else if (expressionBuilder.settings.NativeIntegers) {
@@ -353,7 +355,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						.ConvertTo(targetType, expressionBuilder, checkForOverflow);
 				}
 			}
-			else if (targetUType.IsKnownType(KnownTypeCode.UIntPtr))
+			else if (targetUType.IsKnownType(KnownTypeCode.UIntPtr) && utype.GetStackType().IsIntegerType())
 			{ // Conversion to UIntPtr
 				if (type.IsKnownType(KnownTypeCode.UInt32) || type.Kind.IsAnyPointer() || type.Kind == TypeKind.NUInt)
 				{
