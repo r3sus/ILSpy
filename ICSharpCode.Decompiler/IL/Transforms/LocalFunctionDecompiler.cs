@@ -299,13 +299,8 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				return null;
 			if (!(TransformDisplayClassUsage.IsPotentialClosure(context, field.Type.GetDefinition()) || context.Function.Method.DeclaringType.Equals(field.Type)))
 				return null;
-			foreach (var v in context.Function.Descendants.OfType<ILFunction>().SelectMany(f => f.Variables)) {
-				if (v.Kind != VariableKind.Local && v.Kind != VariableKind.DisplayClassLocal && v.Kind != VariableKind.StackSlot) {
-					if (!(v.Kind == VariableKind.Parameter && v.Index == -1))
-						continue;
-					if (v.Type.Equals(field.Type))
-						return v;
-				}
+			foreach (var v in context.Function.Descendants.OfType<ILFunction>().SelectMany(f => f.Variables))
+			{
 				if (!(TransformDisplayClassUsage.IsClosure(context, v, out var varType, out _) && varType.Equals(field.Type)))
 					continue;
 				return v;
