@@ -176,7 +176,9 @@ namespace ICSharpCode.Decompiler.Tests.Pretty
 
 		public abstract class Base : Root
 		{
-			public new abstract int Prop { get; }
+			public new abstract int Prop {
+				get;
+			}
 
 			public new abstract void M<T>(T a);
 		}
