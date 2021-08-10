@@ -79,7 +79,7 @@ namespace ICSharpCode.Decompiler
 				}
 			}
 
-			var localDefinition = GetCurrentLocalDefinition();
+			var localDefinition = GetCurrentLocalDefinition(identifier);
 			if (localDefinition != null) {
 				output.WriteDefinition(identifier.Name, localDefinition);
 				return;
@@ -166,7 +166,7 @@ namespace ICSharpCode.Decompiler
 			return null;
 		}
 
-		object GetCurrentLocalDefinition()
+		object GetCurrentLocalDefinition(Identifier id)
 		{
 			AstNode node = nodeStack.Peek();
 			if (node is Identifier && node.Parent != null)
@@ -178,7 +178,15 @@ namespace ICSharpCode.Decompiler
 					return variable;
 			}
 
-			if (node is QueryLetClause) {
+			if (id.Role == QueryJoinClause.IntoIdentifierRole || id.Role == QueryJoinClause.JoinIdentifierRole)
+			{
+				var variable = id.Annotation<ILVariableResolveResult>()?.Variable;
+				if (variable != null)
+					return variable;
+			}
+
+			if (node is QueryLetClause)
+			{
 				var variable = node.Annotation<CSharp.Transforms.LetIdentifierAnnotation>();
 				if (variable != null)
 					return variable;

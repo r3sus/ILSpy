@@ -228,19 +228,24 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 						if (!MatchSimpleLambda(innerLambda, out ParameterDeclaration element2, out Expression key2))
 							return null;
 						LambdaExpression lambda = invocation.Arguments.ElementAt(3) as LambdaExpression;
-						if (lambda != null && lambda.Parameters.Count == 2 && lambda.Body is Expression) {
+						if (lambda != null && lambda.Parameters.Count == 2 && lambda.Body is Expression)
+						{
 							ParameterDeclaration p1 = lambda.Parameters.ElementAt(0);
 							ParameterDeclaration p2 = lambda.Parameters.ElementAt(1);
-							if (p1.Name == element1.Name && (p2.Name == element2.Name || mre.MemberName == "GroupJoin")) {
+							if (p1.Name == element1.Name && (p2.Name == element2.Name || mre.MemberName == "GroupJoin"))
+							{
 								QueryExpression query = new QueryExpression();
 								query.Clauses.Add(MakeFromClause(element1, source1.Detach()));
 								QueryJoinClause joinClause = new QueryJoinClause();
 								joinClause.JoinIdentifier = element2.Name;    // join elementName2
+								joinClause.JoinIdentifierToken.CopyAnnotationsFrom(element2);
 								joinClause.InExpression = source2.Detach();  // in source2
 								joinClause.OnExpression = key1.Detach();     // on key1
 								joinClause.EqualsExpression = key2.Detach(); // equals key2
-								if (mre.MemberName == "GroupJoin") {
+								if (mre.MemberName == "GroupJoin")
+								{
 									joinClause.IntoIdentifier = p2.Name; // into p2.Name
+									joinClause.IntoIdentifierToken.CopyAnnotationsFrom(p2);
 								}
 								joinClause.AddAnnotation(new QueryJoinClauseAnnotation(outerLambda.Annotation<IL.ILFunction>(), innerLambda.Annotation<IL.ILFunction>()));
 								query.Clauses.Add(joinClause);
