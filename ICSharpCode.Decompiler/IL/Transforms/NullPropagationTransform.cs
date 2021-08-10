@@ -254,7 +254,14 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 					if (unwrap.RefInput && inst is AddressOf addressOf) {
 						inst = addressOf.Value;
 					}
-				} else if (inst is DynamicGetMemberInstruction dynGetMember) {
+					// The argument of the unwrap instruction cannot be the end of the chain, because this
+					// would result in two null-conditional operators immediately following each other,
+					// which is not valid in C#.
+					if (IsValidEndOfChain())
+						return false;
+				}
+				else if (inst is DynamicGetMemberInstruction dynGetMember)
+				{
 					inst = dynGetMember.Target;
 				} else if (inst is DynamicInvokeMemberInstruction dynInvokeMember) {
 					inst = dynInvokeMember.Arguments[0];
