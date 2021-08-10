@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -37,6 +37,36 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 			public SetProperty(PropertyInfo property)
 			{
 				Property = property;
+			}
+		}
+
+		public class ImplicitString
+		{
+			private readonly string s;
+
+			public ImplicitString(string s)
+			{
+				this.s = s;
+			}
+
+			public static implicit operator string(ImplicitString v)
+			{
+				return v.s;
+			}
+		}
+
+		public class ExplicitString
+		{
+			private readonly string s;
+
+			public ExplicitString(string s)
+			{
+				this.s = s;
+			}
+
+			public static explicit operator string(ExplicitString v)
+			{
+				return v.s;
 			}
 		}
 
@@ -338,6 +368,66 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 		{
 			Console.WriteLine("SwitchOverString2:");
 			switch (Environment.UserName) {
+				case "First case":
+					return "Text1";
+				case "Second case":
+					return "Text2";
+				case "Third case":
+					return "Text3";
+				case "Fourth case":
+					return "Text4";
+				case "Fifth case":
+					return "Text5";
+				case "Sixth case":
+					return "Text6";
+				case "Seventh case":
+					return "Text7";
+				case "Eighth case":
+					return "Text8";
+				case "Ninth case":
+					return "Text9";
+				case "Tenth case":
+					return "Text10";
+				case "Eleventh case":
+					return "Text11";
+				default:
+					return "Default";
+			}
+		}
+
+		public static string SwitchOverImplicitString(ImplicitString s)
+		{
+			switch (s) {
+				case "First case":
+					return "Text1";
+				case "Second case":
+					return "Text2";
+				case "Third case":
+					return "Text3";
+				case "Fourth case":
+					return "Text4";
+				case "Fifth case":
+					return "Text5";
+				case "Sixth case":
+					return "Text6";
+				case "Seventh case":
+					return "Text7";
+				case "Eighth case":
+					return "Text8";
+				case "Ninth case":
+					return "Text9";
+				case "Tenth case":
+					return "Text10";
+				case "Eleventh case":
+					return "Text11";
+				default:
+					return "Default";
+			}
+		}
+
+		public static string SwitchOverExplicitString(ExplicitString s)
+		{
+			switch ((string)s) {
 				case "First case":
 					return "Text1";
 				case "Second case":
