@@ -1375,8 +1375,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			if (op == BinaryOperatorType.Subtract && inst.Left.MatchLdcI(0)) {
 				IType rightUType = NullableType.GetUnderlyingType(right.Type);
 				if (rightUType.IsKnownType(KnownTypeCode.Int32) || rightUType.IsKnownType(KnownTypeCode.Int64)
-					|| rightUType.IsCSharpSmallIntegerType() || rightUType.IsCSharpNativeIntegerType()) {
-					// unary minus is supported on signed int and long, and on the small integer types (since they promote to int)
+					|| rightUType.IsCSharpSmallIntegerType() || rightUType.Kind == TypeKind.NInt)
+				{
+					// unary minus is supported on signed int, nint and long, and on the small integer types (since they promote to int)
 					var uoe = new UnaryOperatorExpression(UnaryOperatorType.Minus, right.Expression);
 					uoe.AddAnnotation(inst.CheckForOverflow ? AddCheckedBlocks.CheckedAnnotation : AddCheckedBlocks.UncheckedAnnotation);
 					var resultType = FindArithmeticType(inst.RightInputType, Sign.Signed);
