@@ -95,8 +95,10 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 
 		static AddressUse DetermineAddressUse(ILInstruction addressLoadingInstruction, ILVariable targetVar)
 		{
-			switch (addressLoadingInstruction.Parent) {
-				case LdObj ldobj:
+			switch (addressLoadingInstruction.Parent)
+			{
+				case LdObj _:
+				case StObj stobj when stobj.Target == addressLoadingInstruction:
 					return AddressUse.Immediate;
 				case LdFlda ldflda:
 					return DetermineAddressUse(ldflda, targetVar);
