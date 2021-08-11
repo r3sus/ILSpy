@@ -13,10 +13,15 @@ public class VBPropertiesTest
 		}
 	}
 
-	public int AutoProperty { get; set; }
+	public int AutoProperty {
+		get;
+		set;
+	}
 
 #if ROSLYN
-	public int ReadOnlyAutoProperty { get; }
+	public int ReadOnlyAutoProperty {
+		get;
+	}
 	public VBPropertiesTest()
 	{
 		ReadOnlyAutoProperty = 32;

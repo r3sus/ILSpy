@@ -909,16 +909,12 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 
 		public void ForEachInSwitch(int i, IEnumerable<string> args)
 		{
-			switch (i)
-			{
-
+			switch (i) {
 				case 1:
 					Console.WriteLine("one");
 					break;
-				case 2:
-				{
-					foreach (string arg in args)
-					{
+				case 2: {
+					foreach (string arg in args) {
 						Console.WriteLine(arg);
 					}
 					break;

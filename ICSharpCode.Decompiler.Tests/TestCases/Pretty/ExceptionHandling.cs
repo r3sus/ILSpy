@@ -198,22 +198,16 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 
 		internal void EarlyReturnInTryBlock(bool a, bool b)
 		{
-			try
-			{
-				if (a)
-				{
+			try {
+				if (a) {
 					Console.WriteLine("a");
-				}
-				else if (b)
-				{
+				} else if (b) {
 					// #2379: The only goto-free way of representing this code is to use a return statement
 					return;
 				}
 
 				Console.WriteLine("a || !b");
-			}
-			finally
-			{
+			} finally {
 				Console.WriteLine("finally");
 			}
 		}
