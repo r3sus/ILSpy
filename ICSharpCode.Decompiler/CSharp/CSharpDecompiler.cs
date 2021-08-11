@@ -1221,15 +1221,9 @@ namespace ICSharpCode.Decompiler.CSharp
 				var function = ilReader.ReadIL(methodDefinition, cancellationToken: CancellationToken);
 				function.CheckInvariant(ILPhase.Normal);
 
-				if (entityDecl != null) {
-					int i = 0;
-					var parameters = function.Variables.Where(v => v.Kind == VariableKind.Parameter).ToDictionary(v => v.Index);
-					foreach (var parameter in entityDecl.GetChildrenByRole(Roles.Parameter)) {
-						if (parameters.TryGetValue(i, out var v))
-							parameter.AddAnnotation(new ILVariableResolveResult(v, method.Parameters[i].Type));
-						i++;
-					}
-					entityDecl.AddAnnotation(function);
+				if (entityDecl != null)
+				{
+					AddAnnotationsToDeclaration(method, entityDecl, function);
 				}
 
 				var localSettings = settings.Clone();
@@ -1281,6 +1275,19 @@ namespace ICSharpCode.Decompiler.CSharp
 			} catch (Exception innerException) when (!(innerException is OperationCanceledException || innerException is DecompilerException)) {
 				throw new DecompilerException(method.MetadataToken, innerException);
 			}
+		}
+
+		internal static void AddAnnotationsToDeclaration(ICSharpCode.Decompiler.TypeSystem.IMethod method, EntityDeclaration entityDecl, ILFunction function)
+		{
+			int i = 0;
+			var parameters = function.Variables.Where(v => v.Kind == VariableKind.Parameter).ToDictionary(v => v.Index);
+			foreach (var parameter in entityDecl.GetChildrenByRole(Roles.Parameter))
+			{
+				if (parameters.TryGetValue(i, out var v))
+					parameter.AddAnnotation(new ILVariableResolveResult(v, method.Parameters[i].Type));
+				i++;
+			}
+			entityDecl.AddAnnotation(function);
 		}
 
 		internal static void CleanUpMethodDeclaration(EntityDeclaration entityDecl, BlockStatement body, ILFunction function, bool decompileBody = true)
