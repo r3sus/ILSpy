@@ -3156,6 +3156,10 @@ namespace ICSharpCode.Decompiler.CSharp
 					rr = castRR;
 				}
 			}
+			else if (typeHint.Kind.IsAnyPointer() && (object.Equals(rr.ConstantValue, 0) || object.Equals(rr.ConstantValue, 0u)))
+			{
+				rr = new ConstantResolveResult(typeHint, null);
+			}
 			return rr;
 		}
 
@@ -3229,7 +3233,12 @@ namespace ICSharpCode.Decompiler.CSharp
 					targetType = typeInference.GetBestCommonType(new[] { trueBranch.ResolveResult, falseBranch.ResolveResult }, out bool success);
 					if (!success || targetType.GetStackType() != inst.ResultType) {
 						// Figure out the target type based on inst.ResultType.
-						if (inst.ResultType == StackType.Ref) {
+						if (context.TypeHint.Kind != TypeKind.Unknown && context.TypeHint.GetStackType() == inst.ResultType)
+						{
+							targetType = context.TypeHint;
+						}
+						else if (inst.ResultType == StackType.Ref)
+						{
 							// targetType should be a ref-type
 							if (trueBranch.Type.Kind == TypeKind.ByReference) {
 								targetType = trueBranch.Type;
@@ -3239,8 +3248,10 @@ namespace ICSharpCode.Decompiler.CSharp
 								// fall back to 'ref byte' if we can't determine a referenced type otherwise
 								targetType = new ByReferenceType(compilation.FindType(KnownTypeCode.Byte));
 							}
-						} else {
-							targetType = compilation.FindType(inst.ResultType.ToKnownTypeCode());
+						}
+						else
+						{
+							targetType = FindType(inst.ResultType, context.TypeHint.GetSign());
 						}
 					}
 				} else {

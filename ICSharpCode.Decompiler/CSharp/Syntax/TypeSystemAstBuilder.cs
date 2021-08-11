@@ -877,9 +877,11 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		public Expression ConvertConstantValue(IType expectedType, IType type, object constantValue)
 		{
 			if (type == null)
-				throw new ArgumentNullException("type");
-			if (constantValue == null) {
-				if (type.IsReferenceType == true || type.IsKnownType(KnownTypeCode.NullableOfT)) {
+				throw new ArgumentNullException(nameof(type));
+			if (constantValue == null)
+			{
+				if (type.IsReferenceType == true || type.IsKnownType(KnownTypeCode.NullableOfT) || type.Kind.IsAnyPointer())
+				{
 					var expr = new NullReferenceExpression();
 					if (AddResolveResultAnnotations)
 						expr.AddAnnotation(new ConstantResolveResult(SpecialType.NullType, null));
