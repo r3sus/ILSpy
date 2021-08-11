@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Humanizer.Inflections;
@@ -407,7 +408,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				reservedVariableNames.Add(proposedName, 0);
 			}
 			int count = ++reservedVariableNames[proposedName];
-			if (count > 1) {
+			Debug.Assert(!string.IsNullOrWhiteSpace(proposedName));
+			if (count > 1)
+			{
 				return proposedName + count.ToString();
 			} else {
 				return proposedName;
@@ -657,7 +660,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				reservedVariableNames.Add(proposedName, 0);
 			}
 			int count = ++reservedVariableNames[proposedName];
-			if (count > 1) {
+			Debug.Assert(!string.IsNullOrWhiteSpace(proposedName));
+			if (count > 1)
+			{
 				return proposedName + count.ToString();
 			} else {
 				return proposedName;
@@ -696,7 +701,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				reservedVariableNames.Add(proposedName, 0);
 			}
 			int count = ++reservedVariableNames[proposedName];
-			if (count > 1) {
+			Debug.Assert(!string.IsNullOrWhiteSpace(proposedName));
+			if (count > 1)
+			{
 				return proposedName + count.ToString();
 			} else {
 				return proposedName;
@@ -706,7 +713,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		private static bool IsPlural(string baseName, ref string proposedName)
 		{
 			var newName = Vocabularies.Default.Singularize(baseName, inputIsKnownToBePlural: false);
-			if (newName == baseName)
+			if (string.IsNullOrWhiteSpace(newName) || newName == baseName)
 				return false;
 			proposedName = newName;
 			return true;
