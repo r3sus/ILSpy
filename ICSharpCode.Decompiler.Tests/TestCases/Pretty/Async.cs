@@ -256,34 +256,23 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 
 		public async Task Issue2366a()
 		{
-			while (true)
-			{
-				try
-				{
+			while (true) {
+				try {
 					await Task.CompletedTask;
-				}
-				catch
-				{
+				} catch {
 				}
 			}
 		}
 
 		public async Task Issue2366b()
 		{
-			try
-			{
+			try {
 				await Task.CompletedTask;
-			}
-			catch (NullReferenceException)
-			{
+			} catch (NullReferenceException) {
 				await Task.CompletedTask;
-			}
-			catch (InvalidOperationException)
-			{
+			} catch (InvalidOperationException) {
 				await Task.CompletedTask;
-			}
-			catch (ArgumentException)
-			{
+			} catch (ArgumentException) {
 				await Task.CompletedTask;
 			}
 		}
