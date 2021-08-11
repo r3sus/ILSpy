@@ -210,6 +210,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			if (IsIndexer && Name != "Item" && !IsExplicitInterfaceImplementation) {
 				b.Add(KnownAttribute.IndexerName, KnownTypeCode.String, Name);
 			}
+
+			// SpecialName
+			if ((propertyHandle.Attributes & (PropertyAttributes.SpecialName | PropertyAttributes.RTSpecialName)) == PropertyAttributes.SpecialName)
+			{
+				b.Add(KnownAttribute.SpecialName);
+			}
+
 			b.Add(propertyHandle.CustomAttributes, symbolKind);
 			return b.Build();
 		}

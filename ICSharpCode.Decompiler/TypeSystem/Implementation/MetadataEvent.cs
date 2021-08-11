@@ -98,6 +98,13 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		public IEnumerable<IAttribute> GetAttributes()
 		{
 			var b = new AttributeListBuilder(module);
+
+			// SpecialName
+			if ((handle.Attributes & (EventAttributes.SpecialName | EventAttributes.RTSpecialName)) == EventAttributes.SpecialName)
+			{
+				b.Add(KnownAttribute.SpecialName);
+			}
+
 			b.Add(handle.CustomAttributes, SymbolKind.Event);
 			return b.Build();
 		}

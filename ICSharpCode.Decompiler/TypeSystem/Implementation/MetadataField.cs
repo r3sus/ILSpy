@@ -135,6 +135,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				b.Add(KnownAttribute.NonSerialized);
 			}
 
+			// SpecialName
+			if ((handle.Attributes & (FieldAttributes.SpecialName | FieldAttributes.RTSpecialName)) == FieldAttributes.SpecialName)
+			{
+				b.Add(KnownAttribute.SpecialName);
+			}
+
 			b.AddMarshalInfo(handle.MarshalType);
 			b.Add(handle.CustomAttributes, SymbolKind.Field);
 
