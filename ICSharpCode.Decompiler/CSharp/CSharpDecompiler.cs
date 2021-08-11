@@ -379,6 +379,12 @@ namespace ICSharpCode.Decompiler.CSharp
 				return true;
 			return type.BaseType.FullName == "System.Object" && !type.HasInterfaces;
 		}
+
+		internal static bool IsTransparentIdentifier(string identifier)
+		{
+			return identifier.StartsWith("<>", StringComparison.Ordinal)
+				&& (identifier.Contains("TransparentIdentifier") || identifier.Contains("TranspIdent"));
+		}
 		#endregion
 
 		static TypeSystemAstBuilder CreateAstBuilder(DecompilerSettings settings)

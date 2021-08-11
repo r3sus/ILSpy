@@ -92,14 +92,9 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 		};
 
-		bool IsTransparentIdentifier(string identifier)
-		{
-			return identifier.StartsWith("<>", StringComparison.Ordinal) && (identifier.Contains("TransparentIdentifier") || identifier.Contains("TranspIdent"));
-		}
-		
 		bool TryRemoveTransparentIdentifier(QueryExpression query, QueryFromClause fromClause, QueryExpression innerQuery, Dictionary<string, object> letClauses)
 		{
-			if (!IsTransparentIdentifier(fromClause.Identifier))
+			if (!CSharpDecompiler.IsTransparentIdentifier(fromClause.Identifier))
 				return false;
 			QuerySelectClause selectClause = innerQuery.Clauses.Last() as QuerySelectClause;
 			Match match = selectTransparentIdentifierPattern.Match(selectClause);
@@ -157,7 +152,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			MemberReferenceExpression mre = node as MemberReferenceExpression;
 			if (mre != null) {
 				IdentifierExpression ident = mre.Target as IdentifierExpression;
-				if (ident != null && IsTransparentIdentifier(ident.Identifier)) {
+				if (ident != null && CSharpDecompiler.IsTransparentIdentifier(ident.Identifier))
+				{
 					IdentifierExpression newIdent = new IdentifierExpression(mre.MemberName);
 					mre.TypeArguments.MoveTo(newIdent.TypeArguments);
 					newIdent.CopyAnnotationsFrom(mre);
