@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -27,6 +27,11 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 	public class Async
 	{
 		private int memberField;
+
+		private static bool True()
+		{
+			return true;
+		}
 
 		public async void SimpleVoidMethod()
 		{
@@ -136,6 +141,116 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Pretty
 				} else {
 					Console.WriteLine("No await");
 				}
+			}
+		}
+
+		public async Task AnonymousThrow()
+		{
+			try {
+				await Task.Delay(0);
+			} catch {
+				await Task.Delay(0);
+				throw;
+			}
+		}
+
+		public async Task DeclaredException()
+		{
+			try {
+				await Task.Delay(0);
+			} catch (Exception) {
+				await Task.Delay(0);
+				throw;
+			}
+		}
+
+		public async Task RethrowDeclared()
+		{
+			try {
+				await Task.Delay(0);
+			} catch (Exception ex) {
+				await Task.Delay(0);
+				throw ex;
+			}
+		}
+
+		public async Task RethrowDeclaredWithFilter()
+		{
+			try {
+				await Task.Delay(0);
+			} catch (Exception ex) when (ex.GetType().FullName.Contains("asdf")) {
+				await Task.Delay(0);
+				throw;
+			}
+		}
+
+		public async Task ComplexCatchBlock()
+		{
+			try {
+				await Task.Delay(0);
+			} catch (Exception ex) {
+				if (ex.GetHashCode() != 0) {
+					throw;
+				}
+				await Task.Delay(0);
+			}
+		}
+
+		public async Task ComplexCatchBlockWithFilter()
+		{
+			try {
+				await Task.Delay(0);
+			} catch (Exception ex) when (ex.GetType().FullName.Contains("asdf")) {
+				if (ex.GetHashCode() != 0) {
+					throw;
+				}
+				await Task.Delay(0);
+			}
+		}
+
+		public async Task LoadsToCatch(int i)
+		{
+			try {
+				throw null;
+			} catch (Exception ex2) when (i == 0) {
+				Console.WriteLine("First!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
+				Console.WriteLine(ex2.StackTrace);
+			} catch (Exception ex3) when (True()) {
+				Console.WriteLine("Second!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
+				Console.WriteLine(ex3.StackTrace);
+			} catch (Exception ex) {
+				Console.WriteLine("Third!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
+				Console.WriteLine(ex.StackTrace);
+			} catch when (i == 0) {
+				Console.WriteLine("Fourth!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
+			} catch when (True()) {
+				Console.WriteLine("Fifth!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
+			} catch {
+				Console.WriteLine("Sixth!");
+				if (i == 1) {
+					throw;
+				}
+				await Task.Yield();
 			}
 		}
 #endif

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -34,29 +34,46 @@ namespace ICSharpCode.Decompiler.Tests.TestCases.Correctness
 
 		public async Task Run()
 		{
+			Console.WriteLine("SimpleBoolTaskMethod:");
 			await SimpleBoolTaskMethod();
+			Console.WriteLine("StreamCopyTo:");
 			StreamCopyTo(new MemoryStream(new byte[1024]), 16);
+			Console.WriteLine("StreamCopyToWithConfigureAwait:");
 			StreamCopyToWithConfigureAwait(new MemoryStream(new byte[1024]), 16);
+			Console.WriteLine("AwaitInForEach:");
 			await AwaitInForEach(Enumerable.Range(0, 100).Select(i => Task.FromResult(i)));
+			Console.WriteLine("TaskMethodWithoutAwaitButWithExceptionHandling:");
 			await TaskMethodWithoutAwaitButWithExceptionHandling();
 #if CS60
+			Console.WriteLine($"{nameof(AwaitCatch)}:");
 			await AwaitCatch(Task.FromResult(1));
+			Console.WriteLine($"{nameof(AwaitMultipleCatchBlocks)}:");
 			await AwaitMultipleCatchBlocks(Task.FromResult(1));
+			Console.WriteLine($"{nameof(AwaitMultipleCatchBlocks2)}:");
 			await AwaitMultipleCatchBlocks2(Task.FromResult(1));
+			Console.WriteLine($"{nameof(AwaitInComplexFinally)}:");
 			Console.WriteLine(await AwaitInComplexFinally());
 			try {
+				Console.WriteLine($"{nameof(AwaitFinally)}:");
 				await AwaitFinally(Task.FromResult(2));
 			} catch (Exception ex) {
 				Console.WriteLine(ex + " caught!");
 			}
 #endif
+			Console.WriteLine("NestedAwait:");
 			await NestedAwait(Task.FromResult(Task.FromResult(5)));
+			Console.WriteLine("AwaitWithStack:");
 			await AwaitWithStack(Task.FromResult(3));
+			Console.WriteLine("AwaitWithStack2:");
 			await AwaitWithStack2(Task.FromResult(4));
 #if CS60
+			Console.WriteLine($"{nameof(AwaitInCatch)}:");
 			await AwaitInCatch(Task.FromResult(1), Task.FromResult(2));
+			Console.WriteLine($"{nameof(AwaitInFinally)}:");
 			await AwaitInFinally(Task.FromResult(2), Task.FromResult(4));
+			Console.WriteLine($"{nameof(AwaitInCatchAndFinally)}:");
 			await AwaitInCatchAndFinally(Task.FromResult(3), Task.FromResult(6), Task.FromResult(9));
+			Console.WriteLine($"{nameof(AwaitInFinallyInUsing)}:");
 			Console.WriteLine(await AwaitInFinallyInUsing(Task.FromResult<IDisposable>(new StringWriter()), Task.FromResult(6), Task.FromResult(9)));
 #endif
 		}

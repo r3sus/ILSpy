@@ -788,8 +788,9 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 		void TransformCatchVariable(TryCatchHandler handler, Block entryPoint, bool isCatchBlock)
 		{
 			if (!handler.Variable.IsSingleDefinition || handler.Variable.LoadCount != 1)
-				return; // handle.Variable already has non-trivial uses
-			if (!entryPoint.Instructions[0].MatchStLoc(out var exceptionVar, out var exceptionSlotLoad)) {
+				return; // handler.Variable already has non-trivial uses
+			if (!entryPoint.Instructions[0].MatchStLoc(out var exceptionVar, out var exceptionSlotLoad))
+			{
 				// Not the pattern with a second exceptionVar.
 				// However, it is still possible that we need to remove a pointless UnboxAny:
 				if (handler.Variable.LoadInstructions.Single().Parent is UnboxAny inlinedUnboxAny) {
