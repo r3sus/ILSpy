@@ -36,7 +36,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			IType inputType,
 			ICompilation compilation,
 			IHasCustomAttribute attributes,
-			ModuleDef metadata,
 			TypeSystemOptions options,
 			Nullability nullableContext,
 			bool typeChildrenOnly = false,

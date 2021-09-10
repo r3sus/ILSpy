@@ -138,7 +138,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				};
 				block.Instructions.Insert(i++, new StLoc(uninlinedArgs[j], arg));
 			}
-			CollectionExtensions.AddRange(v.Function.Variables, uninlinedArgs);
+			Util.CollectionExtensions.AddRange(v.Function.Variables, uninlinedArgs);
 			// perform copy propagation:
 			foreach (var expr in v.LoadInstructions.ToArray()) {
 				var clone = copiedExpr.Clone();

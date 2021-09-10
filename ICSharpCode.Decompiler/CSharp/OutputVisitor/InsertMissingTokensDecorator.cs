@@ -73,7 +73,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			base.EndNode(node);
 		}
 
-		public override void WriteToken(Role role, string token)
+		public override void WriteToken(Role role, string token, object data)
 		{
 			switch (nodes.Peek().LastOrDefault()) {
 				case EmptyStatement emptyStatement:
@@ -88,7 +88,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 					currentList.Add(t);
 					break;
 			}
-			base.WriteToken(role, token);
+			base.WriteToken(role, token, data);
 		}
 
 		public override void WriteKeyword(Role role, string keyword)
@@ -115,19 +115,19 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			base.WriteKeyword(role, keyword);
 		}
 
-		public override void WriteIdentifier(Identifier identifier)
+		public override void WriteIdentifier(Identifier identifier, object data)
 		{
 			if (!identifier.IsNull)
 				identifier.SetStartLocation(locationProvider.Location);
 			currentList.Add(identifier);
-			base.WriteIdentifier(identifier);
+			base.WriteIdentifier(identifier, data);
 		}
-		
-		public override void WritePrimitiveValue(object value, LiteralFormat format = LiteralFormat.None)
+
+		public override void WritePrimitiveValue(object value, object data = null, LiteralFormat format = LiteralFormat.None)
 		{
 			Expression node = nodes.Peek().LastOrDefault() as Expression;
 			var startLocation = locationProvider.Location;
-			base.WritePrimitiveValue(value, format);
+			base.WritePrimitiveValue(value, data, format);
 			if (node is PrimitiveExpression) {
 				((PrimitiveExpression)node).SetLocation(startLocation, locationProvider.Location);
 			}

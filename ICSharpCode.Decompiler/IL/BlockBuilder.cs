@@ -211,7 +211,7 @@ namespace ICSharpCode.Decompiler.IL
 					branch.TargetBlock = FindBranchTarget(branch.TargetILOffset);
 					if (branch.TargetBlock == null) {
 						branch.ReplaceWith(new InvalidBranch("Could not find block for branch target "
-							+ Disassembler.DisassemblerHelpers.OffsetToString(branch.TargetILOffset)).WithILRange(branch));
+							+ CecilExtensions.OffsetToString(branch.TargetILOffset)).WithILRange(branch));
 					}
 					break;
 				case Leave leave:

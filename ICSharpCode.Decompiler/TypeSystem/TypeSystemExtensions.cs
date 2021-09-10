@@ -233,22 +233,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return def != null && def.FullTypeName.IsKnownType(knownType);
 		}
 
-		public static bool IsKnownType(this FullTypeName typeName, KnownTypeCode knownType)
-		{
-			return typeName == KnownTypeReference.Get(knownType).TypeName;
-		}
-
-		public static bool IsKnownType(this TopLevelTypeName typeName, KnownTypeCode knownType)
-		{
-			return typeName == KnownTypeReference.Get(knownType).TypeName;
-		}
-
 		internal static bool IsKnownType(this FullTypeName typeName, KnownAttribute knownType)
-		{
-			return typeName == knownType.GetTypeName();
-		}
-
-		internal static bool IsKnownType(this TopLevelTypeName typeName, KnownAttribute knownType)
 		{
 			return typeName == knownType.GetTypeName();
 		}
@@ -303,15 +288,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		public static IEnumerable<ITypeDefinition> GetAllTypeDefinitions (this ICompilation compilation)
 		{
 			return compilation.Modules.SelectMany(a => a.TypeDefinitions);
-		}
-
-		/// <summary>
-		/// Gets all top level type definitions in the compilation.
-		/// This may include types from referenced assemblies that are not accessible in the main assembly.
-		/// </summary>
-		public static IEnumerable<ITypeDefinition> GetTopLevelTypeDefinitions (this ICompilation compilation)
-		{
-			return compilation.Modules.SelectMany(a => a.TopLevelTypeDefinitions);
 		}
 		#endregion
 

@@ -1,14 +1,14 @@
 // Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -34,7 +34,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		IEnumerable<object> Annotations {
 			get;
 		}
-		
+
 		/// <summary>
 		/// Gets the first annotation of the specified type.
 		/// Returns null if no matching annotation exists.
@@ -43,7 +43,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// The type of the annotation.
 		/// </typeparam>
 		T Annotation<T> () where T: class;
-		
+
 		/// <summary>
 		/// Gets the first annotation of the specified type.
 		/// Returns null if no matching annotation exists.
@@ -52,7 +52,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// The type of the annotation.
 		/// </param>
 		object Annotation (Type type);
-		
+
 		/// <summary>
 		/// Adds an annotation to this instance.
 		/// </summary>
@@ -60,7 +60,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// The annotation to add.
 		/// </param>
 		void AddAnnotation (object annotation);
-		
+
 		/// <summary>
 		/// Removes all annotations of the specified type.
 		/// </summary>
@@ -68,7 +68,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// The type of the annotations to remove.
 		/// </typeparam>
 		void RemoveAnnotations<T> () where T : class;
-		
+
 		/// <summary>
 		/// Removes all annotations of the specified type.
 		/// </summary>
@@ -77,7 +77,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		/// </param>
 		void RemoveAnnotations(Type type);
 	}
-	
+
 	/// <summary>
 	/// Base class used to implement the IAnnotatable interface.
 	/// This implementation is thread-safe.
@@ -88,9 +88,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		// Annotations: points either null (no annotations), to the single annotation,
 		// or to an AnnotationList.
 		// Once it is pointed at an AnnotationList, it will never change (this allows thread-safety support by locking the list)
-		
+
 		object annotations;
-		
+
 		/// <summary>
 		/// Clones all annotations.
 		/// This method is intended to be called by Clone() implementations in derived classes.
@@ -106,6 +106,14 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				annotations = cloneable.Clone();
 		}
 
+		public void AddAnnotationsFrom(AbstractAnnotatable other)
+		{
+			if (other == null)
+				return;
+			foreach (var ann in other.Annotations)
+				AddAnnotation(ann);
+		}
+
 		sealed class AnnotationList : List<object>, ICloneable
 		{
 			// There are two uses for this custom list type:
@@ -114,7 +122,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			public AnnotationList (int initialCapacity) : base(initialCapacity)
 			{
 			}
-			
+
 			public object Clone ()
 			{
 				lock (this) {
@@ -128,7 +136,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				}
 			}
 		}
-		
+
 		public virtual void AddAnnotation (object annotation)
 		{
 			if (annotation == null)
@@ -155,7 +163,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				}
 			}
 		}
-		
+
 		public virtual void RemoveAnnotations<T> () where T : class
 		{
 		retry: // Retry until successful
@@ -171,7 +179,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				}
 			}
 		}
-		
+
 		public virtual void RemoveAnnotations (Type type)
 		{
 			if (type == null)
@@ -189,7 +197,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				}
 			}
 		}
-		
+
 		public T Annotation<T> () where T: class
 		{
 			object annotations = this.annotations;
@@ -207,7 +215,26 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				return annotations as T;
 			}
 		}
-		
+
+		public T? AnnotationVT<T> () where T: struct
+		{
+			object annotations = this.annotations;
+			AnnotationList list = annotations as AnnotationList;
+			if (list != null) {
+				lock (list) {
+					foreach (object obj in list) {
+						if (obj is T)
+							return (T)obj;
+					}
+					return null;
+				}
+			} else {
+				if (annotations is T)
+					return (T)annotations;
+				return null;
+			}
+		}
+
 		public object Annotation (Type type)
 		{
 			if (type == null)
@@ -227,7 +254,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			}
 			return null;
 		}
-		
+
 		/// <summary>
 		/// Gets all annotations stored on this AstNode.
 		/// </summary>
@@ -249,4 +276,3 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		}
 	}
 }
-

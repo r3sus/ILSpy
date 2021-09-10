@@ -17,16 +17,28 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
 
 namespace ICSharpCode.Decompiler
 {
+	public enum DecompilationObject {
+		NestedTypes,
+		Fields,
+		Events,
+		Properties,
+		Methods,
+	}
+
 	/// <summary>
 	/// Settings for the decompiler.
 	/// </summary>
-	public class DecompilerSettings : INotifyPropertyChanged
+	public class DecompilerSettings : INotifyPropertyChanged, IEquatable<DecompilerSettings>
 	{
 		/// <summary>
 		/// Equivalent to <c>new DecompilerSettings(LanguageVersion.Latest)</c>
@@ -157,6 +169,62 @@ namespace ICSharpCode.Decompiler
 				return CSharp.LanguageVersion.CSharp2;
 			return CSharp.LanguageVersion.CSharp1;
 		}
+
+		protected virtual void OnModified() {
+		}
+
+		DecompilationObject[] decompilationObjects = new DecompilationObject[5] {
+			DecompilationObject.Methods,
+			DecompilationObject.Properties,
+			DecompilationObject.Events,
+			DecompilationObject.Fields,
+			DecompilationObject.NestedTypes,
+		};
+
+		public IEnumerable<DecompilationObject> DecompilationObjects {
+			get { return decompilationObjects.AsEnumerable(); }
+		}
+
+		public DecompilationObject DecompilationObject0 {
+			get { return decompilationObjects[0]; }
+			set { SetDecompilationObject(0, value); }
+		}
+
+		public DecompilationObject DecompilationObject1 {
+			get { return decompilationObjects[1]; }
+			set { SetDecompilationObject(1, value); }
+		}
+
+		public DecompilationObject DecompilationObject2 {
+			get { return decompilationObjects[2]; }
+			set { SetDecompilationObject(2, value); }
+		}
+
+		public DecompilationObject DecompilationObject3 {
+			get { return decompilationObjects[3]; }
+			set { SetDecompilationObject(3, value); }
+		}
+
+		public DecompilationObject DecompilationObject4 {
+			get { return decompilationObjects[4]; }
+			set { SetDecompilationObject(4, value); }
+		}
+
+		void SetDecompilationObject(int index, DecompilationObject newValue) {
+			if (decompilationObjects[index] == newValue)
+				return;
+
+			int otherIndex = Array.IndexOf(decompilationObjects, newValue);
+			Debug.Assert(otherIndex >= 0);
+			if (otherIndex >= 0) {
+				decompilationObjects[otherIndex] = decompilationObjects[index];
+				decompilationObjects[index] = newValue;
+
+				OnPropertyChanged(string.Format(DecompilationObject_format, otherIndex));
+			}
+			OnPropertyChanged(string.Format(DecompilationObject_format, index));
+		}
+		static string DecompilationObject_format = nameof(DecompilationObject0).Substring(0, nameof(DecompilationObject0).Length - 1) + "{0}";
 
 		bool nativeIntegers = true;
 
@@ -1673,21 +1741,117 @@ namespace ICSharpCode.Decompiler
 		}
 
 		public event PropertyChangedEventHandler PropertyChanged;
+		public event EventHandler SettingsVersionChanged;
 
 		protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
 		{
-			if (PropertyChanged != null) {
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+			Interlocked.Increment(ref settingsVersion);
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+			OnModified();
+			SettingsVersionChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+		public int SettingsVersion => settingsVersion;
+		volatile int settingsVersion;
+
+		public DecompilerSettings Clone() {
+			// DON'T use MemberwiseClone() since we want to return a DecompilerSettings, not any
+			// derived class.
+			return CopyTo(new DecompilerSettings());
+		}
+
+		public bool Equals(DecompilerSettings other) {
+			if (other == null)
+				return false;
+
+			if (AnonymousMethods != other.AnonymousMethods) return false;
+			if (ExpressionTrees != other.ExpressionTrees) return false;
+			if (YieldReturn != other.YieldReturn) return false;
+			if (AsyncAwait != other.AsyncAwait) return false;
+			if (AutomaticProperties != other.AutomaticProperties) return false;
+			if (AutomaticEvents != other.AutomaticEvents) return false;
+			if (UsingStatement != other.UsingStatement) return false;
+			if (ForEachStatement != other.ForEachStatement) return false;
+			if (LockStatement != other.LockStatement) return false;
+			if (SwitchStatementOnString != other.SwitchStatementOnString) return false;
+			if (UsingDeclarations != other.UsingDeclarations) return false;
+			if (QueryExpressions != other.QueryExpressions) return false;
+			if (UseDebugSymbols != other.UseDebugSymbols) return false;
+			if (ObjectOrCollectionInitializers != other.ObjectOrCollectionInitializers) return false;
+			if (ShowXmlDocumentation != other.ShowXmlDocumentation) return false;
+			if (IntroduceIncrementAndDecrement != other.IntroduceIncrementAndDecrement) return false;
+			if (MakeAssignmentExpressions != other.MakeAssignmentExpressions) return false;
+			if (DecompilationObject0 != other.DecompilationObject0) return false;
+			if (DecompilationObject1 != other.DecompilationObject1) return false;
+			if (DecompilationObject2 != other.DecompilationObject2) return false;
+			if (DecompilationObject3 != other.DecompilationObject3) return false;
+			if (DecompilationObject4 != other.DecompilationObject4) return false;
+
+			//TODO: CSharpFormattingOptions. This isn't currently used but it has a ton of properties
+
+			return true;
+		}
+
+		public override bool Equals(object obj) {
+			return Equals(obj as DecompilerSettings);
+		}
+
+		public override int GetHashCode() {
+			unchecked {
+				uint h = 0;
+
+				h ^= AnonymousMethods				? 0 : 0x80000000U;
+				h ^= ExpressionTrees				? 0 : 0x40000000U;
+				h ^= YieldReturn					? 0 : 0x20000000U;
+				h ^= AsyncAwait						? 0 : 0x10000000U;
+				h ^= AutomaticProperties			? 0 : 0x08000000U;
+				h ^= AutomaticEvents				? 0 : 0x04000000U;
+				h ^= UsingStatement					? 0 : 0x02000000U;
+				h ^= ForEachStatement				? 0 : 0x01000000U;
+				h ^= LockStatement					? 0 : 0x00800000U;
+				h ^= SwitchStatementOnString		? 0 : 0x00400000U;
+				h ^= UsingDeclarations				? 0 : 0x00200000U;
+				h ^= QueryExpressions				? 0 : 0x00100000U;
+				h ^= UseDebugSymbols				? 0 : 0x00040000U;
+				h ^= ObjectOrCollectionInitializers	? 0 : 0x00020000U;
+				h ^= ShowXmlDocumentation			? 0 : 0x00010000U;
+				h ^= IntroduceIncrementAndDecrement	? 0 : 0x00008000U;
+				h ^= MakeAssignmentExpressions		? 0 : 0x00004000U;
+
+				for (int i = 0; i < decompilationObjects.Length; i++)
+					h ^= (uint)decompilationObjects[i] << (i * 8);
+
+				//TODO: CSharpFormattingOptions. This isn't currently used but it has a ton of properties
+
+				return (int)h;
 			}
 		}
 
-		public DecompilerSettings Clone()
-		{
-			DecompilerSettings settings = (DecompilerSettings)MemberwiseClone();
-			if (csharpFormattingOptions != null)
-				settings.csharpFormattingOptions = csharpFormattingOptions.Clone();
-			settings.PropertyChanged = null;
-			return settings;
+		public DecompilerSettings CopyTo(DecompilerSettings other) {
+			other.DecompilationObject0 = this.DecompilationObject0;
+			other.DecompilationObject1 = this.DecompilationObject1;
+			other.DecompilationObject2 = this.DecompilationObject2;
+			other.DecompilationObject3 = this.DecompilationObject3;
+			other.DecompilationObject4 = this.DecompilationObject4;
+			other.AnonymousMethods = this.AnonymousMethods;
+			other.ExpressionTrees = this.ExpressionTrees;
+			other.YieldReturn = this.YieldReturn;
+			other.AsyncAwait = this.AsyncAwait;
+			other.AutomaticProperties = this.AutomaticProperties;
+			other.AutomaticEvents = this.AutomaticEvents;
+			other.UsingStatement = this.UsingStatement;
+			other.ForEachStatement = this.ForEachStatement;
+			other.LockStatement = this.LockStatement;
+			other.SwitchStatementOnString = this.SwitchStatementOnString;
+			other.UsingDeclarations = this.UsingDeclarations;
+			other.QueryExpressions = this.QueryExpressions;
+			other.UseDebugSymbols = this.UseDebugSymbols;
+			other.ObjectOrCollectionInitializers = this.ObjectOrCollectionInitializers;
+			other.ShowXmlDocumentation = this.ShowXmlDocumentation;
+			other.IntroduceIncrementAndDecrement = this.IntroduceIncrementAndDecrement;
+			other.MakeAssignmentExpressions = this.MakeAssignmentExpressions;
+			//TODO: CSharpFormattingOptions
+			return other;
 		}
 	}
 }

@@ -46,6 +46,18 @@ namespace ICSharpCode.Decompiler.CSharp
 			collector.HandleAttributes(module.GetModuleAttributes());
 		}
 
+		public static void CollectAttributeNamespacesOnlyModule(MetadataModule module, HashSet<string> namespaces)
+		{
+			var collector = new RequiredNamespaceCollector(namespaces);
+			collector.HandleAttributes(module.GetModuleAttributes());
+		}
+
+		public static void CollectAttributeNamespacesOnlyAssembly(MetadataModule module, HashSet<string> namespaces)
+		{
+			var collector = new RequiredNamespaceCollector(namespaces);
+			collector.HandleAttributes(module.GetAssemblyAttributes());
+		}
+
 		public static void CollectNamespaces(IEntity entity, MetadataModule module, HashSet<string> namespaces)
 		{
 			var collector = new RequiredNamespaceCollector(namespaces);
@@ -234,7 +246,7 @@ namespace ICSharpCode.Decompiler.CSharp
 					case OperandType.InlineType when instr.Operand != null: {
 						IType type;
 						try {
-							type = module.ResolveType(instr.Operand as dnlib.DotNet.IType, genericContext);
+							type = module.ResolveType(instr.Operand as dnlib.DotNet.ITypeDefOrRef, genericContext);
 						} catch (BadImageFormatException) {
 							break;
 						}
@@ -265,7 +277,7 @@ namespace ICSharpCode.Decompiler.CSharp
 						}
 						break;
 					case OperandType.InlineTok when instr.Operand != null: {
-						if (instr.Operand is dnlib.DotNet.IType dnType) {
+						if (instr.Operand is dnlib.DotNet.ITypeDefOrRef dnType) {
 							IType type;
 							try {
 								type = module.ResolveType(dnType, genericContext);

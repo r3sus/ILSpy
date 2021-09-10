@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using dnlib.DotNet;
 using ICSharpCode.Decompiler.Util;
 
@@ -19,24 +20,16 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	/// system from multiple PEFiles. This allows the caches to be shared across multiple
 	/// decompiled type systems.
 	/// </remarks>
-	public class PEFile : IDisposable, IModuleReference
+	public sealed class PEFile : IDisposable, IModuleReference
 	{
+		public StringBuilder StringBuilder { get; }
+
 		public ModuleDef Module { get; }
-
-		public PEFile(string fileName)
-			: this(new FileStream(fileName, FileMode.Open, FileAccess.Read))
-		{
-		}
-
-		public PEFile(Stream stream)
-			: this(ModuleDefMD.Load(stream))
-		{
-		}
 
 		public PEFile(ModuleDef reader)
 		{
+			StringBuilder = new StringBuilder();
 			this.Module = reader ?? throw new ArgumentNullException(nameof(reader));
-			this.Module.EnableTypeDefFindCache = true;
 		}
 
 		public void Dispose()
@@ -49,7 +42,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </summary>
 		public TypeDef GetTypeDefinition(TopLevelTypeName typeName)
 		{
-			return Module.Find(typeName.ReflectionName, true);
+			return Module.Find(typeName.GetReflectionName(StringBuilder), true);
 		}
 
 		Dictionary<FullTypeName, ExportedType> typeForwarderLookup;
@@ -72,7 +65,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			else
 				return default;
 		}
-
 
 		public IModuleReference WithOptions(TypeSystemOptions options)
 		{

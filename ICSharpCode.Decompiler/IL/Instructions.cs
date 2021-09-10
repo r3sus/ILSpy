@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014-2020 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -6653,7 +6653,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract void Default(ILInstruction inst);
-		
+
 		protected internal virtual void VisitInvalidBranch(InvalidBranch inst)
 		{
 			Default(inst);
@@ -7043,7 +7043,7 @@ namespace ICSharpCode.Decompiler.IL
 			Default(inst);
 		}
 	}
-	
+
 	/// <summary>
 	/// Base class for visitor pattern.
 	/// </summary>
@@ -7051,7 +7051,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract T Default(ILInstruction inst);
-		
+
 		protected internal virtual T VisitInvalidBranch(InvalidBranch inst)
 		{
 			return Default(inst);
@@ -7449,7 +7449,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract T Default(ILInstruction inst, C context);
-		
+
 		protected internal virtual T VisitInvalidBranch(InvalidBranch inst, C context)
 		{
 			return Default(inst, context);
@@ -7839,7 +7839,7 @@ namespace ICSharpCode.Decompiler.IL
 			return Default(inst, context);
 		}
 	}
-	
+
 	partial class InstructionOutputExtensions
 	{
 		static readonly string[] originalOpCodeNames = {
@@ -7943,7 +7943,7 @@ namespace ICSharpCode.Decompiler.IL
 			"AnyNode",
 		};
 	}
-	
+
 	partial class ILInstruction
 	{
 		public bool MatchInvalidBranch()

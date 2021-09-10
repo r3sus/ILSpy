@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -27,7 +27,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		/// Used to insert the minimal amount of spaces so that the lexer recognizes the tokens that were written.
 		/// </summary>
 		LastWritten lastWritten;
-		
+
 		enum LastWritten
 		{
 			Whitespace,
@@ -39,13 +39,13 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			QuestionMark,
 			Division
 		}
-		
+
 		public InsertRequiredSpacesDecorator(TokenWriter writer)
 			: base(writer)
 		{
 		}
-		
-		public override void WriteIdentifier(Identifier identifier)
+
+		public override void WriteIdentifier(Identifier identifier, object data)
 		{
 			if (identifier.IsVerbatim || CSharpOutputVisitor.IsKeyword(identifier.Name, identifier)) {
 				if (lastWritten == LastWritten.KeywordOrIdentifier) {
@@ -56,10 +56,10 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				// this space is strictly required, so we directly call the formatter
 				base.Space();
 			}
-			base.WriteIdentifier(identifier);
+			base.WriteIdentifier(identifier, data);
 			lastWritten = LastWritten.KeywordOrIdentifier;
 		}
-		
+
 		public override void WriteKeyword(Role role, string keyword)
 		{
 			if (lastWritten == LastWritten.KeywordOrIdentifier) {
@@ -68,8 +68,8 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			base.WriteKeyword(role, keyword);
 			lastWritten = LastWritten.KeywordOrIdentifier;
 		}
-		
-		public override void WriteToken(Role role, string token)
+
+		public override void WriteToken(Role role, string token, object data)
 		{
 			// Avoid that two +, - or ? tokens are combined into a ++, -- or ?? token.
 			// Note that we don't need to handle tokens like = because there's no valid
@@ -84,7 +84,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			    lastWritten == LastWritten.Division && token[0] == '*') {
 				base.Space();
 			}
-			base.WriteToken(role, token);
+			base.WriteToken(role, token, data);
 			if (token == "+") {
 				lastWritten = LastWritten.Plus;
 			} else if (token == "-") {
@@ -99,42 +99,42 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				lastWritten = LastWritten.Other;
 			}
 		}
-		
+
 		public override void Space()
 		{
 			base.Space();
 			lastWritten = LastWritten.Whitespace;
 		}
-		
+
 		public override void NewLine()
 		{
 			base.NewLine();
 			lastWritten = LastWritten.Whitespace;
 		}
-		
-		public override void WriteComment(CommentType commentType, string content)
+
+		public override void WriteComment(CommentType commentType, string content, CommentReference[] refs)
 		{
 			if (lastWritten == LastWritten.Division) {
 				// When there's a comment starting after a division operator
 				// "1.0 / /*comment*/a", then we need to insert a space in front of the comment.
 				base.Space();
 			}
-			base.WriteComment(commentType, content);
+			base.WriteComment(commentType, content, refs);
 			lastWritten = LastWritten.Whitespace;
 		}
-		
+
 		public override void WritePreProcessorDirective(PreProcessorDirectiveType type, string argument)
 		{
 			base.WritePreProcessorDirective(type, argument);
 			lastWritten = LastWritten.Whitespace;
 		}
-		
-		public override void WritePrimitiveValue(object value, LiteralFormat format = LiteralFormat.None)
+
+		public override void WritePrimitiveValue(object value, object data = null, LiteralFormat format = LiteralFormat.None)
 		{
 			if (lastWritten == LastWritten.KeywordOrIdentifier) {
 				Space();
 			}
-			base.WritePrimitiveValue(value, format);
+			base.WritePrimitiveValue(value, data, format);
 			if (value == null || value is bool)
 				return;
 			if (value is string) {
@@ -161,7 +161,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				lastWritten = LastWritten.Other;
 			}
 		}
-		
+
 		public override void WritePrimitiveType(string type)
 		{
 			if (lastWritten == LastWritten.KeywordOrIdentifier) {

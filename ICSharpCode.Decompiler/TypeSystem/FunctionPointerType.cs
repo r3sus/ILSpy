@@ -183,7 +183,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			unchecked
 			{
 				int hash = ReturnType.GetHashCode() ^ CallingConvention.GetHashCode();
-				foreach (var (p, k) in ParameterTypes.Zip(ParameterReferenceKinds))
+				foreach ((IType p, ReferenceKind k) in ParameterTypes.Zip(ParameterReferenceKinds))
 				{
 					hash ^= p.GetHashCode() ^ k.GetHashCode();
 					hash *= 8310859;

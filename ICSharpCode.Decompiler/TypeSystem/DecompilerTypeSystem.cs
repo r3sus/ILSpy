@@ -18,7 +18,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
 using dnlib.DotNet;
@@ -127,8 +129,19 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	/// <remarks>
 	/// This class is thread-safe.
 	/// </remarks>
-	public class DecompilerTypeSystem : SimpleCompilation, IDecompilerTypeSystem
+	public class DecompilerTypeSystem : IDecompilerTypeSystem
 	{
+		private TypeSystemOptions options;
+		private ITypeResolveContext resolveContext;
+		MetadataModule mainModule;
+		private ModuleDef maindnlibMod;
+		KnownTypeCache knownTypeCache;
+		List<IModule> modules;
+		Dictionary<ModuleDef, IModule> dnlibModules;
+		List<IModule> referencedModules;
+
+		INamespace rootNamespace;
+
 		public static TypeSystemOptions GetOptions(DecompilerSettings settings)
 		{
 			var typeSystemOptions = TypeSystemOptions.None;
@@ -157,11 +170,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return typeSystemOptions;
 		}
 
-		public DecompilerTypeSystem(PEFile mainModule)
-			: this(mainModule, TypeSystemOptions.Default)
-		{
-		}
-
 		public DecompilerTypeSystem(PEFile mainModule, DecompilerSettings settings)
 			: this(mainModule, GetOptions(settings ?? throw new ArgumentNullException(nameof(settings))))
 		{
@@ -171,51 +179,99 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			if (mainModule == null)
 				throw new ArgumentNullException(nameof(mainModule));
-			// Load referenced assemblies and type-forwarder references.
-			// This is necessary to make .NET Core/PCL binaries work better.
-			var moduleDefinition = mainModule.Module;
-			var referencedAssemblies = new List<PEFile>();
-			var assemblyReferenceQueue = new Queue<IAssembly>(moduleDefinition.GetAssemblyRefs());
-			var processedAssemblyReferences = new HashSet<IAssembly>(AssemblyNameComparer.CompareAll);
-			while (assemblyReferenceQueue.Count > 0) {
-				var asmRef = assemblyReferenceQueue.Dequeue();
-				if (!processedAssemblyReferences.Add(asmRef))
-					continue;
-				var asm = moduleDefinition.Context.AssemblyResolver.Resolve(asmRef, moduleDefinition);
-				if (asm != null) {
-					referencedAssemblies.Add(new PEFile(asm.ManifestModule));
-					foreach (var forwarder in asm.ManifestModule.ExportedTypes) {
-						if (!forwarder.IsForwarder || !(forwarder.Scope is IAssembly forwarderRef)) continue;
-						assemblyReferenceQueue.Enqueue(forwarderRef);
-					}
-				}
-			}
-			var mainModuleWithOptions = mainModule.WithOptions(typeSystemOptions);
-			var referencedAssembliesWithOptions = referencedAssemblies.Select(file => file.WithOptions(typeSystemOptions));
-			// Primitive types are necessary to avoid assertions in ILReader.
-			// Other known types are necessary in order for transforms to work (e.g. Task<T> for async transform).
-			// Figure out which known types are missing from our type system so far:
-			var missingKnownTypes = KnownTypeReference.AllKnownTypes.Where(IsMissing).ToList();
-			if (missingKnownTypes.Count > 0) {
-				Init(mainModule.WithOptions(typeSystemOptions), referencedAssembliesWithOptions.Concat(new[] { MinimalCorlib.CreateWithTypes(missingKnownTypes) }));
-			} else {
-				Init(mainModuleWithOptions, referencedAssembliesWithOptions);
-			}
-			this.MainModule = (MetadataModule)base.MainModule;
+			SharedStringBuilder = mainModule.StringBuilder;
+			maindnlibMod = mainModule.Module;
+			options = typeSystemOptions;
 
-			bool IsMissing(KnownTypeReference knownType)
-			{
-				var name = knownType.TypeName;
-				if (mainModule.GetTypeDefinition(name) != null)
-					return false;
-				foreach (var file in referencedAssemblies) {
-					if (file.GetTypeDefinition(name) != null)
-						return false;
-				}
-				return true;
+			Init(mainModule.WithOptions(typeSystemOptions));
+
+			var corLibAsm = maindnlibMod.Context.AssemblyResolver.Resolve(maindnlibMod.CorLibTypes.AssemblyRef, maindnlibMod);
+			if (corLibAsm != null)
+				GetOrAddModule(corLibAsm.ManifestModule);
+		}
+
+		void Init(IModuleReference mainAssembly)
+		{
+			this.resolveContext = new SimpleTypeResolveContext(this);
+			this.mainModule = (MetadataModule)mainAssembly.Resolve(resolveContext);
+			dnlibModules = new Dictionary<ModuleDef, IModule> {
+				[maindnlibMod] = mainModule
+			};
+			this.modules = new List<IModule> { this.mainModule };
+			this.referencedModules = new List<IModule>();
+			this.knownTypeCache = new KnownTypeCache(this);
+		}
+
+		public MetadataModule MainModule {
+			get {
+				return mainModule;
 			}
 		}
 
-		public new MetadataModule MainModule { get; }
+		IModule ICompilation.MainModule => MainModule;
+
+		public IReadOnlyList<IModule> Modules {
+			get {
+				return modules.AsReadOnly();
+			}
+		}
+
+		public IModule GetOrAddModule(ModuleDef module)
+		{
+			if (dnlibModules.TryGetValue(module, out var tsMod))
+				return tsMod;
+			tsMod = new PEFile(module).WithOptions(options).Resolve(resolveContext);
+			modules.Add(tsMod);
+			referencedModules.Add(tsMod);
+			return dnlibModules[module] = tsMod;
+		}
+
+		public StringBuilder SharedStringBuilder { get; }
+
+		public INamespace RootNamespace {
+			get {
+				INamespace ns = LazyInit.VolatileRead(ref this.rootNamespace);
+				if (ns != null) {
+					return ns;
+				}
+				return LazyInit.GetOrSet(ref this.rootNamespace, CreateRootNamespace());
+			}
+		}
+
+		private INamespace CreateRootNamespace()
+		{
+			// SimpleCompilation does not support extern aliases; but derived classes might.
+			// CreateRootNamespace() is virtual so that derived classes can change the global namespace.
+			INamespace[] namespaces = new INamespace[referencedModules.Count + 1];
+			namespaces[0] = mainModule.RootNamespace;
+			for (int i = 0; i < referencedModules.Count; i++) {
+				namespaces[i + 1] = referencedModules[i].RootNamespace;
+			}
+			return new MergedNamespace(this, namespaces);
+		}
+
+		public CacheManager CacheManager { get; } = new CacheManager();
+
+		public INamespace GetNamespaceForExternAlias(string alias)
+		{
+			if (string.IsNullOrEmpty(alias))
+				return this.RootNamespace;
+			// SimpleCompilation does not support extern aliases; but derived classes might.
+			return null;
+		}
+
+		public IType FindType(KnownTypeCode typeCode)
+		{
+			return knownTypeCache.FindType(typeCode);
+		}
+
+		public StringComparer NameComparer {
+			get { return StringComparer.Ordinal; }
+		}
+
+		public override string ToString()
+		{
+			return "[" + GetType().Name + " " + mainModule.AssemblyName + "]";
+		}
 	}
 }

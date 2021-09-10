@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using ICSharpCode.Decompiler.TypeSystem;
@@ -960,7 +961,8 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 			}
 			ed.ReturnType = ev.ReturnType.Detach();
 			ed.Modifiers = ev.Modifiers;
-			ed.Variables.Add(new VariableInitializer(ev.Name));
+			var eventSymbol = (ev.GetSymbol() as IEvent)?.MetadataToken;
+			ed.Variables.Add(new VariableInitializer(eventSymbol, ev.Name));
 			ed.CopyAnnotationsFrom(ev);
 
 			if (ev.GetSymbol() is IEvent eventDef) {

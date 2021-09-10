@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -52,19 +52,19 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			this.additionalTypeParameterCount = additionalTypeParameterCount;
 			this.isReferenceType = isReferenceType;
 		}
-		
+
 		public ITypeReference DeclaringTypeReference {
 			get { return declaringTypeRef; }
 		}
-		
+
 		public string Name {
 			get { return name; }
 		}
-		
+
 		public int AdditionalTypeParameterCount {
 			get { return additionalTypeParameterCount; }
 		}
-		
+
 		public IType Resolve(ITypeResolveContext context)
 		{
 			ITypeDefinition declaringType = declaringTypeRef.Resolve(context) as ITypeDefinition;
@@ -75,9 +75,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						return type;
 				}
 			}
-			return new UnknownType(null, name, additionalTypeParameterCount);
+			return new UnknownType(null, name, additionalTypeParameterCount, isReferenceType);
 		}
-		
+
 		public override string ToString()
 		{
 			if (additionalTypeParameterCount == 0)
@@ -85,16 +85,16 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			else
 				return declaringTypeRef + "+" + name + "`" + additionalTypeParameterCount;
 		}
-		
+
 		int ISupportsInterning.GetHashCodeForInterning()
 		{
 			return declaringTypeRef.GetHashCode() ^ name.GetHashCode() ^ additionalTypeParameterCount;
 		}
-		
+
 		bool ISupportsInterning.EqualsForInterning(ISupportsInterning other)
 		{
 			NestedTypeReference o = other as NestedTypeReference;
-			return o != null && declaringTypeRef == o.declaringTypeRef && name == o.name 
+			return o != null && declaringTypeRef == o.declaringTypeRef && name == o.name
 				&& additionalTypeParameterCount == o.additionalTypeParameterCount
 				&& isReferenceType == o.isReferenceType;
 		}

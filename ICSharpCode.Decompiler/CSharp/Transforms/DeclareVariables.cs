@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.IL;
 using ICSharpCode.Decompiler.IL.Transforms;
@@ -513,7 +514,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					if (v.ILVariable.Kind == VariableKind.PinnedLocal) {
 						type.InsertChildAfter(null, new Comment("pinned", CommentType.MultiLine), Roles.Comment);
 					}
-					var vds = new VariableDeclarationStatement(type, v.Name, assignment.Right.Detach());
+					var vds = new VariableDeclarationStatement(v.ILVariable != null && v.ILVariable.Kind == VariableKind.Parameter ? BoxedTextColor.Parameter : BoxedTextColor.Local, type, v.Name, assignment.Right.Detach());
 					var init = vds.Variables.Single();
 					init.AddAnnotation(assignment.Left.GetResolveResult());
 					foreach (object annotation in assignment.Left.Annotations.Concat(assignment.Annotations)) {
@@ -564,7 +565,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					if (v.DefaultInitialization) {
 						initializer = new DefaultValueExpression(type.Clone());
 					}
-					var vds = new VariableDeclarationStatement(type, v.Name, initializer);
+					var vds = new VariableDeclarationStatement(v.ILVariable != null && v.ILVariable.Kind == VariableKind.Parameter ? BoxedTextColor.Parameter : BoxedTextColor.Local, type, v.Name, initializer);
 					vds.Variables.Single().AddAnnotation(new ILVariableResolveResult(ilVariable));
 					Debug.Assert(v.InsertionPoint.nextNode.Role == BlockStatement.StatementRole);
 					v.InsertionPoint.nextNode.Parent.InsertChildBefore(

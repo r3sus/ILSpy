@@ -21,6 +21,8 @@ using System.Collections.Generic;
 using System.Linq;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using dnlib.PE;
+using dnSpy.Contracts.Decompiler;
 
 namespace ICSharpCode.Decompiler
 {
@@ -39,40 +41,14 @@ namespace ICSharpCode.Decompiler
 			return (int)inst.Offset + inst.GetSize();
 		}
 
+		public static string OffsetToString(uint offset)
+		{
+			return string.Format("IL_{0:X4}", offset);
+		}
+
 		public static string OffsetToString(int offset)
 		{
-			return string.Format("IL_{0:x4}", offset);
-		}
-
-		public static HashSet<MethodDef> GetAccessorMethods(this TypeDef type)
-		{
-			HashSet<MethodDef> accessorMethods = new HashSet<MethodDef>();
-			foreach (var property in type.Properties) {
-				accessorMethods.Add(property.GetMethod);
-				accessorMethods.Add(property.SetMethod);
-				if (property.HasOtherMethods) {
-					foreach (var m in property.OtherMethods)
-						accessorMethods.Add(m);
-				}
-			}
-			foreach (var ev in type.Events) {
-				accessorMethods.Add(ev.AddMethod);
-				accessorMethods.Add(ev.RemoveMethod);
-				accessorMethods.Add(ev.InvokeMethod);
-				if (ev.HasOtherMethods) {
-					foreach (var m in ev.OtherMethods)
-						accessorMethods.Add(m);
-				}
-			}
-			return accessorMethods;
-		}
-
-		public static FieldDef ResolveFieldWithinSameModule(this IField field)
-		{
-			if (field != null && field.DeclaringType != null && field.DeclaringType.Scope == field.Module)
-				return field is FieldDef ? (FieldDef)field : ((MemberRef)field).ResolveField();
-			else
-				return null;
+			return string.Format("IL_{0:X4}", offset);
 		}
 
 		public static MethodDef Resolve(this IMethod method)
@@ -85,44 +61,9 @@ namespace ICSharpCode.Decompiler
 				return (MethodDef)method;
 		}
 
-		public static FieldDef Resolve(this IField field)
-		{
-			if (field is MemberRef)
-				return ((MemberRef)field).ResolveField();
-			else
-				return (FieldDef)field;
-		}
-
 		public static TypeDef Resolve(this IType type)
 		{
 			return type == null ? null : type.GetScopeTypeDefOrRef().ResolveTypeDef();
-		}
-
-		public static ITypeDefOrRef GetScopeTypeDefOrRef(this IType type) {
-			var t = type.GetScopeType();
-			if (t is ITypeDefOrRef tdr)
-				return tdr;
-			if (t is TypeSig sig)
-				return sig.ToTypeDefOrRef();
-			return null;
-		}
-
-		public static IType GetScopeType(this IType type) {
-			if (type is TypeDef td)
-				return td;
-			if (type is TypeRef tr)
-				return tr;
-			if (!(type is TypeSig sig)) {
-				if (!(type is TypeSpec ts))
-					return type;
-				sig = ts.TypeSig;
-			}
-			sig = sig.RemovePinnedAndModifiers();
-			if (sig is GenericInstSig gis)
-				return gis.GenericType?.TypeDefOrRef;
-			if (sig is TypeDefOrRefSig tdrs)
-				return tdrs.TypeDefOrRef;
-			return type;
 		}
 
 		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this MethodDef method)
@@ -169,55 +110,6 @@ namespace ICSharpCode.Decompiler
 			return member.Name.StartsWith("<", StringComparison.Ordinal) || member.Name.Contains("$");
 		}
 
-		public static string GetDefaultMemberName(this TypeDef type, out CustomAttribute defaultMemberAttribute)
-		{
-			if (type != null)
-				foreach (CustomAttribute ca in type.CustomAttributes.FindAll("System.Reflection.DefaultMemberAttribute"))
-					if (ca.Constructor != null && ca.Constructor.FullName == @"System.Void System.Reflection.DefaultMemberAttribute::.ctor(System.String)" &&
-						ca.ConstructorArguments.Count == 1 &&
-						ca.ConstructorArguments[0].Value is UTF8String) {
-						defaultMemberAttribute = ca;
-						return (UTF8String)ca.ConstructorArguments[0].Value;
-					}
-			defaultMemberAttribute = null;
-			return null;
-		}
-
-		public static bool IsIndexer(this PropertyDef property)
-		{
-			CustomAttribute attr;
-			return property.IsIndexer(out attr);
-		}
-
-		public static bool IsIndexer(this PropertyDef property, out CustomAttribute defaultMemberAttribute)
-		{
-			defaultMemberAttribute = null;
-			if (property != null && property.PropertySig.GetParamCount() > 0) {
-				var accessor = property.GetMethod ?? property.SetMethod;
-				PropertyDef basePropDef = property;
-				if (accessor.HasOverrides) {
-					// if the property is explicitly implementing an interface, look up the property in the interface:
-					MethodDef baseAccessor = accessor.Overrides.First().MethodDeclaration.Resolve();
-					if (baseAccessor != null) {
-						foreach (PropertyDef baseProp in baseAccessor.DeclaringType.Properties) {
-							if (baseProp.GetMethod == baseAccessor || baseProp.SetMethod == baseAccessor) {
-								basePropDef = baseProp;
-								break;
-							}
-						}
-					} else
-						return false;
-				}
-				CustomAttribute attr;
-				var defaultMemberName = basePropDef.DeclaringType.GetDefaultMemberName(out attr);
-				if (defaultMemberName == basePropDef.Name) {
-					defaultMemberAttribute = attr;
-					return true;
-				}
-			}
-			return false;
-		}
-
 		public static bool IsUnconditionalBranch(this OpCode opcode)
 		{
 			if (opcode.OpCodeType == OpCodeType.Prefix)
@@ -258,22 +150,6 @@ namespace ICSharpCode.Decompiler
 				return 0;
 			var instr = body.Instructions.Last();
 			return instr.GetEndOffset();
-		}
-
-		public static IList<Parameter> GetParameters(this IMethod method) {
-			if (method is null || method.MethodSig is null)
-				return new List<Parameter>();
-
-			if (method is MethodDef md)
-				return md.Parameters;
-
-			var list = new List<Parameter>();
-			int paramIndex = 0, methodSigIndex = 0;
-			if (method.MethodSig.HasThis)
-				list.Add(new Parameter(paramIndex++, Parameter.HIDDEN_THIS_METHOD_SIG_INDEX, method.DeclaringType.ToTypeSig()));
-			foreach (var type in method.MethodSig.GetParams())
-				list.Add(new Parameter(paramIndex++, methodSigIndex++, type));
-			return list;
 		}
 
 		public static IEnumerable<Parameter> GetParameters(this PropertyDef property)
@@ -378,11 +254,6 @@ namespace ICSharpCode.Decompiler
 			return attr.AttributeType.IsKnownType(attrType);
 		}
 
-		public static bool IsKnownType(this ITypeDefOrRef handle, TypeSystem.KnownTypeCode knownType)
-		{
-			return handle != null && GetFullTypeName(handle) ==  TypeSystem.KnownTypeReference.Get(knownType).TypeName;
-		}
-
 		internal static bool IsKnownType(this ITypeDefOrRef handle, TypeSystem.KnownAttribute knownType)
 		{
 			return handle != null && GetFullTypeName(handle) == TypeSystem.KnownAttributes.GetTypeName(knownType);
@@ -442,6 +313,96 @@ namespace ICSharpCode.Decompiler
 				default:
 					return TypeSystem.KnownTypeCode.None;
 			}
+		}
+		public static ImageSectionHeader GetContainingSection(this ModuleDef mod, RVA rva) {
+			if (mod is not ModuleDefMD mdMod)
+				return null;
+			var image = mdMod.Metadata.PEImage;
+			foreach (var section in image.ImageSectionHeaders) {
+				if (rva >= section.VirtualAddress && rva < section.VirtualAddress + Math.Max(section.VirtualSize, section.SizeOfRawData))
+					return section;
+			}
+			return null;
+		}
+
+		public static int IndexOf<T>(this IReadOnlyList<T> collection, T value) {
+			var comparer = EqualityComparer<T>.Default;
+			int index = 0;
+			foreach (var item in collection) {
+				if (comparer.Equals(item, value)) {
+					return index;
+				}
+				index++;
+			}
+			return -1;
+		}
+
+		sealed class InterfaceImplComparer : IComparer<InterfaceImpl> {
+			public static readonly InterfaceImplComparer Instance = new InterfaceImplComparer();
+
+			public int Compare(InterfaceImpl x, InterfaceImpl y) {
+				int c = StringComparer.OrdinalIgnoreCase.Compare(x.Interface.Name, y.Interface.Name);
+				if (c != 0)
+					return c;
+				c = x.MDToken.Raw.CompareTo(y.MDToken.Raw);
+				if (c != 0)
+					return c;
+				return x.GetHashCode().CompareTo(y.GetHashCode());
+			}
+		}
+
+		public static IEnumerable<InterfaceImpl> GetInterfaceImpls(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers)
+				return type.Interfaces;
+			var ary = type.Interfaces.ToArray();
+			Array.Sort(ary, InterfaceImplComparer.Instance);
+			return ary;
+		}
+
+		public static IEnumerable<TypeDef> GetNestedTypes(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers)
+				return type.NestedTypes;
+			var ary = type.NestedTypes.ToArray();
+			Array.Sort(ary, TypeDefComparer.Instance);
+			return ary;
+		}
+
+		public static IEnumerable<FieldDef> GetFields(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers || !type.CanSortFields())
+				return type.Fields;
+			var ary = type.Fields.ToArray();
+			Array.Sort(ary, FieldDefComparer.Instance);
+			return ary;
+		}
+
+		public static IEnumerable<EventDef> GetEvents(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers || !type.CanSortMethods())
+				return type.Events;
+			var ary = type.Events.ToArray();
+			Array.Sort(ary, EventDefComparer.Instance);
+			return ary;
+		}
+
+		public static IEnumerable<PropertyDef> GetProperties(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers || !type.CanSortMethods())
+				return type.Properties;
+			var ary = type.Properties.ToArray();
+			Array.Sort(ary, PropertyDefComparer.Instance);
+			return ary;
+		}
+
+		public static IEnumerable<MethodDef> GetMethods(this TypeDef type, bool sortMembers)
+		{
+			if (!sortMembers || !type.CanSortMethods())
+				return type.Methods;
+			var ary = type.Methods.ToArray();
+			Array.Sort(ary, MethodDefComparer.Instance);
+			return ary;
 		}
 	}
 }

@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using dnlib.DotNet;
+using dnSpy.Contracts.Decompiler;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
 
@@ -9,11 +10,6 @@ namespace ICSharpCode.Decompiler.TypeSystem
 {
 	internal static class SignatureExtensions
 	{
-		internal static IType DecodeSignature(this TypeSpec spec, MetadataModule module, GenericContext context)
-		{
-			return spec?.TypeSig.DecodeSignature(module, context);
-		}
-
 		internal static IType DecodeSignature(this TypeSig sig, MetadataModule module, GenericContext context)
 		{
 			if (sig is null)
@@ -70,7 +66,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				return null;
 
 			if (typeDefOrRef is TypeSpec spec) {
-				return spec.DecodeSignature(module, context);
+				return spec.TypeSig.DecodeSignature(module, context);
 			}
 			CorLibTypeSig corLibTypeSig = typeDefOrRef.Module?.CorLibTypes.GetCorLibTypeSig(typeDefOrRef);
 			if (corLibTypeSig != null) {
@@ -80,25 +76,21 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (typeDefOrRef is TypeDef def) {
 				var resolved = module.GetDefinition(def);
 				return resolved;
-			} else {
+			} else if (typeDefOrRef is TypeRef typeRef) {
+				var resolved = typeRef.ResolveTypeDef();
+				if (resolved != null && module.Compilation.GetOrAddModule(resolved.Module) is MetadataModule mod) {
+					return mod.GetDefinition(resolved);
+				}
+
 				bool? isReferenceType;
 				if (isVT != ThreeState.Unknown)
 					isReferenceType = isVT == ThreeState.False;
 				else
 					isReferenceType = null;
-				var gctr = new GetClassTypeReference(typeDefOrRef.GetFullTypeName(),
-					new DefaultAssemblyReference(typeDefOrRef.Scope.ScopeName), isReferenceType);
-				return gctr.Resolve(new SimpleTypeResolveContext(module));
+				return new UnknownType(typeDefOrRef.GetFullTypeName(), isReferenceType);
 			}
-		}
 
-		internal static ImmutableArray<IType> DecodeSignature(this MethodSpec spec, MetadataModule module, GenericContext context)
-		{
-			if (spec is null || spec.GenericInstMethodSig is null)
-				return ImmutableArray<IType>.Empty;
-
-			return spec.GenericInstMethodSig.GenericArguments.Select(sig => sig.DecodeSignature(module, context))
-					   .ToImmutableArray();
+			throw new InvalidOperationException();
 		}
 	}
 }

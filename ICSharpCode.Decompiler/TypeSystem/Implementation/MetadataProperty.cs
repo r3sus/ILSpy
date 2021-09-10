@@ -139,7 +139,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 						var deco = par.Type.DecodeSignature(module, gCtx);
 						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
 							deco, module.Compilation,
-							par.ParamDef, module.metadata, typeOptions, nullableContext);
+							par.ParamDef, typeOptions, nullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}
@@ -175,7 +175,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var typeOptions = module.OptionsForEntity(declTypeDef);
 
 				var ret = ApplyAttributeTypeVisitor.ApplyAttributesToType(deocded,
-					module.Compilation, propertyHandle, module.metadata, typeOptions, nullableContext);
+					module.Compilation, propertyHandle, typeOptions, nullableContext);
 				return LazyInit.GetOrSet(ref this.returnType, ret);
 			}
 		}

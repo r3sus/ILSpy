@@ -20,6 +20,8 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 
 namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
@@ -30,6 +32,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 	public class TextWriterTokenWriter : TokenWriter, ILocatable
 	{
 		readonly TextWriter textWriter;
+		readonly int maxStringLength;
 		int indentation;
 		bool needsIndent = true;
 		bool isAtStartOfLine = true;
@@ -46,7 +49,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 
 		public string IndentationString { get; set; }
 
-		public TextWriterTokenWriter(TextWriter textWriter)
+		public TextWriterTokenWriter(TextWriter textWriter, int maxStringLength = -1)
 		{
 			if (textWriter == null)
 				throw new ArgumentNullException("textWriter");
@@ -54,12 +57,13 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			this.IndentationString = "\t";
 			this.line = 1;
 			this.column = 1;
+			this.maxStringLength = maxStringLength;
 		}
 
-		public override void WriteIdentifier(Identifier identifier)
+		public override void WriteIdentifier(Identifier identifier, object data)
 		{
 			WriteIndentation();
-			if (identifier.IsVerbatim || CSharpOutputVisitor.IsKeyword(identifier.Name, identifier)) {
+			if (!BoxedTextColor.Keyword.Equals(data) && (identifier.IsVerbatim || CSharpOutputVisitor.IsKeyword(identifier.Name, identifier))) {
 				textWriter.Write('@');
 				column++;
 			}
@@ -77,7 +81,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			isAtStartOfLine = false;
 		}
 
-		public override void WriteToken(Role role, string token)
+		public override void WriteToken(Role role, string token, object data)
 		{
 			WriteIndentation();
 			column += token.Length;
@@ -122,7 +126,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			indentation--;
 		}
 
-		public override void WriteComment(CommentType commentType, string content)
+		public override void WriteComment(CommentType commentType, string content, CommentReference[] refs)
 		{
 			WriteIndentation();
 			switch (commentType) {
@@ -209,91 +213,94 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		{
 			TextWriter writer = new StringWriter();
 			TextWriterTokenWriter tokenWriter = new TextWriterTokenWriter(writer);
-			tokenWriter.WritePrimitiveValue(value);
+			tokenWriter.WritePrimitiveValue(value, CSharpMetadataTextColorProvider.Instance.GetColor(value));
 			return writer.ToString();
 		}
-		
-		public override void WritePrimitiveValue(object value, LiteralFormat format = LiteralFormat.None)
+
+		public override void WritePrimitiveValue(object value, object data = null, LiteralFormat format = LiteralFormat.None)
+		{
+			var numberFormatter = NumberFormatter.GetCSharpInstance(hex: false, upper: true);
+			WritePrimitiveValue(value, data, format, maxStringLength, ref column, numberFormatter, (a, b, c) => textWriter.Write(a), WriteToken);
+		}
+
+		public static void WritePrimitiveValue(object value, object data, LiteralFormat format, int maxStringLength, ref int column, NumberFormatter numberFormatter, Action<string, object, object> writer, Action<Role, string, object> writeToken)
 		{
 			if (value == null) {
 				// usually NullReferenceExpression should be used for this, but we'll handle it anyways
-				textWriter.Write("null");
+				writer("null", null, BoxedTextColor.Keyword);
 				column += 4;
 				return;
 			}
 
 			if (value is bool) {
 				if ((bool)value) {
-					textWriter.Write("true");
+					writer("true", null, BoxedTextColor.Keyword);
 					column += 4;
 				} else {
-					textWriter.Write("false");
+					writer("false", null, BoxedTextColor.Keyword);
 					column += 5;
 				}
 				return;
 			}
 
-			if (value is string) {
-				string tmp = ConvertString(value.ToString());
-				column += tmp.Length + 2;
-				textWriter.Write('"');
-				textWriter.Write(tmp);
-				textWriter.Write('"');
+			var s = value as string;
+			if (s != null) {
+				string tmp = "\"" + ConvertStringMaxLength(s, maxStringLength) + "\"";
+				column += tmp.Length;
+				writer(tmp, null, BoxedTextColor.String);
 			} else if (value is char) {
-				string tmp = ConvertCharLiteral((char)value);
-				column += tmp.Length + 2;
-				textWriter.Write('\'');
-				textWriter.Write(tmp);
-				textWriter.Write('\'');
+				string tmp = "'" + ConvertCharLiteral((char)value) + "'";
+				column += tmp.Length;
+				writer(tmp, null, BoxedTextColor.Char);
 			} else if (value is decimal) {
 				string str = ((decimal)value).ToString(NumberFormatInfo.InvariantInfo) + "m";
 				column += str.Length;
-				textWriter.Write(str);
+				writer(str, null, BoxedTextColor.Number);
 			} else if (value is float) {
 				float f = (float)value;
 				if (float.IsInfinity(f) || float.IsNaN(f)) {
 					// Strictly speaking, these aren't PrimitiveExpressions;
 					// but we still support writing these to make life easier for code generators.
-					textWriter.Write("float");
+					writer("float", null, BoxedTextColor.Keyword);
 					column += 5;
-					WriteToken(Roles.Dot, ".");
+					writeToken(Roles.Dot, ".", BoxedTextColor.Operator);
 					if (float.IsPositiveInfinity(f)) {
-						textWriter.Write("PositiveInfinity");
+						writer("PositiveInfinity", null, BoxedTextColor.LiteralField);
 						column += "PositiveInfinity".Length;
 					} else if (float.IsNegativeInfinity(f)) {
-						textWriter.Write("NegativeInfinity");
+						writer("NegativeInfinity", null, BoxedTextColor.LiteralField);
 						column += "NegativeInfinity".Length;
 					} else {
-						textWriter.Write("NaN");
+						writer("NaN", null, BoxedTextColor.LiteralField);
 						column += 3;
 					}
 					return;
 				}
-				var str = f.ToString("R", NumberFormatInfo.InvariantInfo) + "f";
-				if (f == 0 && 1 / f == float.NegativeInfinity && str[0] != '-') {
+				var number = f.ToString("R", NumberFormatInfo.InvariantInfo) + "f";
+				if (f == 0 && 1 / f == float.NegativeInfinity && number[0] != '-') {
 					// negative zero is a special case
 					// (again, not a primitive expression, but it's better to handle
 					// the special case here than to do it in all code generators)
-					str = '-' + str;
+					number = "-" + number;
 				}
-				column += str.Length;
-				textWriter.Write(str);
+				column += number.Length;
+				writer(number, value, BoxedTextColor.Number);
 			} else if (value is double) {
 				double f = (double)value;
 				if (double.IsInfinity(f) || double.IsNaN(f)) {
 					// Strictly speaking, these aren't PrimitiveExpressions;
 					// but we still support writing these to make life easier for code generators.
-					textWriter.Write("double");
+					writer("double", null, BoxedTextColor.Keyword);
 					column += 6;
-					WriteToken(Roles.Dot, ".");
+					writeToken(Roles.Dot, ".", BoxedTextColor.Operator);
 					if (double.IsPositiveInfinity(f)) {
-						textWriter.Write("PositiveInfinity");
+						writer("PositiveInfinity", null, BoxedTextColor.LiteralField);
 						column += "PositiveInfinity".Length;
 					} else if (double.IsNegativeInfinity(f)) {
-						textWriter.Write("NegativeInfinity");
+						writer("NegativeInfinity", null, BoxedTextColor.LiteralField);
 						column += "NegativeInfinity".Length;
 					} else {
-						textWriter.Write("NaN");
+						writer("NaN", null, BoxedTextColor.LiteralField);
 						column += 3;
 					}
 					return;
@@ -303,36 +310,54 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 					// negative zero is a special case
 					// (again, not a primitive expression, but it's better to handle
 					// the special case here than to do it in all code generators)
-					number = '-' + number;
+					number = "-" + number;
 				}
 				if (number.IndexOf('.') < 0 && number.IndexOf('E') < 0) {
 					number += ".0";
 				}
-				textWriter.Write(number);
 				column += number.Length;
+				writer(number, value, BoxedTextColor.Number);
 			} else if (value is IFormattable) {
-				StringBuilder b = new StringBuilder();
-				if (format == LiteralFormat.HexadecimalNumber) {
-					b.Append("0x");
-					b.Append(((IFormattable)value).ToString("X", NumberFormatInfo.InvariantInfo));
-				} else {
-					b.Append(((IFormattable)value).ToString(null, NumberFormatInfo.InvariantInfo));
+				string valueStr;
+				switch (value) {
+				case int v:
+					valueStr = numberFormatter.Format(v);
+					break;
+				case uint v:
+					valueStr = numberFormatter.Format(v) + "U";
+					break;
+				case long v:
+					valueStr = numberFormatter.Format(v) + "L";
+					break;
+				case ulong v:
+					valueStr = numberFormatter.Format(v) + "UL";
+					break;
+				case byte v:
+					valueStr = numberFormatter.Format(v);
+					break;
+				case ushort v:
+					valueStr = numberFormatter.Format(v);
+					break;
+				case short v:
+					valueStr = numberFormatter.Format(v);
+					break;
+				case sbyte v:
+					valueStr = numberFormatter.Format(v);
+					break;
+				default:
+					valueStr = ((IFormattable)value).ToString(null, NumberFormatInfo.InvariantInfo);
+					break;
 				}
-				if (value is uint || value is ulong) {
-					b.Append("u");
-				}
-				if (value is long || value is ulong) {
-					b.Append("L");
-				}
-				textWriter.Write(b.ToString());
-				column += b.Length;
+				writer(valueStr, value, BoxedTextColor.Number);
+				column += valueStr.Length;
 			} else {
-				textWriter.Write(value.ToString());
-				column += value.ToString().Length;
+				s = value.ToString();
+				writer(s, null, CSharpMetadataTextColorProvider.Instance.GetColor(value));
+				column += s.Length;
 			}
 		}
 
-		public override void WriteInterpolatedText(string text)
+		public override void WriteInterpolatedText(string text, object data = null)
 		{
 			textWriter.Write(ConvertString(text));
 		}
@@ -346,7 +371,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			if (ch == '\'') {
 				return "\\'";
 			}
-			return ConvertChar(ch) ?? ch.ToString();
+			return ConvertChar(ch);
 		}
 
 		/// <summary>
@@ -408,14 +433,92 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		/// <summary>
 		/// Converts special characters to escape sequences within the given string.
 		/// </summary>
+		/// <summary>
+		/// Converts special characters to escape sequences within the given string.
+		/// </summary>
 		public static string ConvertString(string str)
 		{
-			StringBuilder sb = new StringBuilder ();
-			foreach (char ch in str) {
-				string s = ch == '"' ? "\\\"" : ConvertChar(ch);
-				if (s != null) sb.Append(s);
-				else sb.Append(ch);
+			return ConvertString(str, 0, str.Length, -1);
+		}
+
+		public static string ConvertStringMaxLength(string str, int maxChars)
+		{
+			return ConvertString(str, 0, str.Length, maxChars);
+		}
+
+		static string ConvertString(string str, int start, int length, int maxChars)
+		{
+			int i = start;
+			bool truncated = false;
+			if (maxChars > 0 && length > maxChars) {
+				length = maxChars;
+				truncated = true;
 			}
+			const string TRUNC_MSG = "[...string is too long...]";
+			int end = start + length;
+			for (; ; i++) {
+				if (i >= end) {
+					if (start != 0 || end != str.Length)
+						str = str.Substring(start, length);
+					if (truncated)
+						return str + TRUNC_MSG;
+					return str;
+				}
+				char c = str[i];
+				switch (c) {
+				case '"':
+				case '\\':
+				case '\0':
+				case '\a':
+				case '\b':
+				case '\f':
+				case '\n':
+				case '\r':
+				case '\t':
+				case '\v':
+					goto escapeChars;
+				case ' ':
+				case '_':
+				case '`':
+				case '^':
+					break;
+				case '\ufffd':
+					goto escapeChars;
+				default:
+					switch (char.GetUnicodeCategory(c)) {
+					case UnicodeCategory.NonSpacingMark:
+					case UnicodeCategory.SpacingCombiningMark:
+					case UnicodeCategory.EnclosingMark:
+					case UnicodeCategory.LineSeparator:
+					case UnicodeCategory.ParagraphSeparator:
+					case UnicodeCategory.Control:
+					case UnicodeCategory.Format:
+					case UnicodeCategory.Surrogate:
+					case UnicodeCategory.PrivateUse:
+					case UnicodeCategory.ConnectorPunctuation:
+					case UnicodeCategory.ModifierSymbol:
+					case UnicodeCategory.OtherNotAssigned:
+					case UnicodeCategory.SpaceSeparator:
+						goto escapeChars;
+					}
+					break;
+				}
+			}
+
+			escapeChars:
+			StringBuilder sb = new StringBuilder();
+			if (i > start)
+				sb.Append(str, start, i - start);
+			for (; i < end; i++) {
+				char ch = str[i];
+				if (ch == '"') {
+					sb.Append("\\\"");
+				} else {
+					sb.Append(ConvertChar(ch));
+				}
+			}
+			if (truncated)
+				sb.Append(TRUNC_MSG);
 			return sb.ToString();
 		}
 

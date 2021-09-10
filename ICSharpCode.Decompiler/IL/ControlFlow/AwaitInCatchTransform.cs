@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2018 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -139,12 +139,12 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 					if (result.NextBlockOrExitContainer is Block nextBlock && nextBlock.IncomingEdgeCount == 0) {
 						List<Block> dependentBlocks = new List<Block>();
 						Block current = nextBlock;
-						
+
 						do {
 							foreach (var branch in current.Descendants.OfType<Branch>()) {
 								dependentBlocks.Add(branch.TargetBlock);
 							}
-							
+
 							current.Remove();
 							dependentBlocks.Remove(current);
 							current = dependentBlocks.FirstOrDefault(b => b.IncomingEdgeCount == 0);
@@ -402,11 +402,11 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		// 	if (comp.o(ldloc typedExceptionVariable != ldnull)) br captureBlock
 		// 	br throwBlock
 		// }
-		// 
+		//
 		// Block throwBlock {
 		// 	throw(ldloc objectVariable)
 		// }
-		// 
+		//
 		// Block captureBlock {
 		// 	callvirt Throw(call Capture(ldloc typedExceptionVariable))
 		// 	br nextBlock
@@ -480,7 +480,6 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 
 			bool MatchCaptureThrowCalls(ILInstruction inst)
 			{
-				var exceptionDispatchInfoType = context.TypeSystem.FindType(typeof(System.Runtime.ExceptionServices.ExceptionDispatchInfo));
 				if (inst is not CallVirt callVirt || callVirt.Arguments.Count != 1)
 					return false;
 
@@ -491,9 +490,9 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 				}
 
 				return callVirt.Method.Name == "Throw"
-					&& callVirt.Method.DeclaringType.Equals(exceptionDispatchInfoType)
-					&& call.Method.Name == "Capture"
-					&& call.Method.DeclaringType.Equals(exceptionDispatchInfoType);
+					   && callVirt.Method.DeclaringType.FullName == "System.Runtime.ExceptionServices.ExceptionDispatchInfo"
+					   && call.Method.Name == "Capture"
+					   && call.Method.DeclaringType.FullName == "System.Runtime.ExceptionServices.ExceptionDispatchInfo";
 			}
 		}
 	}

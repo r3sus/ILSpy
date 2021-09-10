@@ -152,7 +152,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				if (IgnoreAttribute(type, target)) {
 					continue;
 				}
-				Add(new CustomAttribute(module, ctor, handle));
+				Add(new MetadtaCustomAttribute(module, ctor, handle));
 			}
 		}
 
@@ -259,7 +259,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		private IAttribute ReadBinarySecurityAttribute(SecurityAttribute secDecl, CustomAttributeTypedArgument<IType> securityAction)
 		{
-			var attributeType =secDecl.AttributeType.DecodeSignature(module, new GenericContext());
+			var attributeType = secDecl.AttributeType.DecodeSignature(module, new GenericContext());
 
 			List<CustomAttributeNamedArgument<IType>> named = new List<CustomAttributeNamedArgument<IType>>();
 			foreach (CANamedArgument namedArgument in secDecl.NamedArguments) {

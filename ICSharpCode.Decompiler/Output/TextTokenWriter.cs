@@ -18,54 +18,52 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.OutputVisitor;
-using ICSharpCode.Decompiler.CSharp.Resolver;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.IL;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
+using PrimitiveType = ICSharpCode.Decompiler.CSharp.Syntax.PrimitiveType;
 
 namespace ICSharpCode.Decompiler
 {
 	public class TextTokenWriter : TokenWriter
 	{
-		readonly ITextOutput output;
-		readonly DecompilerSettings settings;
-		readonly IDecompilerTypeSystem typeSystem;
+		private readonly MetadataTextColorProvider colorProvider;
+		readonly IDecompilerOutput output;
 		readonly Stack<AstNode> nodeStack = new Stack<AstNode>();
 		int braceLevelWithinType = -1;
-		bool inDocumentationComment = false;
-		bool firstUsingDeclaration;
-		bool lastUsingDeclaration;
 
-		public TextTokenWriter(ITextOutput output, DecompilerSettings settings, IDecompilerTypeSystem typeSystem)
+		public TextTokenWriter(IDecompilerOutput output, MetadataTextColorProvider colorProvider)
 		{
 			if (output == null)
 				throw new ArgumentNullException(nameof(output));
-			if (settings == null)
-				throw new ArgumentNullException(nameof(settings));
-			if (typeSystem == null)
-				throw new ArgumentNullException(nameof(typeSystem));
 			this.output = output;
-			this.settings = settings;
-			this.typeSystem = typeSystem;
+			this.colorProvider = colorProvider;
 		}
 
-		public override void WriteIdentifier(Identifier identifier)
+		public override void WriteIdentifier(Identifier identifier, object data)
 		{
-			if (identifier.IsVerbatim || CSharpOutputVisitor.IsKeyword(identifier.Name, identifier)) {
-				output.Write('@');
+			if (BoxedTextColor.Text.Equals(data)) {
+				data = colorProvider.GetColor(identifier.AnnotationVT<TextColor>() ?? identifier.Annotation<object>());
+			}
+
+			var escapedName = IdentifierEscaper.Escape(identifier.Name);
+			if (!BoxedTextColor.Keyword.Equals(data) && (identifier.IsVerbatim || CSharpOutputVisitor.IsKeyword(identifier.Name, identifier))) {
+				escapedName = "@" + escapedName;
 			}
 
 			var definition = GetCurrentDefinition();
 			if (definition != null) {
 				dnlib.DotNet.IMemberRef cecil = SymbolToCecil(definition);
 				if (cecil != null) {
-					output.WriteDefinition(identifier.Name, cecil, false);
+					output.Write(escapedName, cecil, DecompilerReferenceFlags.Definition, data);
 					return;
 				}
 			}
@@ -74,40 +72,43 @@ namespace ICSharpCode.Decompiler
 			if (member != null) {
 				dnlib.DotNet.IMemberRef cecil = SymbolToCecil(member);
 				if (cecil != null) {
-					output.WriteReference(identifier.Name, cecil);
+					output.Write(escapedName, cecil, DecompilerReferenceFlags.None, data);
 					return;
 				}
 			}
 
+			object memberRef = identifier.Annotation<NamespaceReference>();
+			if (memberRef != null) {
+				output.Write(escapedName, memberRef, DecompilerReferenceFlags.None, data);
+				return;
+			}
+
 			var localDefinition = GetCurrentLocalDefinition(identifier);
 			if (localDefinition != null) {
-				output.WriteDefinition(identifier.Name, localDefinition);
+				output.Write(escapedName, localDefinition, DecompilerReferenceFlags.Local | DecompilerReferenceFlags.Definition, data);
 				return;
 			}
 
 			var localRef = GetCurrentLocalReference();
 			if (localRef != null) {
-				output.WriteReference(identifier.Name, localRef, true);
+				output.Write(escapedName, localRef, DecompilerReferenceFlags.Local, data);
 				return;
 			}
 
-			if (firstUsingDeclaration) {
-				output.MarkFoldStart(defaultCollapsed: !settings.ExpandUsingDeclarations);
-				firstUsingDeclaration = false;
-			}
-
-			output.Write(identifier.Name);
+			if (identifier.Annotation<IdentifierFormatted>() != null)
+				escapedName = identifier.Name;
+			output.Write(escapedName, data);
 		}
 
 		dnlib.DotNet.IMemberRef SymbolToCecil(ISymbol symbol)
 		{
 			if (symbol is IType type) {
-				return (dnlib.DotNet.IMemberRef)type.GetDefinition().MetadataToken;
-			} else if (symbol is IMember member) {
-				return (dnlib.DotNet.IMemberRef)member.MetadataToken;
-			} else {
-				return null;
+				return type.GetDefinition().MetadataToken;
 			}
+			if (symbol is IMember member) {
+				return member.MetadataToken;
+			}
+			return null;
 		}
 
 		ISymbol GetCurrentMemberReference()
@@ -145,7 +146,7 @@ namespace ICSharpCode.Decompiler
 			AstNode node = nodeStack.Peek();
 			ILVariable variable = node.Annotation<ILVariableResolveResult>()?.Variable;
 			if (variable != null)
-				return variable;
+				return variable.Name;
 
 			var letClauseVariable = node.Annotation<CSharp.Transforms.LetIdentifierAnnotation>();
 			if (letClauseVariable != null)
@@ -159,8 +160,8 @@ namespace ICSharpCode.Decompiler
 
 			if (node.Role == Roles.TargetExpression && node.Parent is InvocationExpression) {
 				var symbol = node.Parent.GetSymbol();
-				if (symbol is LocalFunctionMethod)
-					return symbol;
+				if (symbol is LocalFunctionMethod s)
+					return s.FullName;
 			}
 
 			return null;
@@ -175,14 +176,14 @@ namespace ICSharpCode.Decompiler
 			if (node is ParameterDeclaration || node is VariableInitializer || node is CatchClause || node is VariableDesignation) {
 				var variable = node.Annotation<ILVariableResolveResult>()?.Variable;
 				if (variable != null)
-					return variable;
+					return variable.Name;
 			}
 
 			if (id.Role == QueryJoinClause.IntoIdentifierRole || id.Role == QueryJoinClause.JoinIdentifierRole)
 			{
 				var variable = id.Annotation<ILVariableResolveResult>()?.Variable;
 				if (variable != null)
-					return variable;
+					return variable.Name;
 			}
 
 			if (node is QueryLetClause)
@@ -201,7 +202,7 @@ namespace ICSharpCode.Decompiler
 			if (node is MethodDeclaration && node.Parent is LocalFunctionDeclarationStatement) {
 				var localFunction = node.Parent.GetResolveResult() as MemberResolveResult;
 				if (localFunction != null)
-					return localFunction.Member;
+					return localFunction.Member.FullName;
 			}
 
 			return null;
@@ -223,197 +224,196 @@ namespace ICSharpCode.Decompiler
 
 		public override void WriteKeyword(Role role, string keyword)
 		{
-			//To make reference for 'this' and 'base' keywords in the ClassName():this() expression
-			if (role == ConstructorInitializer.ThisKeywordRole || role == ConstructorInitializer.BaseKeywordRole) {
-				if (nodeStack.Peek() is ConstructorInitializer initializer && initializer.GetSymbol() is IMember member) {
-					var cecil = member.MetadataToken;
-					if (cecil != null) {
-						output.WriteReference(keyword, cecil);
-						return;
-					}
-				}
-			}
-			output.Write(keyword);
+			WriteKeyword(keyword);
 		}
 
-		public override void WriteToken(Role role, string token)
+		void WriteKeyword(string keyword)
 		{
-			switch (token) {
-				case "{":
-					if (role != Roles.LBrace) {
-						output.Write("{");
-						break;
-					}
-					if (braceLevelWithinType >= 0 || nodeStack.Peek() is TypeDeclaration)
-						braceLevelWithinType++;
-					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || settings.FoldBraces) {
-						output.MarkFoldStart(defaultCollapsed: !settings.ExpandMemberDefinitions && braceLevelWithinType == 1);
-					}
-					output.Write("{");
-					break;
-				case "}":
-					output.Write('}');
-					if (role != Roles.RBrace) break;
-					if (nodeStack.OfType<BlockStatement>().Count() <= 1 || settings.FoldBraces)
-						output.MarkFoldEnd();
-					if (braceLevelWithinType >= 0)
-						braceLevelWithinType--;
-					break;
-				default:
-					// Attach member reference to token only if there's no identifier in the current node.
-					var member = SymbolToCecil(GetCurrentMemberReference());
-					var node = nodeStack.Peek();
-					if (member != null && node.GetChildByRole(Roles.Identifier).IsNull)
-						output.WriteReference(token, member);
-					else
-						output.Write(token);
-					break;
+			var node = nodeStack.Peek();
+
+			var memberRef = GetCurrentMemberReference();
+			if (node is IndexerDeclaration)
+				memberRef = node.GetSymbol();
+			if (keyword != "async" && memberRef != null && memberRef is IMember member && member.MetadataToken != null && (node is PrimitiveType || node is ConstructorInitializer ||
+				node is BaseReferenceExpression || node is ThisReferenceExpression ||
+				node is ObjectCreateExpression ||
+				node is AnonymousMethodExpression)) {
+				output.Write(keyword, member.MetadataToken, keyword == "new" ? DecompilerReferenceFlags.Hidden : DecompilerReferenceFlags.None, BoxedTextColor.Keyword);
 			}
+			else if (memberRef != null && memberRef is IMember member2 && member2.MetadataToken != null && node is IndexerDeclaration && keyword == "this") {
+				output.Write(keyword, member2.MetadataToken, DecompilerReferenceFlags.Definition, BoxedTextColor.Keyword);
+			}
+			else {
+				output.Write(keyword, BoxedTextColor.Keyword);
+			}
+		}
+
+		public override void WriteToken(Role role, string token, object data)
+		{
+			var memberRef = GetCurrentMemberReference();
+			var node = nodeStack.Peek();
+
+			bool addRef = memberRef != null &&
+						  (node is BinaryOperatorExpression ||
+						   node is UnaryOperatorExpression ||
+						   node is AssignmentExpression ||
+						   node is IndexerExpression);
+
+			// Add a ref to the method if it's a delegate call
+			if (!addRef && node is InvocationExpression && memberRef is IMember member && member.MetadataToken is dnlib.DotNet.IMethod) {
+				var md = (member.MetadataToken as dnlib.DotNet.IMethod).Resolve();
+				if (md != null && md.DeclaringType != null && md.DeclaringType.IsDelegate)
+					addRef = true;
+			}
+
+			if (addRef && memberRef is IMember member2 && member2.MetadataToken != null)
+				output.Write(token, member2.MetadataToken, DecompilerReferenceFlags.None, data);
+			else
+				output.Write(token, data);
 		}
 
 		public override void Space()
 		{
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
+		}
+
+		public void OpenBrace(BraceStyle style, out int? start, out int? end)
+		{
+			if (braceLevelWithinType >= 0 || nodeStack.Peek() is TypeDeclaration)
+				braceLevelWithinType++;
+			output.WriteLine();
+			start = output.NextPosition;
+			output.Write("{", BoxedTextColor.Punctuation);
+			end = output.NextPosition;
+			output.WriteLine();
+			output.IncreaseIndent();
+		}
+
+		public void CloseBrace(BraceStyle style, out int? start, out int? end)
+		{
+			output.DecreaseIndent();
+			start = output.NextPosition;
+			output.Write("}", BoxedTextColor.Punctuation);
+			end = output.NextPosition;
+			if (braceLevelWithinType >= 0)
+				braceLevelWithinType--;
 		}
 
 		public override void Indent()
 		{
-			output.Indent();
+			output.IncreaseIndent();
 		}
 
 		public override void Unindent()
 		{
-			output.Unindent();
+			output.DecreaseIndent();
 		}
 
 		public override void NewLine()
 		{
-			if (lastUsingDeclaration) {
-				output.MarkFoldEnd();
-				lastUsingDeclaration = false;
-			}
-//			lastEndOfLine = output.Location;
 			output.WriteLine();
 		}
 
-		public override void WriteComment(CommentType commentType, string content)
+		public override void WriteComment(CommentType commentType, string content, CommentReference[] refs)
 		{
 			switch (commentType) {
 				case CommentType.SingleLine:
-					output.Write("//");
-					output.WriteLine(content);
+					output.Write("//", BoxedTextColor.Comment);
+					Write(content, refs);
+					output.WriteLine();
 					break;
 				case CommentType.MultiLine:
-					output.Write("/*");
-					output.Write(content);
-					output.Write("*/");
+					output.Write("/*", BoxedTextColor.Comment);
+					Write(content, refs);
+					output.Write("*/", BoxedTextColor.Comment);
 					break;
 				case CommentType.Documentation:
-					bool isLastLine = !(nodeStack.Peek().NextSibling is Comment);
-					if (!inDocumentationComment && !isLastLine) {
-						inDocumentationComment = true;
-						output.MarkFoldStart("///" + content, true);
-					}
-					output.Write("///");
-					output.Write(content);
-					if (inDocumentationComment && isLastLine) {
-						inDocumentationComment = false;
-						output.MarkFoldEnd();
-					}
+					output.Write("///", BoxedTextColor.XmlDocCommentDelimiter);
+					Debug.Assert(refs == null);
+					output.WriteXmlDoc(content);
 					output.WriteLine();
 					break;
 				default:
-					output.Write(content);
+					Write(content, refs);
 					break;
 			}
+		}
+
+		void Write(string content, CommentReference[] refs)
+		{
+			if (refs == null) {
+				output.Write(content, BoxedTextColor.Comment);
+				return;
+			}
+
+			int offs = 0;
+			for (int i = 0; i < refs.Length; i++) {
+				var @ref = refs[i];
+				var s = content.Substring(offs, @ref.Length);
+				offs += @ref.Length;
+				if (@ref.Reference == null)
+					output.Write(s, BoxedTextColor.Comment);
+				else
+					output.Write(s, @ref.Reference, @ref.IsLocal ? DecompilerReferenceFlags.Local : DecompilerReferenceFlags.None, BoxedTextColor.Comment);
+			}
+			Debug.Assert(offs == content.Length);
 		}
 
 		public override void WritePreProcessorDirective(PreProcessorDirectiveType type, string argument)
 		{
 			// pre-processor directive must start on its own line
-			output.Write('#');
-			output.Write(type.ToString().ToLowerInvariant());
+			output.Write("#", BoxedTextColor.Text);
+			output.Write(type.ToString().ToLowerInvariant(), BoxedTextColor.Text);
 			if (!string.IsNullOrEmpty(argument)) {
-				output.Write(' ');
-				output.Write(argument);
+				output.Write(" ", BoxedTextColor.Text);
+				output.Write(argument, BoxedTextColor.Text);
 			}
 			output.WriteLine();
 		}
 
-		public override void WritePrimitiveValue(object value, LiteralFormat format = LiteralFormat.None)
+		public override void WritePrimitiveValue(object value, object data = null, LiteralFormat format = LiteralFormat.None)
 		{
-			new TextWriterTokenWriter(new TextOutputWriter(output)).WritePrimitiveValue(value, format);
+			int column = 0;
+			//TODO: parameters
+			var numberFormatter = NumberFormatter.GetCSharpInstance(false, upper: true);
+			TextWriterTokenWriter.WritePrimitiveValue(value, data, format, 1000, ref column, numberFormatter, WritePrimitiveValueCore, WriteToken);
 		}
 
-		public override void WriteInterpolatedText(string text)
+		void WritePrimitiveValueCore(string text, object reference, object color)
 		{
-			output.Write(TextWriterTokenWriter.ConvertString(text));
+			if (color == BoxedTextColor.String || color == BoxedTextColor.Char) {
+				int start = output.NextPosition;
+				output.Write(text, color);
+				int end = output.NextPosition;
+				output.AddBracePair(new TextSpan(start, 1), new TextSpan(end - 1, 1), CodeBracesRangeFlags.SingleQuotes);
+			}
+			else if (reference != null)
+				output.Write(text, reference, DecompilerReferenceFlags.Local | DecompilerReferenceFlags.Hidden | DecompilerReferenceFlags.NoFollow, color);
+			else
+				output.Write(text, color);
+		}
+
+		public override void WriteInterpolatedText(string text, object data = null)
+		{
+			output.Write(TextWriterTokenWriter.ConvertString(text), data);
 		}
 
 		public override void WritePrimitiveType(string type)
 		{
-			switch (type) {
-				case "new":
-					output.Write(type);
-					output.Write("()");
-					break;
-				case "bool":
-				case "byte":
-				case "sbyte":
-				case "short":
-				case "ushort":
-				case "int":
-				case "uint":
-				case "long":
-				case "ulong":
-				case "float":
-				case "double":
-				case "decimal":
-				case "char":
-				case "string":
-				case "object":
-					var node = nodeStack.Peek();
-					ISymbol symbol;
-					if (node.Role == Roles.Type && node.Parent is ObjectCreateExpression) {
-						symbol = node.Parent.GetSymbol();
-					} else {
-						symbol = nodeStack.Peek().GetSymbol();
-					}
-					if (symbol == null) goto default;
-					output.WriteReference(type, SymbolToCecil(symbol));
-					break;
-				default:
-					output.Write(type);
-					break;
+			WriteKeyword(type);
+			if (type == "new") {
+				int startPos1 = output.NextPosition;
+				output.Write("(", BoxedTextColor.Punctuation);
+				int startPos2 = output.NextPosition;
+				output.Write(")", BoxedTextColor.Punctuation);
+				output.AddBracePair(new TextSpan(startPos1, 1), new TextSpan(startPos2, 1), CodeBracesRangeFlags.Parentheses);
 			}
 		}
 
 		public override void StartNode(AstNode node)
 		{
-			if (nodeStack.Count == 0) {
-				if (IsUsingDeclaration(node)) {
-					firstUsingDeclaration = !IsUsingDeclaration(node.PrevSibling);
-					lastUsingDeclaration = !IsUsingDeclaration(node.NextSibling);
-				} else {
-					firstUsingDeclaration = false;
-					lastUsingDeclaration = false;
-				}
-			}
+
 			nodeStack.Push(node);
-//			startLocations.Push(output.Location);
-
-//			if (node is EntityDeclaration && node.GetSymbol() != null && node.GetChildByRole(Roles.Identifier).IsNull)
-//				output.WriteDefinition("", node.GetSymbol(), false);
-
-//			if (node.Annotation<MethodDebugSymbols>() != null) {
-//				symbolsStack.Push(node.Annotation<MethodDebugSymbols>());
-//				symbolsStack.Peek().StartLocation = startLocations.Peek();
-//			}
-		}
-
-		private bool IsUsingDeclaration(AstNode node)
-		{
-			return node is UsingDeclaration || node is UsingAliasDeclaration;
 		}
 
 		public override void EndNode(AstNode node)
@@ -436,5 +436,21 @@ namespace ICSharpCode.Decompiler
 			}
 			return false;
 		}
+
+		public override int? GetLocation()
+		{
+			return output.NextPosition;
+		}
+
+		public override void AddHighlightedKeywordReference(object reference, int start, int end) {
+			Debug.Assert(reference != null);
+			if (reference != null)
+				output.AddSpanReference(reference, start, end, PredefinedSpanReferenceIds.HighlightRelatedKeywords);
+		}
+
+		public override void AddBracePair(int leftStart, int leftEnd, int rightStart, int rightEnd, CodeBracesRangeFlags flags) =>
+			output.AddBracePair(TextSpan.FromBounds(leftStart, leftEnd), TextSpan.FromBounds(rightStart, rightEnd), flags);
+
+		public override void AddLineSeparator(int position) => output.AddLineSeparator(position);
 	}
 }

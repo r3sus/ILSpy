@@ -21,6 +21,7 @@ using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using ICSharpCode.Decompiler.CSharp.Transforms;
@@ -517,7 +518,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			} else {
 				if (var.LoadCount > 0 || var.AddressCount > 0) {
 					var type = settings.AnonymousTypes && var.Type.ContainsAnonymousType() ? new SimpleType("var") : exprBuilder.ConvertType(var.Type);
-					var vds = new VariableDeclarationStatement(type, var.Name, resource);
+					var vds = new VariableDeclarationStatement(GetParameterColor(var), type, var.Name, resource);
 					vds.Variables.Single().AddAnnotation(new ILVariableResolveResult(var, var.Type));
 					usingInit = vds;
 				}
@@ -1071,9 +1072,16 @@ namespace ICSharpCode.Decompiler.CSharp
 							.WithRR(new ResolveResult(inst.Variable.Type));
 				}
 			}
-			fixedStmt.Variables.Add(new VariableInitializer(inst.Variable.Name, initExpr).WithILVariable(inst.Variable));
+			fixedStmt.Variables.Add(new VariableInitializer(GetParameterColor(inst.Variable), inst.Variable.Name, initExpr).WithILVariable(inst.Variable));
 			fixedStmt.EmbeddedStatement = Convert(inst.Body);
 			return fixedStmt.WithILInstruction(inst);
+		}
+
+		object GetParameterColor(ILVariable ilv)
+		{
+			if (ilv.Name == "value" && ilv.Index.HasValue && ilv.Index.Value == ilv.Function.Parameters.Count - 1)
+				return BoxedTextColor.Keyword;
+			return ilv.Kind == VariableKind.Parameter ? BoxedTextColor.Parameter : BoxedTextColor.Local;
 		}
 
 		private static bool IsAddressOfMoveableVar(Expression initExpr)

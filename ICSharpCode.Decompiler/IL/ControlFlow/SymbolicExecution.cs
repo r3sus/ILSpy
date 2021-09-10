@@ -70,6 +70,7 @@ namespace ICSharpCode.Decompiler.IL.ControlFlow
 		{
 			this.Type = type;
 			this.Constant = constant;
+			ValueSet = default;
 		}
 
 		public SymbolicValue(SymbolicValueType type, LongSet valueSet)

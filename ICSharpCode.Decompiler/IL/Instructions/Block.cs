@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014-2016 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -27,14 +27,14 @@ namespace ICSharpCode.Decompiler.IL
 {
 	/// <summary>
 	/// A block consists of a list of IL instructions.
-	/// 
+	///
 	/// <para>
 	/// Note: if execution reaches the end of the instruction list,
 	/// the FinalInstruction (which is not part of the list) will be executed.
 	/// The block returns returns the result value of the FinalInstruction.
 	/// For blocks returning void, the FinalInstruction will usually be 'nop'.
 	/// </para>
-	/// 
+	///
 	/// There are three different uses for blocks:
 	/// 1) Blocks in block containers. Used as targets for Branch instructions.
 	/// 2) Blocks to group a bunch of statements, e.g. the TrueInst of an IfInstruction.
@@ -65,7 +65,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// </summary>
 		/// <remarks>
 		/// Blocks in containers must have 'Nop' as a final instruction.
-		/// 
+		///
 		/// Note that the FinalInstruction is included in Block.Children,
 		/// but not in Block.Instructions!
 		/// </remarks>
@@ -201,7 +201,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// Gets the name of this block.
 		/// </summary>
 		public string Label {
-			get { return Disassembler.DisassemblerHelpers.OffsetToString(this.StartILOffset); }
+			get { return CecilExtensions.OffsetToString(this.StartILOffset); }
 		}
 
 		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
@@ -283,7 +283,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Deletes this block from its parent container.
 		/// This may cause the indices of other blocks in that container to change.
-		/// 
+		///
 		/// It is an error to call this method on blocks that are not directly within a container.
 		/// It is also an error to call this method on the entry-point block.
 		/// </summary>
@@ -388,7 +388,7 @@ namespace ICSharpCode.Decompiler.IL
 			return false;
 		}
 	}
-	
+
 	public enum BlockKind
 	{
 		/// <summary>
@@ -409,7 +409,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// Example: <code>Use(this.Property = value);</code>
 		/// This is only for inline assignments to property or indexers; other inline assignments work
 		/// by using the result value of the stloc/stobj instructions.
-		/// 
+		///
 		/// Constructed by TransformAssignment.
 		/// Can be deconstructed using Block.MatchInlineAssignBlock().
 		/// </summary>

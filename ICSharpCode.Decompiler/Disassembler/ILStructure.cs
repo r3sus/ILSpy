@@ -19,10 +19,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using ICSharpCode.Decompiler.FlowAnalysis;
 using dnlib.DotNet.Emit;
+using dnSpy.Contracts.Decompiler;
 
-namespace ICSharpCode.Decompiler.Disassembler
-{
+namespace ICSharpCode.Decompiler.Disassembler {
 	/// <summary>
 	/// Specifies the type of an IL structure.
 	/// </summary>
@@ -85,14 +86,15 @@ namespace ICSharpCode.Decompiler.Disassembler
 		public ILStructure(CilBody body)
 			: this(ILStructureType.Root, 0, body.GetCodeSize())
 		{
+			uint codeSize = (uint)body.GetCodeSize();
 			// Build the tree of exception structures:
 			for (int i = 0; i < body.ExceptionHandlers.Count; i++) {
 				ExceptionHandler eh = body.ExceptionHandlers[i];
 				if (!body.ExceptionHandlers.Take(i).Any(oldEh => oldEh.TryStart == eh.TryStart && oldEh.TryEnd == eh.TryEnd))
-					AddNestedStructure(new ILStructure(ILStructureType.Try, (int)eh.TryStart.Offset, (int)eh.TryEnd.Offset, eh));
+					AddNestedStructure(new ILStructure(ILStructureType.Try, (int)eh.TryStart.GetOffset(), (int)(eh.TryEnd?.Offset ?? codeSize), eh));
 				if (eh.HandlerType == ExceptionHandlerType.Filter)
-					AddNestedStructure(new ILStructure(ILStructureType.Filter, (int)eh.FilterStart.Offset, (int)eh.HandlerStart.Offset, eh));
-				AddNestedStructure(new ILStructure(ILStructureType.Handler, (int)eh.HandlerStart.Offset, eh.HandlerEnd == null ? EndOffset : (int)eh.HandlerEnd.Offset, eh));
+					AddNestedStructure(new ILStructure(ILStructureType.Filter, (int)eh.FilterStart.GetOffset(), (int)eh.HandlerStart.GetOffset(), eh));
+				AddNestedStructure(new ILStructure(ILStructureType.Handler, (int)eh.HandlerStart.GetOffset(), (int)(eh.HandlerEnd?.Offset ?? codeSize), eh));
 			}
 			// Very simple loop detection: look for backward branches
 			List<KeyValuePair<Instruction, Instruction>> allBranches = FindAllBranches(body);
@@ -192,16 +194,21 @@ namespace ICSharpCode.Decompiler.Disassembler
 				switch (inst.OpCode.OperandType) {
 					case OperandType.InlineBrTarget:
 					case OperandType.ShortInlineBrTarget:
-						result.Add(new KeyValuePair<Instruction, Instruction>(inst, (Instruction)inst.Operand));
+						var target = inst.Operand as Instruction;
+						if (target != null)
+							result.Add(new KeyValuePair<Instruction, Instruction>(inst, target));
 						break;
 					case OperandType.InlineSwitch:
-						foreach (Instruction target in (Instruction[])inst.Operand)
-							result.Add(new KeyValuePair<Instruction, Instruction>(inst, target));
+						var list = inst.Operand as IList<Instruction>;
+						if (list != null) {
+							foreach (Instruction target2 in list) {
+								if (target2 != null)
+									result.Add(new KeyValuePair<Instruction, Instruction>(inst, target2));
+							}
+						}
 						break;
 				}
 			}
-			// ignore the branches where Cecil doesn't decode the target
-			result.RemoveAll(x => x.Value == null);
 			return result;
 		}
 

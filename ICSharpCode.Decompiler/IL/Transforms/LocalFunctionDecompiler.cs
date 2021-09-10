@@ -342,7 +342,7 @@ namespace ICSharpCode.Decompiler.IL.Transforms
 				foreach (var useSite in info.UseSites) {
 					var callerMethod = useSite.Ancestors.OfType<ILFunction>().First().Method;
 					callerMethod = callerMethod.ReducedFrom ?? callerMethod;
-					IMethod m;
+					TypeSystem.IMethod m;
 					switch (useSite)
 					{
 						case NewObj newObj:

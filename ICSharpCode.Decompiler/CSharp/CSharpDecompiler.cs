@@ -34,6 +34,7 @@ using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.Util;
 using System.IO;
+using System.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using dnlib.DotNet.Emit;
 
@@ -51,7 +52,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		readonly IDecompilerTypeSystem typeSystem;
 		readonly MetadataModule module;
 		readonly ModuleDef metadata;
-		readonly DecompilerSettings settings;
+		public readonly DecompilerSettings settings;
 		SyntaxTree syntaxTree;
 
 		List<IILTransform> ilTransforms = GetILTransforms();
@@ -183,7 +184,6 @@ namespace ICSharpCode.Decompiler.CSharp
 				new NormalizeBlockStatements(),
 				new FlattenSwitchBlocks(),
 				new FixNameCollisions(),
-				new AddXmlDocumentationTransform(),
 			};
 		}
 
@@ -196,6 +196,8 @@ namespace ICSharpCode.Decompiler.CSharp
 		/// The type system created from the main module and referenced modules.
 		/// </summary>
 		public IDecompilerTypeSystem TypeSystem => typeSystem;
+
+		public StringBuilder StringBuilder { get; }
 
 		/// <summary>
 		/// IL transforms.
@@ -211,12 +213,9 @@ namespace ICSharpCode.Decompiler.CSharp
 			get { return astTransforms; }
 		}
 
-		/// <summary>
-		/// Creates a new <see cref="CSharpDecompiler"/> instance from the given <paramref name="fileName"/> using the given <paramref name="settings"/>.
-		/// </summary>
-		public CSharpDecompiler(string fileName, DecompilerSettings settings)
-			: this(UniversalAssemblyResolver.LoadMainModule(fileName, settings.ThrowOnAssemblyResolveErrors, settings.LoadInMemory), settings)
+		public CSharpDecompiler()
 		{
+			StringBuilder = new StringBuilder();
 		}
 
 		/// <summary>
@@ -244,6 +243,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			this.settings = settings;
 			this.module = typeSystem.MainModule;
 			this.metadata = module.metadata;
+			StringBuilder = new StringBuilder();
 			if (module.TypeSystemOptions.HasFlag(TypeSystemOptions.Uncached))
 				throw new ArgumentException("Cannot use an uncached type system in the decompiler.");
 		}
@@ -437,6 +437,38 @@ namespace ICSharpCode.Decompiler.CSharp
 		}
 
 		/// <summary>
+		/// Decompile module attributes.
+		/// </summary>
+		public SyntaxTree DecompileModule()
+		{
+			var decompilationContext = new SimpleTypeResolveContext(typeSystem.MainModule);
+			var decompileRun = new DecompileRun(settings) {
+				CancellationToken = CancellationToken
+			};
+			syntaxTree = new SyntaxTree();
+			RequiredNamespaceCollector.CollectAttributeNamespacesOnlyModule(module, decompileRun.Namespaces);
+			DoDecompileModuleAttributes(decompileRun, decompilationContext, syntaxTree);
+			RunTransforms(syntaxTree, decompileRun, decompilationContext);
+			return syntaxTree;
+		}
+
+		/// <summary>
+		/// Decompile assembly attributes.
+		/// </summary>
+		public SyntaxTree DecompileAssembly()
+		{
+			var decompilationContext = new SimpleTypeResolveContext(typeSystem.MainModule);
+			var decompileRun = new DecompileRun(settings) {
+				CancellationToken = CancellationToken
+			};
+			syntaxTree = new SyntaxTree();
+			RequiredNamespaceCollector.CollectAttributeNamespacesOnlyAssembly(module, decompileRun.Namespaces);
+			DoDecompileAssemblyAttributes(decompileRun, decompilationContext, syntaxTree);
+			RunTransforms(syntaxTree, decompileRun, decompilationContext);
+			return syntaxTree;
+		}
+
+		/// <summary>
 		/// Decompile assembly and module attributes.
 		/// </summary>
 		public string DecompileModuleAndAssemblyAttributesToString()
@@ -444,7 +476,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			return SyntaxTreeToString(DecompileModuleAndAssemblyAttributes());
 		}
 
-		void DoDecompileModuleAndAssemblyAttributes(DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)
+		void DoDecompileAssemblyAttributes(DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)
 		{
 			try {
 				foreach (var a in typeSystem.MainModule.GetAssemblyAttributes()) {
@@ -453,6 +485,14 @@ namespace ICSharpCode.Decompiler.CSharp
 					attrSection.AttributeTarget = "assembly";
 					syntaxTree.AddChild(attrSection, SyntaxTree.MemberRole);
 				}
+			} catch (Exception innerException) when (!(innerException is OperationCanceledException || innerException is DecompilerException)) {
+				throw new DecompilerException(null, innerException, "Error decompiling module and assembly attributes of " + module.AssemblyName);
+			}
+		}
+
+		void DoDecompileModuleAttributes(DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)
+		{
+			try {
 				foreach (var a in typeSystem.MainModule.GetModuleAttributes()) {
 					var astBuilder = CreateAstBuilder(decompileRun.Settings);
 					var attrSection = new AttributeSection(astBuilder.ConvertAttribute(a));
@@ -462,6 +502,12 @@ namespace ICSharpCode.Decompiler.CSharp
 			} catch (Exception innerException) when (!(innerException is OperationCanceledException || innerException is DecompilerException)) {
 				throw new DecompilerException(null, innerException, "Error decompiling module and assembly attributes of " + module.AssemblyName);
 			}
+		}
+
+		void DoDecompileModuleAndAssemblyAttributes(DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)
+		{
+			DoDecompileAssemblyAttributes(decompileRun, decompilationContext, syntaxTree);
+			DoDecompileModuleAttributes(decompileRun, decompilationContext, syntaxTree);
 		}
 
 		void DoDecompileTypes(IEnumerable<TypeDef> types, DecompileRun decompileRun, ITypeResolveContext decompilationContext, SyntaxTree syntaxTree)

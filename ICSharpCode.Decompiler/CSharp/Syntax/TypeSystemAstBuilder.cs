@@ -22,12 +22,19 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using dnlib.DotNet;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Resolver;
 using ICSharpCode.Decompiler.CSharp.TypeSystem;
+using ICSharpCode.Decompiler.IL;
 using ICSharpCode.Decompiler.Semantics;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
+using IField = ICSharpCode.Decompiler.TypeSystem.IField;
+using IMethod = ICSharpCode.Decompiler.TypeSystem.IMethod;
+using IType = ICSharpCode.Decompiler.TypeSystem.IType;
+using IVariable = ICSharpCode.Decompiler.TypeSystem.IVariable;
 
 namespace ICSharpCode.Decompiler.CSharp.Syntax
 {
@@ -235,29 +242,6 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				astType.AddAnnotation(type);
 			if (AddResolveResultAnnotations)
 				astType.AddAnnotation(new TypeResolveResult(type));
-		}
-
-		public AstType ConvertType(FullTypeName fullTypeName)
-		{
-			if (resolver != null) {
-				foreach (var asm in resolver.Compilation.Modules) {
-					var def = asm.GetTypeDefinition(fullTypeName);
-					if (def != null) {
-						return ConvertType(def);
-					}
-				}
-			}
-			TopLevelTypeName top = fullTypeName.TopLevelTypeName;
-			AstType type;
-			if (string.IsNullOrEmpty(top.Namespace)) {
-				type = MakeSimpleType(top.Name);
-			} else {
-				type = MakeMemberType(MakeSimpleType(top.Namespace), top.Name);
-			}
-			for (int i = 0; i < fullTypeName.NestingLevel; i++) {
-				type = MakeMemberType(type, fullTypeName.GetNestedTypeName(i));
-			}
-			return type;
 		}
 
 		AstType ConvertTypeHelper(IType type)
@@ -688,7 +672,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				foreach (var namedArg in attribute.NamedArguments) {
 					NamedExpression namedArgument = new NamedExpression(namedArg.Name, ConvertConstantValue(namedArg.Type, namedArg.Value));
 					if (AddResolveResultAnnotations) {
-						IMember member = CustomAttribute.MemberForNamedArgument(attribute.AttributeType, namedArg);
+						IMember member = MetadtaCustomAttribute.MemberForNamedArgument(attribute.AttributeType, namedArg);
 						if (member != null) {
 							namedArgument.AddAnnotation(new MemberResolveResult(targetResult, member));
 						}
@@ -1215,8 +1199,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 
 			if (useFraction && expr == null && UseSpecialConstants) {
 				IType mathType;
+				//TODO: corlib
 				if (isDouble)
-					mathType = compilation.FindType(typeof(Math));
+					mathType = compilation.FindType(new TopLevelTypeName("System", "Math"));
 				else {
 					mathType = compilation.FindType(new TopLevelTypeName("System", "MathF"));
 					var typeDef = mathType.GetDefinition();
@@ -1224,7 +1209,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 						|| !typeDef.IsDirectImportOf(compilation.MainModule)
 						|| !typeDef.GetFields(f => f.Name == "PI" && f.IsConst).Any() || !typeDef.GetFields(f => f.Name == "E" && f.IsConst).Any())
 					{
-						mathType = compilation.FindType(typeof(Math));
+						mathType = compilation.FindType(new TopLevelTypeName("System", "Math"));
 					}
 				}
 
@@ -1587,7 +1572,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			if (AddResolveResultAnnotations) {
 				decl.AddAnnotation(new TypeResolveResult(typeDefinition));
 			}
-			decl.Name = typeDefinition.Name == "_" ? "@_" : typeDefinition.Name;
+			decl.NameToken = Identifier.Create(typeDefinition.Name == "_" ? "@_" : typeDefinition.Name).WithAnnotation(typeDefinition.MetadataToken as TypeDef);
 
 			int outerTypeParameterCount = (typeDefinition.DeclaringTypeDefinition == null) ? 0 : typeDefinition.DeclaringTypeDefinition.TypeParameterCount;
 
@@ -1715,7 +1700,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 					initializer = new ErrorExpression(ex.Message);
 				}
 			}
-			decl.Variables.Add(new VariableInitializer(field.Name, initializer));
+			decl.Variables.Add(new VariableInitializer(field.MetadataToken, field.Name, initializer));
 			return decl;
 		}
 
@@ -1723,7 +1708,8 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		{
 			if (GenerateBody) {
 				return new BlockStatement {
-					new ThrowStatement(new ObjectCreateExpression(ConvertType(new TopLevelTypeName("System", "NotImplementedException", 0))))
+					//TODO: nicer
+					new ThrowStatement(new NullReferenceExpression())
 				};
 			} else {
 				return BlockStatement.Null;
@@ -1788,7 +1774,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			if (property.ReturnTypeIsRefReadOnly && decl.ReturnType is ComposedType ct && ct.HasRefSpecifier) {
 				ct.HasReadOnlySpecifier = true;
 			}
-			decl.Name = property.Name;
+			decl.NameToken = Identifier.Create(property.Name).WithAnnotation(property.MetadataToken as PropertyDef);
 			decl.Getter = ConvertAccessor(property.Getter, dnlib.DotNet.MethodSemanticsAttributes.Getter, property.Accessibility, false);
 			decl.Setter = ConvertAccessor(property.Setter, dnlib.DotNet.MethodSemanticsAttributes.Setter, property.Accessibility, true);
 			decl.PrivateImplementationType = GetExplicitInterfaceType (property);
@@ -1847,7 +1833,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 					decl.AddAnnotation(new MemberResolveResult(null, ev));
 				}
 				decl.ReturnType = ConvertType(ev.ReturnType);
-				decl.Name = ev.Name;
+				decl.NameToken = Identifier.Create(ev.Name).WithAnnotation(ev.MetadataToken as EventDef);
 				decl.AddAccessor    = ConvertAccessor(ev.AddAccessor, dnlib.DotNet.MethodSemanticsAttributes.AddOn, ev.Accessibility, true);
 				decl.RemoveAccessor = ConvertAccessor(ev.RemoveAccessor, dnlib.DotNet.MethodSemanticsAttributes.RemoveOn, ev.Accessibility, true);
 				decl.PrivateImplementationType = GetExplicitInterfaceType (ev);
@@ -1863,7 +1849,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 					decl.AddAnnotation(new MemberResolveResult(null, ev));
 				}
 				decl.ReturnType = ConvertType(ev.ReturnType);
-				decl.Variables.Add(new VariableInitializer(ev.Name));
+				decl.Variables.Add(new VariableInitializer(ev.MetadataToken, ev.Name));
 				return decl;
 			}
 		}
@@ -1883,7 +1869,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			if (method.ReturnTypeIsRefReadOnly && decl.ReturnType is ComposedType ct && ct.HasRefSpecifier) {
 				ct.HasReadOnlySpecifier = true;
 			}
-			decl.Name = method.Name;
+			decl.NameToken = Identifier.Create(method.Name).WithAnnotation(method.MetadataToken as MethodDef);
 
 			if (this.ShowTypeParameters) {
 				foreach (ITypeParameter tp in method.TypeParameters) {
@@ -1942,8 +1928,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 			decl.Modifiers = GetMemberModifiers(ctor);
 			if (ShowAttributes)
 				decl.Attributes.AddRange(ConvertAttributes(ctor.GetAttributes()));
-			if (ctor.DeclaringTypeDefinition != null)
-				decl.Name = ctor.DeclaringTypeDefinition.Name;
+			if (ctor.DeclaringTypeDefinition != null) {
+				decl.NameToken = Identifier.Create(ctor.DeclaringTypeDefinition.Name).WithAnnotation(ctor.DeclaringTypeDefinition.MetadataToken as TypeDef);
+			}
 			foreach (IParameter p in ctor.Parameters) {
 				decl.Parameters.Add(ConvertParameter(p));
 			}
@@ -2120,7 +2107,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 					initializer = new ErrorExpression(ex.Message);
 				}
 			}
-			decl.Variables.Add(new VariableInitializer(v.Name, initializer));
+			decl.Variables.Add(new VariableInitializer(BoxedTextColor.Local, v.Name, initializer));
 			return decl;
 		}
 		#endregion

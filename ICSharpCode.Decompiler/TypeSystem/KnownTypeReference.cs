@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2010-2013 AlphaSierraPapa for the SharpDevelop Team
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,7 @@
 
 using System;
 using System.Collections.Generic;
+using dnlib.DotNet;
 
 namespace ICSharpCode.Decompiler.TypeSystem
 {
@@ -28,7 +29,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 	{
 		// Note: DefaultResolvedTypeDefinition uses (KnownTypeCode)-1 as special value for "not yet calculated".
 		// The order of type codes at the beginning must correspond to those in System.TypeCode.
-		
+
 		/// <summary>
 		/// Not one of the known types.
 		/// </summary>
@@ -67,9 +68,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		DateTime,
 		/// <summary><c>string</c> (System.String)</summary>
 		String = 18,
-		
+
 		// String was the last element from System.TypeCode, now our additional known types start
-		
+
 		/// <summary><c>void</c> (System.Void)</summary>
 		Void,
 		/// <summary><c>System.Type</c></summary>
@@ -226,7 +227,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			new KnownTypeReference(KnownTypeCode.Index, TypeKind.Struct, "System", "Index", 0),
 			new KnownTypeReference(KnownTypeCode.Range, TypeKind.Struct, "System", "Range", 0),
 		};
-		
+
 		/// <summary>
 		/// Gets the known type reference for the specified type code.
 		/// Returns null for KnownTypeCode.None.
@@ -235,7 +236,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			return knownTypeReferences[(int)typeCode];
 		}
-		
+
 		public static IEnumerable<KnownTypeReference> AllKnownTypes {
 			get {
 				for (int i = 0; i < KnownTypeCodeCount; i++) {
@@ -265,19 +266,19 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			this.typeKind = typeKind;
 			this.baseType = baseType;
 		}
-		
+
 		public KnownTypeCode KnownTypeCode {
 			get { return knownTypeCode; }
 		}
-		
+
 		public string Namespace {
 			get { return namespaceName; }
 		}
-		
+
 		public string Name {
 			get { return name; }
 		}
-		
+
 		public int TypeParameterCount {
 			get { return typeParameterCount; }
 		}
@@ -288,12 +289,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			return context.Compilation.FindType(knownTypeCode);
 		}
-		
+
 		public override string ToString()
 		{
 			return GetCSharpNameByTypeCode(knownTypeCode) ?? (this.Namespace + "." + this.Name);
 		}
-		
+
 		/// <summary>
 		/// Gets the C# primitive type name from the known type code.
 		/// Returns null if there is no primitive name for the specified type.

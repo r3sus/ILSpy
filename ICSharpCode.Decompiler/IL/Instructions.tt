@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014-2020 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -39,7 +39,7 @@
 		new OpCode("DynamicInstruction", "Instruction representing a dynamic call site.",
 			AbstractBaseClass, CustomWriteTo, MayThrow, SideEffect)
 	};
-	
+
 	OpCode[] opCodes = {
 		new OpCode("invalid.branch", "Represents invalid IL. Semantically, this instruction is considered to throw some kind of exception.",
 			CustomClassName("InvalidBranch"), NoArguments, MayThrow, SideEffect, HasFlag("InstructionFlags.EndPointUnreachable")),
@@ -158,7 +158,7 @@
 			Binary, CustomConstructor, CustomWriteTo,
 			MatchCondition("this.Kind == o.Kind && this.Sign == o.Sign && this.LiftingKind == o.LiftingKind")),
 		new OpCode("call", "Non-virtual method call.", Call),
-		new OpCode("callvirt", "Virtual method call.", 
+		new OpCode("callvirt", "Virtual method call.",
 			CustomClassName("CallVirt"), Call),
 		new OpCode("calli", "Unsafe function pointer call.",
 			CustomClassName("CallIndirect"),
@@ -243,7 +243,7 @@
 			ResultType("target.ResultType.IsIntegerType() ? StackType.I : StackType.Ref")),
 		new OpCode("ldsflda", "Load static field address",
 			CustomClassName("LdsFlda"), NoArguments, ResultType("Ref"), HasFieldOperand),
-			
+
 		new OpCode("castclass", "Casts an object to a class.",
 			CustomClassName("CastClass"), Unary, HasTypeOperand, MayThrow, ResultType("type.GetStackType()")),
 		new OpCode("isinst", "Test if object is instance of class or interface.",
@@ -276,7 +276,7 @@
 			NoArguments, MayThrow, UnconditionalBranch),
 		new OpCode("sizeof", "Gets the size of a type in bytes.",
 			CustomClassName("SizeOf"), NoArguments, HasTypeOperand, ResultType("I4")),
-		
+
 		new OpCode("ldlen", "Returns the length of an array as 'native unsigned int'.",
 			CustomClassName("LdLen"), CustomArguments(("array", new[] { "O" })), CustomConstructor, CustomWriteTo, MayThrow),
 		new OpCode("ldelema", "Load address of array element.",
@@ -312,7 +312,7 @@
 				new ChildInfo("right") { CanInlineInto = false } // only executed depending on value of left
 			}), CustomWriteTo
 		),
-		
+
 		new OpCode("dynamic.binary.operator", "ILAst representation of a binary operator inside a dynamic expression (maps to Binder.BinaryOperation).",
 			CustomClassName("DynamicBinaryOperatorInstruction"), Dynamic, CustomArguments(("left", null), ("right", null)), CustomWriteTo),
 		new OpCode("dynamic.unary.operator", "ILAst representation of a unary operator inside a dynamic expression (maps to Binder.UnaryOperation).",
@@ -465,7 +465,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract void Default(ILInstruction inst);
-		
+
 <#	foreach (OpCode opCode in opCodes.Where(o => o.GenerateAcceptVisitor)) { #>
 		protected internal virtual void Visit<#=opCode.Name#>(<#=opCode.Name#> <#=opCode.VariableName#>)
 		{
@@ -473,7 +473,7 @@ namespace ICSharpCode.Decompiler.IL
 		}
 <#	} #>
 	}
-	
+
 	/// <summary>
 	/// Base class for visitor pattern.
 	/// </summary>
@@ -481,7 +481,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract T Default(ILInstruction inst);
-		
+
 <#	foreach (OpCode opCode in opCodes.Where(o => o.GenerateAcceptVisitor)) { #>
 		protected internal virtual T Visit<#=opCode.Name#>(<#=opCode.Name#> <#=opCode.VariableName#>)
 		{
@@ -497,7 +497,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		/// <summary>Called by Visit*() methods that were not overridden</summary>
 		protected abstract T Default(ILInstruction inst, C context);
-		
+
 <#	foreach (OpCode opCode in opCodes.Where(o => o.GenerateAcceptVisitor)) { #>
 		protected internal virtual T Visit<#=opCode.Name#>(<#=opCode.Name#> <#=opCode.VariableName#>, C context)
 		{
@@ -505,7 +505,7 @@ namespace ICSharpCode.Decompiler.IL
 		}
 <#	} #>
 	}
-	
+
 	partial class InstructionOutputExtensions
 	{
 		static readonly string[] originalOpCodeNames = {
@@ -514,7 +514,7 @@ namespace ICSharpCode.Decompiler.IL
 <#	} #>
 		};
 	}
-	
+
 	partial class ILInstruction
 	{
 <#	foreach (OpCode opCode in opCodes) { #>
@@ -551,7 +551,7 @@ namespace ICSharpCode.Decompiler.IL
 		b.Append("\t\t");
 		return b.ToString();
 	}
-	
+
 	static string MakeName(string originalName)
 	{
 		StringBuilder name = new StringBuilder();
@@ -588,12 +588,12 @@ namespace ICSharpCode.Decompiler.IL
 		}
 
 		public string ClassModifiers = "public sealed";
-		
+
 		public bool GenerateConstructor = true;
 		public string ConstructorModifier = "public";
 		public List<string> ConstructorParameters = new List<string>();
 		public List<string> ConstructorBody = new List<string>();
-		
+
 		public bool GenerateMatch = true;
 		public bool GeneratePerformMatch = true;
 		public List<MatchParamInfo> MatchParameters = new List<MatchParamInfo>();
@@ -604,22 +604,22 @@ namespace ICSharpCode.Decompiler.IL
 		public List<string> Interfaces = new List<string>();
 		public List<string> BaseConstructorArguments = new List<string>();
 		public List<string> Members = new List<string>();
-		
+
 		public List<string> Flags = new List<string>();
 		public List<string> DirectFlags = new List<string>();
 		public bool GenerateComputeFlags = true;
 
 
 		public bool GenerateAcceptVisitor = true;
-		
-		
+
+
 		public bool GenerateWriteTo = false;
 		public bool CustomWriteToButKeepOriginal = false;
 		public List<string> WriteOpCodePrefix = new List<string>();
 		public List<string> WriteOpCodeSuffix = new List<string>();
 		public List<string> WriteOperand = new List<string>();
 		public List<string> WriteArguments = new List<string>();
-		
+
 		public IEnumerable<string> WriteToBody {
 			get {
 				yield return "WriteILRange(output, options);";
@@ -631,38 +631,38 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 	}
-	
+
 	class MatchParamInfo
 	{
 		public string TypeName;
 		public string Name;
 		public string FieldName;
-		
+
 		public override string ToString()
 		{
 			return "out " + TypeName + " " + Name;
 		}
 	}
-	
+
 	static Action<OpCode> CustomClassName(string name)
 	{
 		return opCode => {
 			opCode.Name = name;
 		};
 	}
-	
+
 	static Action<OpCode> CustomVariableName(string name)
 	{
 		return opCode => {
 			opCode.VariableName = name;
 		};
 	}
-	
+
 	static Action<OpCode> CustomConstructor = opCode => {
 		opCode.GenerateConstructor = false;
 		opCode.GenerateMatch = false;
 	};
-	
+
 	static Action<OpCode> CustomWriteTo = opCode => {
 		opCode.GenerateWriteTo = false;
 	};
@@ -670,11 +670,11 @@ namespace ICSharpCode.Decompiler.IL
 	static Action<OpCode> CustomWriteToButKeepOriginal = opCode => {
 		opCode.CustomWriteToButKeepOriginal = true;
 	};
-	
+
 	static Action<OpCode> CustomComputeFlags = opCode => {
 		opCode.GenerateComputeFlags = false;
 	};
-	
+
 	// Call trait: the instruction performs a method call
 	static Action<OpCode> MatchCondition(string name)
 	{
@@ -682,7 +682,7 @@ namespace ICSharpCode.Decompiler.IL
 			opCode.PerformMatchConditions.Add(name);
 		};
 	}
-	
+
 	static Action<OpCode> HasFlag(string name)
 	{
 		return opCode => {
@@ -707,7 +707,7 @@ namespace ICSharpCode.Decompiler.IL
 			opCode.Members.Add("public override StackType ResultType { get { return " + type + "; } }");
 		};
 	}
-	
+
 	// VoidResult trait: the instruction has no result and is not usable as an argument
 	static Action<OpCode> VoidResult = ResultType("Void");
 
@@ -721,25 +721,25 @@ namespace ICSharpCode.Decompiler.IL
 
 	// MayThrow trait: the instruction may throw exceptions
 	static Action<OpCode> MayThrow = HasFlag("InstructionFlags.MayThrow");
-	
+
 	// MayBranch trait: the instruction may cause control flow to branch (e.g. branch, conditionalbranch, return)
 	static Action<OpCode> MayBranch = HasFlag("InstructionFlags.MayBranch");
-	
+
 	// UnconditionalBranch trait: the instruction does not produce a result normally; it always branches or throws an exception. Implies VoidResult.
 	// UnconditionalBranch should be paired with either MayBranch or MayThrow (or both).
 	static Action<OpCode> UnconditionalBranch = VoidResult + HasFlag("InstructionFlags.EndPointUnreachable");
-	
+
 	// ControlFlow trait: the instruction involves some form of internal control flow
 	// Instructions without this trait must evaluate all arguments left-to-right before having any effect of their own.
 	static Action<OpCode> ControlFlow = HasFlag("InstructionFlags.ControlFlow");
-	
+
 	static Action<OpCode> MayThrowIfNotDelayed = HasFlag("(DelayExceptions ? InstructionFlags.None : InstructionFlags.MayThrow)") + (opCode => {
 		opCode.Members.Add("public bool DelayExceptions; // NullReferenceException/IndexOutOfBoundsException only occurs when the reference is dereferenced");
 		opCode.GenerateWriteTo = true;
 		opCode.WriteOpCodePrefix.Add("if (DelayExceptions)" + Environment.NewLine + "\toutput.Write(\"delayex.\");");
 		opCode.PerformMatchConditions.Add("DelayExceptions == o.DelayExceptions");
 	});
-	
+
 	static Action<OpCode> BaseClass(string name)
 	{
 		return opCode => {
@@ -748,12 +748,12 @@ namespace ICSharpCode.Decompiler.IL
 			opCode.DirectFlags.Add("base.DirectFlags");
 		};
 	}
-	
+
 	// NoArguments trait: the instruction no arguments
 	static Action<OpCode> NoArguments = opCode => {
 		opCode.BaseClass = "SimpleInstruction";
 	};
-	
+
 	// Unary trait: the instruction has a single argument
 	static Action<OpCode> Unary = opCode => {
 		BaseClass("UnaryInstruction")(opCode);
@@ -765,7 +765,7 @@ namespace ICSharpCode.Decompiler.IL
 		opCode.WriteArguments.Add("Argument.WriteTo(output, options);");
 		opCode.WriteArguments.Add("output.Write(')');");
 	};
-	
+
 	// Binary trait: the instruction has two arguments named 'Left' and 'Right'
 	static Action<OpCode> Binary = opCode => {
 		BaseClass("BinaryInstruction")(opCode);
@@ -783,30 +783,30 @@ namespace ICSharpCode.Decompiler.IL
 		opCode.WriteArguments.Add("Right.WriteTo(output, options);");
 		opCode.WriteArguments.Add("output.Write(')');");
 	};
-	
+
 	static Action<OpCode> CustomArguments(params (string name, string[] expectedTypes)[] arguments)
 	{
 		return CustomChildren(arguments.Select(arg => new ArgumentInfo(arg.name) { ExpectedTypes = arg.expectedTypes }).ToArray(), generateInline: true);
 	}
-	
+
 	class ChildInfo
 	{
 		public readonly string PropertyName;
 		public readonly string Name;
 		public readonly string SlotName;
-		
+
 		public bool IsCollection;
 		public string Type = "ILInstruction";
 		public bool CanInlineInto;
 		public string[] ExpectedTypes;
-		
+
 		public ChildInfo(string name)
 		{
 			this.Name = name;
 			this.PropertyName = MakeName(name);
 			this.SlotName = this.PropertyName + "Slot";
 		}
-		
+
 		public string GetSlotInit()
 		{
 			StringBuilder b = new StringBuilder();
@@ -817,7 +817,7 @@ namespace ICSharpCode.Decompiler.IL
 			return b.ToString();
 		}
 	}
-	
+
 	class ArgumentInfo : ChildInfo
 	{
 		public ArgumentInfo(string name) : base(name)
@@ -825,7 +825,7 @@ namespace ICSharpCode.Decompiler.IL
 			this.CanInlineInto = true;
 		}
 	}
-	
+
 	static Action<OpCode> CustomChildren(ChildInfo[] children, bool generateInline = false)
 	{
 		return opCode => {
@@ -903,7 +903,7 @@ namespace ICSharpCode.Decompiler.IL
 			b.AppendLine(";");
 			b.Append("}");
 			opCode.Members.Add(b.ToString());
-			
+
 			b = new StringBuilder();
 			b.AppendLine("protected sealed override ILInstruction GetChild(int index)");
 			b.AppendLine("{");
@@ -920,7 +920,7 @@ namespace ICSharpCode.Decompiler.IL
 			b.AppendLine("\t}");
 			b.Append("}");
 			opCode.Members.Add(b.ToString());
-			
+
 			b = new StringBuilder();
 			b.AppendLine("protected sealed override void SetChild(int index, ILInstruction value)");
 			b.AppendLine("{");
@@ -940,7 +940,7 @@ namespace ICSharpCode.Decompiler.IL
 			b.AppendLine("\t}");
 			b.Append("}");
 			opCode.Members.Add(b.ToString());
-			
+
 			b = new StringBuilder();
 			b.AppendLine("protected sealed override SlotInfo GetChildSlot(int index)");
 			b.AppendLine("{");
@@ -957,7 +957,7 @@ namespace ICSharpCode.Decompiler.IL
 			b.AppendLine("\t}");
 			b.Append("}");
 			opCode.Members.Add(b.ToString());
-			
+
 			b = new StringBuilder();
 			b.AppendLine("public sealed override ILInstruction Clone()");
 			b.AppendLine("{");
@@ -992,7 +992,7 @@ namespace ICSharpCode.Decompiler.IL
 	// SideEffect trait: the instruction has a non-local side effect
 	static Action<OpCode> SideEffect = HasFlag("InstructionFlags.SideEffect");
 	static Action<OpCode> MemoryAccess = SideEffect;
-	
+
 	// Call trait: the instruction performs a method call
 	static Action<OpCode> Call = opCode => {
 		opCode.BaseClass = "CallInstruction";
@@ -1059,10 +1059,10 @@ protected override void Disconnected()
 		} else {
 			if (accessType != "Address")
 				throw new ArgumentException();
-		} 
+		}
 		return action;
 	}
-	
+
 	static Action<OpCode> HasFieldOperand = opCode => {
 		opCode.ConstructorParameters.Add("IField field");
 		opCode.Members.Add("readonly IField field;");
@@ -1108,7 +1108,7 @@ protected override void Disconnected()
 		opCode.WriteOperand.Add("}");
 		opCode.Interfaces.Add("IInstructionWithMethodOperand");
 	};
-	
+
 	static Action<OpCode> HasMemberOperand = opCode => {
 		opCode.ConstructorParameters.Add("IMember member");
 		opCode.Members.Add("readonly IMember member;");
@@ -1121,7 +1121,7 @@ protected override void Disconnected()
 		opCode.WriteOperand.Add("output.Write(' ');");
 		opCode.WriteOperand.Add("member.WriteTo(output);");
 	};
-	
+
 	// Adds a member of type bool to the instruction.
 	static Action<OpCode> BoolFlag(string flagName)
 	{
@@ -1132,7 +1132,7 @@ protected override void Disconnected()
 			opCode.WriteOpCodePrefix.Add($"if ({flagName}){Environment.NewLine}\toutput.Write(\"{flagName.ToLowerInvariant()}.\");");
 		};
 	}
-	
+
 	// LoadConstant trait: the instruction loads a compile-time constant. Implies NoArguments.
 	static Action<OpCode> LoadConstant(string operandType)
 	{
@@ -1148,7 +1148,7 @@ protected override void Disconnected()
 			opCode.WriteOperand.Add("Disassembler.DisassemblerHelpers.WriteOperand(output, Value);");
 		};
 	}
-	
+
 	static Action<OpCode> SupportsVolatilePrefix = opCode => {
 		opCode.Interfaces.Add("ISupportsVolatilePrefix");
 		opCode.Members.Add("/// <summary>Gets/Sets whether the memory access is volatile.</summary>" + Environment.NewLine
@@ -1157,7 +1157,7 @@ protected override void Disconnected()
 		opCode.WriteOpCodePrefix.Add("if (IsVolatile)" + Environment.NewLine + "\toutput.Write(\"volatile.\");");
 		opCode.PerformMatchConditions.Add("IsVolatile == o.IsVolatile");
 	};
-	
+
 	static Action<OpCode> SupportsUnalignedPrefix = opCode => {
 		opCode.Interfaces.Add("ISupportsUnalignedPrefix");
 		opCode.Members.Add("/// <summary>Returns the alignment specified by the 'unaligned' prefix; or 0 if there was no 'unaligned' prefix.</summary>" + Environment.NewLine
@@ -1166,7 +1166,7 @@ protected override void Disconnected()
 		opCode.WriteOpCodePrefix.Add("if (UnalignedPrefix > 0)" + Environment.NewLine + "\toutput.Write(\"unaligned(\" + UnalignedPrefix + \").\");");
 		opCode.PerformMatchConditions.Add("UnalignedPrefix == o.UnalignedPrefix");
 	};
-	
+
 	static Action<OpCode> SupportsReadonlyPrefix = opCode => {
 		opCode.Members.Add("/// <summary>Gets whether the 'readonly' prefix was applied to this instruction.</summary>" + Environment.NewLine
 						+ "public bool IsReadOnly { get; set; }");
@@ -1174,7 +1174,7 @@ protected override void Disconnected()
 		opCode.WriteOpCodePrefix.Add("if (IsReadOnly)" + Environment.NewLine + "\toutput.Write(\"readonly.\");");
 		opCode.PerformMatchConditions.Add("IsReadOnly == o.IsReadOnly");
 	};
-	
+
 	static Action<OpCode> CustomInvariant(string code)
 	{
 		return opCode => {

@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Collections;
 using System.Threading;
 using dnlib.DotNet.Emit;
+using dnSpy.Contracts.Decompiler;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
@@ -133,7 +134,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		IType ReadAndDecodeTypeReference()
 		{
-			var typeReference = (dnlib.DotNet.IType)ReadAndDecodeMetadataToken();
+			var typeReference = (dnlib.DotNet.ITypeDefOrRef)ReadAndDecodeMetadataToken();
 			return module.ResolveType(typeReference, genericContext);
 		}
 
@@ -443,46 +444,6 @@ namespace ICSharpCode.Decompiler.IL
 		}
 
 		/// <summary>
-		/// Debugging helper: writes the decoded instruction stream interleaved with the inferred evaluation stack layout.
-		/// </summary>
-		public void WriteTypedIL(dnlib.DotNet.MethodDef methodDef, ITextOutput output, GenericContext genericContext = default, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			Init(methodDef,genericContext);
-			ReadInstructions(cancellationToken);
-			foreach (var inst in instructionBuilder) {
-				if (inst is StLoc stloc && stloc.IsStackAdjustment) {
-					output.Write("          ");
-					inst.WriteTo(output, new ILAstWritingOptions());
-					output.WriteLine();
-					continue;
-				}
-				output.Write("   [");
-				bool isFirstElement = true;
-				foreach (var element in stackByOffset[inst.StartILOffset]) {
-					if (isFirstElement)
-						isFirstElement = false;
-					else
-						output.Write(", ");
-					output.WriteReference(element.Name, element, isLocal: true);
-					output.Write(":");
-					output.Write(element.StackType);
-				}
-				output.Write(']');
-				output.WriteLine();
-				if (isBranchTarget[inst.StartILOffset])
-					output.Write('*');
-				else
-					output.Write(' ');
-				output.WriteDefinition("IL_" + inst.StartILOffset.ToString("x4"), inst.StartILOffset);
-				output.Write(": ");
-				inst.WriteTo(output, new ILAstWritingOptions());
-				output.WriteLine();
-			}
-			new Disassembler.MethodBodyDisassembler(output, cancellationToken) { DetectControlStructure = false }
-				.WriteExceptionHandlers(body);
-		}
-
-		/// <summary>
 		/// Decodes the specified method body and returns an ILFunction.
 		/// </summary>
 		public ILFunction ReadIL(dnlib.DotNet.MethodDef methodDef, GenericContext genericContext = default, ILFunctionKind kind = ILFunctionKind.TopLevelFunction, CancellationToken cancellationToken = default(CancellationToken))
@@ -493,10 +454,10 @@ namespace ICSharpCode.Decompiler.IL
 			var blockBuilder = new BlockBuilder(body, variableByExceptionHandler);
 			blockBuilder.CreateBlocks(mainContainer, instructionBuilder, isBranchTarget, cancellationToken);
 			var function = new ILFunction(this.method, methodDef, this.genericContext, mainContainer, kind);
-			CollectionExtensions.AddRange(function.Variables, parameterVariables);
-			CollectionExtensions.AddRange(function.Variables, localVariables);
-			CollectionExtensions.AddRange(function.Variables, stackVariables);
-			CollectionExtensions.AddRange(function.Variables, variableByExceptionHandler.Values);
+			Util.CollectionExtensions.AddRange(function.Variables, parameterVariables);
+			Util.CollectionExtensions.AddRange(function.Variables, localVariables);
+			Util.CollectionExtensions.AddRange(function.Variables, stackVariables);
+			Util.CollectionExtensions.AddRange(function.Variables, variableByExceptionHandler.Values);
 			function.AddRef(); // mark the root node
 			var removedBlocks = new List<Block>();
 			foreach (var c in function.Descendants.OfType<BlockContainer>()) {
@@ -1707,7 +1668,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		ILInstruction LdToken(dnlib.DotNet.IMDTokenProvider token)
 		{
-			if (token is dnlib.DotNet.IType s) {
+			if (token is dnlib.DotNet.ITypeDefOrRef s) {
 				return new LdTypeToken(module.ResolveType(s, genericContext));
 			}
 			return new LdMemberToken((IMember)module.ResolveEntity(token, genericContext));

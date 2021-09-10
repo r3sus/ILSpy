@@ -40,11 +40,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		internal readonly Nullability NullableContext;
 
 		readonly MetadataNamespace rootNamespace;
-		readonly MetadataTypeDefinition[] typeDefs;
-		readonly MetadataField[] fieldDefs;
-		readonly MetadataMethod[] methodDefs;
-		readonly MetadataProperty[] propertyDefs;
-		readonly MetadataEvent[] eventDefs;
+
+		private readonly Dictionary<TypeDef, MetadataTypeDefinition> typeDefDict;
+		private readonly Dictionary<FieldDef, MetadataField> fieldDefDict;
+		private readonly Dictionary<MethodDef, MetadataMethod> methodDefDict;
+		private readonly Dictionary<PropertyDef, MetadataProperty> propertyDefDict;
+		private readonly Dictionary<EventDef, MetadataEvent> eventDefDict;
 
 		internal MetadataModule(ICompilation compilation, PEFile peFile, TypeSystemOptions options)
 		{
@@ -71,40 +72,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				NamespaceDefinition.GetRootNamespace(compilation.NameComparer, metadata.Types));
 
 			if (!options.HasFlag(TypeSystemOptions.Uncached)) {
-				// create arrays for resolved entities, indexed by row index
-				uint typeCount = 0;
-				uint fieldCount = 0;
-				uint methodCount = 0;
-				uint propertyCount = 0;
-				uint eventCount = 0;
-
-				if (metadata is ModuleDefMD md) {
-					typeCount = md.Metadata.TablesStream.TypeDefTable.Rows + 1;
-					fieldCount = md.Metadata.TablesStream.FieldTable.Rows + 1;
-					methodCount = md.Metadata.TablesStream.MethodTable.Rows + 1;
-					propertyCount = md.Metadata.TablesStream.PropertyTable.Rows + 1;
-					eventCount = md.Metadata.TablesStream.EventTable.Rows + 1;
-				} else {
-					foreach (TypeDef type in metadata.GetTypes()) {
-						typeCount++;
-						fieldCount += (uint)type.Fields.Count;
-						methodCount += (uint)type.Methods.Count;
-						propertyCount += (uint)type.Properties.Count;
-						eventCount += (uint)type.Events.Count;
-					}
-				}
-
-				this.typeDefs = new MetadataTypeDefinition[typeCount];
-				this.fieldDefs = new MetadataField[fieldCount];
-				this.methodDefs = new MetadataMethod[methodCount];
-				this.propertyDefs = new MetadataProperty[propertyCount];
-				this.eventDefs = new MetadataEvent[eventCount];
+				typeDefDict = new Dictionary<TypeDef, MetadataTypeDefinition>();
+				fieldDefDict = new Dictionary<FieldDef, MetadataField>();
+				methodDefDict = new Dictionary<MethodDef, MetadataMethod>();
+				propertyDefDict = new Dictionary<PropertyDef, MetadataProperty>();
+				eventDefDict = new Dictionary<EventDef, MetadataEvent>();
 			}
 		}
 
 		public TypeSystemOptions TypeSystemOptions => options;
 
 		#region IAssembly interface
+
 		public PEFile PEFile { get; }
 
 		public bool IsMainModule => this == Compilation.MainModule;
@@ -116,7 +95,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		public INamespace RootNamespace => rootNamespace;
 
-		public IEnumerable<ITypeDefinition> TopLevelTypeDefinitions => TypeDefinitions.Where(td => td.DeclaringTypeDefinition == null);
+		public IEnumerable<ITypeDefinition> TopLevelTypeDefinitions {
+			get {
+				foreach (var tdHandle in metadata.Types) {
+					yield return GetDefinition(tdHandle);
+				}
+			}
+		}
 
 		public ITypeDefinition GetTypeDefinition(TopLevelTypeName topLevelTypeName)
 		{
@@ -124,15 +109,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (typeDefHandle == null) {
 				var forwarderHandle = PEFile.GetTypeForwarder(topLevelTypeName);
 				if (forwarderHandle != null) {
-					var forwarder = forwarderHandle;
-					return ResolveForwardedType(forwarder).GetDefinition();
+					return ResolveForwardedType(forwarderHandle).GetDefinition();
 				}
 			}
+
 			return GetDefinition(typeDefHandle);
 		}
+
 		#endregion
 
 		#region InternalsVisibleTo
+
 		public bool InternalsVisibleTo(IModule module)
 		{
 			if (this == module)
@@ -141,6 +128,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (string.Equals(module.AssemblyName, shortName, StringComparison.OrdinalIgnoreCase))
 					return true;
 			}
+
 			return false;
 		}
 
@@ -152,6 +140,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (result != null) {
 				return result;
 			}
+
 			if (metadata.Assembly != null) {
 				var list = new List<string>();
 				foreach (var attr in metadata.Assembly.CustomAttributes) {
@@ -163,10 +152,12 @@ namespace ICSharpCode.Decompiler.TypeSystem
 						}
 					}
 				}
+
 				result = list.ToArray();
 			} else {
 				result = Empty<string>.Array;
 			}
+
 			return LazyInit.GetOrSet(ref this.internalsVisibleTo, result);
 		}
 
@@ -180,9 +171,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			else
 				return fullAssemblyName.Substring(0, pos);
 		}
+
 		#endregion
 
 		#region GetDefinition
+
 		/// <summary>
 		/// Gets all types in the assembly, including nested types.
 		/// </summary>
@@ -198,124 +191,109 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		{
 			if (handle == null)
 				return null;
-			if (typeDefs == null)
+			if (typeDefDict == null)
 				return new MetadataTypeDefinition(this, handle);
-			uint row = handle.Rid;
-			if (row >= typeDefs.Length)
-				HandleOutOfRange(handle);
-			var typeDef = LazyInit.VolatileRead(ref typeDefs[row]);
-			if (typeDef != null)
-				return typeDef;
-			typeDef = new MetadataTypeDefinition(this, handle);
-			return LazyInit.GetOrSet(ref typeDefs[row], typeDef);
+			lock (typeDefDict) {
+				if (typeDefDict.TryGetValue(handle, out var tsType))
+					return tsType;
+				tsType = new MetadataTypeDefinition(this, handle);
+				return typeDefDict[handle] = tsType;
+			}
 		}
 
 		public IField GetDefinition(FieldDef handle)
 		{
 			if (handle == null)
 				return null;
-			if (fieldDefs == null)
+			if (fieldDefDict == null)
 				return new MetadataField(this, handle);
-			uint row = handle.Rid;
-			if (row >= fieldDefs.Length)
-				HandleOutOfRange(handle);
-			var field = LazyInit.VolatileRead(ref fieldDefs[row]);
-			if (field != null)
-				return field;
-			field = new MetadataField(this, handle);
-			return LazyInit.GetOrSet(ref fieldDefs[row], field);
+			lock (fieldDefDict) {
+				if (fieldDefDict.TryGetValue(handle, out var tsField))
+					return tsField;
+				tsField = new MetadataField(this, handle);
+				return fieldDefDict[handle] = tsField;
+			}
 		}
 
 		public IMethod GetDefinition(MethodDef handle)
 		{
 			if (handle == null)
 				return null;
-			if (methodDefs == null)
+			if (methodDefDict == null)
 				return new MetadataMethod(this, handle);
-			uint row = handle.Rid;
-			Debug.Assert(row != 0);
-			if (row >= methodDefs.Length)
-				HandleOutOfRange(handle);
-			var method = LazyInit.VolatileRead(ref methodDefs[row]);
-			if (method != null)
-				return method;
-			method = new MetadataMethod(this, handle);
-			return LazyInit.GetOrSet(ref methodDefs[row], method);
+			lock (methodDefDict) {
+				if (methodDefDict.TryGetValue(handle, out var tsMethod))
+					return tsMethod;
+				tsMethod = new MetadataMethod(this, handle);
+				return methodDefDict[handle] = tsMethod;
+			}
 		}
 
 		public IProperty GetDefinition(PropertyDef handle)
 		{
 			if (handle == null)
 				return null;
-			if (propertyDefs == null)
+			if (propertyDefDict == null)
 				return new MetadataProperty(this, handle);
-			uint row = handle.Rid;
-			Debug.Assert(row != 0);
-			if (row >= methodDefs.Length)
-				HandleOutOfRange(handle);
-			var property = LazyInit.VolatileRead(ref propertyDefs[row]);
-			if (property != null)
-				return property;
-			property = new MetadataProperty(this, handle);
-			return LazyInit.GetOrSet(ref propertyDefs[row], property);
+			lock (propertyDefDict) {
+				if (propertyDefDict.TryGetValue(handle, out var tsProperty))
+					return tsProperty;
+				tsProperty = new MetadataProperty(this, handle);
+				return propertyDefDict[handle] = tsProperty;
+			}
 		}
 
 		public IEvent GetDefinition(EventDef handle)
 		{
 			if (handle == null)
 				return null;
-			if (eventDefs == null)
+			if (eventDefDict == null)
 				return new MetadataEvent(this, handle);
-			uint row = handle.Rid;
-			Debug.Assert(row != 0);
-			if (row >= methodDefs.Length)
-				HandleOutOfRange(handle);
-			var ev = LazyInit.VolatileRead(ref eventDefs[row]);
-			if (ev != null)
-				return ev;
-			ev = new MetadataEvent(this, handle);
-			return LazyInit.GetOrSet(ref eventDefs[row], ev);
+			lock (eventDefDict) {
+				if (eventDefDict.TryGetValue(handle, out var tsEvent))
+					return tsEvent;
+				tsEvent = new MetadataEvent(this, handle);
+				return eventDefDict[handle] = tsEvent;
+			}
 		}
 
-		void HandleOutOfRange(IDnlibDef handle)
-		{
-			throw new BadImageFormatException("Handle with invalid row number.");
-		}
 		#endregion
 
 		#region Resolve Type
-		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
+
+		public IType ResolveType(ITypeDefOrRef typeRefDefSpec, GenericContext context,
+			IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
 		{
 			return ResolveType(typeRefDefSpec, context, options, typeAttributes, nullableContext);
 		}
 
-		public IType ResolveType(dnlib.DotNet.IType typeRefDefSpec, GenericContext context, TypeSystemOptions customOptions, IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
+		public IType ResolveType(TypeSig typeRefDefSpec, GenericContext context,
+			IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
 		{
-			if (typeRefDefSpec == null)
+			return ResolveType(typeRefDefSpec, context, options, typeAttributes, nullableContext);
+		}
+
+		public IType ResolveType(ITypeDefOrRef typeDefOrRef, GenericContext context, TypeSystemOptions customOptions,
+			IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
+		{
+			if (typeDefOrRef == null)
 				return SpecialType.UnknownType;
-			IType ty;
-			switch (typeRefDefSpec.MDToken.Table) {
-				case Table.TypeDef:
-					ty =((TypeDef)typeRefDefSpec).DecodeSignature(this, new GenericContext());
-					break;
-				case Table.TypeRef:
-					ty = ((TypeRef)typeRefDefSpec).DecodeSignature(this, new GenericContext());
-					break;
-				case Table.TypeSpec:
-					if (typeRefDefSpec is TypeSpec) {
-						var typeSpec = ((TypeSpec)typeRefDefSpec);
-						ty = typeSpec.DecodeSignature(this, context);
-					} else {
-						var typeSpec = ((TypeSig)typeRefDefSpec);
-						ty = typeSpec.DecodeSignature(this, context);
-					}
-					break;
-				case Table.ExportedType:
-					return ResolveForwardedType(((ExportedType)typeRefDefSpec));
-				default:
-					throw new BadImageFormatException("Not a type handle");
-			}
-			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, typeAttributes, metadata, customOptions, nullableContext);
+
+			IType ty = typeDefOrRef.DecodeSignature(this, context);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, typeAttributes, customOptions,
+				nullableContext);
+			return ty;
+		}
+
+		public IType ResolveType(TypeSig typeSpec, GenericContext context, TypeSystemOptions customOptions,
+			IHasCustomAttribute typeAttributes = null, Nullability nullableContext = Nullability.Oblivious)
+		{
+			if (typeSpec == null)
+				return SpecialType.UnknownType;
+
+			IType ty = typeSpec.DecodeSignature(this, context);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, typeAttributes, customOptions,
+				nullableContext);
 			return ty;
 		}
 
@@ -325,18 +303,22 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var ty = ResolveType(declaringTypeReference, context,
 				options & ~(TypeSystemOptions.Dynamic | TypeSystemOptions.Tuple | TypeSystemOptions.NullabilityAnnotations));
 			// but substitute tuple types in type arguments:
-			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, Nullability.Oblivious, typeChildrenOnly: true);
+			ty = ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, options, Nullability.Oblivious,
+				typeChildrenOnly: true);
 			return ty;
 		}
 
 		public IType IntroduceTupleTypes(IType ty)
 		{
 			// run ApplyAttributeTypeVisitor without attributes, in order to introduce tuple types
-			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, metadata, options, Nullability.Oblivious);
+			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, options,
+				Nullability.Oblivious);
 		}
+
 		#endregion
 
 		#region Resolve Method
+
 		public IMethod ResolveMethod(dnlib.DotNet.IMethod methodReference, GenericContext context)
 		{
 			if (methodReference == null)
@@ -356,24 +338,27 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		IMethod ResolveMethodDefinition(MethodDef methodDefHandle, bool expandVarArgs)
 		{
 			var method = GetDefinition(methodDefHandle);
-			if (expandVarArgs && method.Parameters.LastOrDefault()?.Type.Kind == TypeKind.ArgList) {
+			if (expandVarArgs && methodDefHandle.CallingConvention == CallingConvention.VarArg) {
 				method = new VarArgInstanceMethod(method, EmptyList<IType>.Instance);
 			}
+
 			return method;
 		}
 
 		IMethod ResolveMethodSpecification(MethodSpec methodSpec, GenericContext context, bool expandVarArgs)
 		{
-			var methodTypeArgs = methodSpec.DecodeSignature(this, context)
-										   .SelectReadOnlyArray(IntroduceTupleTypes);
+			var methodTypeArgs = methodSpec.GenericInstMethodSig.GenericArguments
+										   .Select(sig => sig.DecodeSignature(this, context))
+										   .Select(IntroduceTupleTypes).ToArray();
 			IMethod method;
-			if (methodSpec.Method.MDToken.Table == Table.Method) {
+			if (methodSpec.Method is MethodDef methodDef) {
 				// generic instance of a methoddef (=generic method in non-generic class in current assembly)
-				method = ResolveMethodDefinition((MethodDef)methodSpec.Method, expandVarArgs);
-				method = method.Specialize(new TypeParameterSubstitution(null, methodTypeArgs));
+				method = ResolveMethodDefinition(methodDef, expandVarArgs)
+					.Specialize(new TypeParameterSubstitution(null, methodTypeArgs));
 			} else {
 				method = ResolveMethodReference((MemberRef)methodSpec.Method, context, methodTypeArgs, expandVarArgs);
 			}
+
 			return method;
 		}
 
@@ -384,7 +369,8 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// Class type arguments are provided by the declaring type stored in the memberRef.
 		/// Method type arguments are provided by the caller.
 		/// </remarks>
-		IMethod ResolveMethodReference(MemberRef memberRef, GenericContext context, IReadOnlyList<IType> methodTypeArguments = null, bool expandVarArgs = true)
+		IMethod ResolveMethodReference(MemberRef memberRef, GenericContext context,
+			IReadOnlyList<IType> methodTypeArguments = null, bool expandVarArgs = true)
 		{
 			Debug.Assert(memberRef.IsMethodRef);
 			IReadOnlyList<IType> classTypeArguments = null;
@@ -399,6 +385,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (declaringType.TypeArguments.Count > 0) {
 					classTypeArguments = declaringType.TypeArguments;
 				}
+
 				// Note: declaringType might be parameterized, but the signature is for the original method definition.
 				// We'll have to search the member directly on declaringTypeDefinition.
 				string name = memberRef.Name;
@@ -413,18 +400,21 @@ namespace ICSharpCode.Decompiler.TypeSystem
 						methods = declaringTypeDefinition.Methods.Where(m => m.IsConstructor && m.IsStatic);
 					} else {
 						methods = declaringTypeDefinition.GetMethods(m => m.Name == name, GetMemberOptions.IgnoreInheritedMembers)
-							.Concat(declaringTypeDefinition.GetAccessors(m => m.Name == name, GetMemberOptions.IgnoreInheritedMembers));
+														 .Concat(declaringTypeDefinition.GetAccessors(m => m.Name == name,
+															 GetMemberOptions.IgnoreInheritedMembers));
 					}
+
 					// Determine the expected parameters from the signature:
 					ImmutableArray<IType> parameterTypes;
 					if (memberRef.CallingConvention == CallingConvention.VarArg) {
 						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
-							.Concat(new[] { SpecialType.ArgList })
-							.ToImmutableArray();
+												  .Concat(new[] { SpecialType.ArgList })
+												  .ToImmutableArray();
 					} else {
 						parameterTypes = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 												  .ToImmutableArray();
 					}
+
 					// Search for the matching method:
 					method = null;
 					foreach (var m in methods) {
@@ -438,6 +428,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				} else {
 					method = null;
 				}
+
 				if (method == null) {
 					var param = memberRef.MethodSig.Params.Select(x => x.DecodeSignature(this, vaRAgCtx))
 										 .ToList();
@@ -445,13 +436,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 						((dnlib.DotNet.IMethod)memberRef).NumberOfGenericParameters, param);
 				}
 			}
+
 			if (classTypeArguments != null || methodTypeArguments != null) {
 				method = method.Specialize(new TypeParameterSubstitution(classTypeArguments, methodTypeArguments));
 			}
+
 			if (expandVarArgs && memberRef.CallingConvention == CallingConvention.VarArg) {
-				method = new VarArgInstanceMethod(method, memberRef.MethodSig.ParamsAfterSentinel is null ? new List<IType>() :
-					memberRef.MethodSig.ParamsAfterSentinel.Select(x => x.DecodeSignature(this, vaRAgCtx)));
+				method = new VarArgInstanceMethod(method,
+					memberRef.MethodSig.ParamsAfterSentinel is null
+						? new List<IType>()
+						: memberRef.MethodSig.ParamsAfterSentinel.Select(x => x.DecodeSignature(this, vaRAgCtx)));
 			}
+
 			return method;
 		}
 
@@ -475,13 +471,15 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (!CompareTypes(parameterTypes[i], parameters[i].Type))
 					return false;
 			}
+
 			return true;
 		}
 
 		/// <summary>
 		/// Create a dummy IMethod from the specified MethodReference
 		/// </summary>
-		IMethod CreateFakeMethod(IType declaringType, string name, bool isStatic, IType retType, int numOfGeneric, List<IType> param)
+		IMethod CreateFakeMethod(IType declaringType, string name, bool isStatic, IType retType, int numOfGeneric,
+			List<IType> param)
 		{
 			SymbolKind symbolKind = SymbolKind.Method;
 			if (name == ".ctor" || name == ".cctor")
@@ -498,11 +496,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				for (int i = 0; i < numOfGeneric; i++) {
 					typeParameters.Add(new DefaultTypeParameter(m, i));
 				}
+
 				m.TypeParameters = typeParameters;
 				substitution = new TypeParameterSubstitution(declaringType.TypeArguments, typeParameters);
 			} else if (declaringType.TypeArguments.Count > 0) {
 				substitution = declaringType.GetSubstitution();
 			}
+
 			var parameters = new List<IParameter>();
 			for (int i = 0; i < param.Count; i++) {
 				var type = param[i];
@@ -510,14 +510,18 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					// replace the dummy method type parameters with the owned instances we just created
 					type = type.AcceptVisitor(substitution);
 				}
+
 				parameters.Add(new DefaultParameter(type, ""));
 			}
+
 			m.Parameters = parameters;
 			return m;
 		}
+
 		#endregion
 
 		#region Resolve Entity
+
 		/// <summary>
 		/// Resolves a symbol.
 		/// </summary>
@@ -532,36 +536,29 @@ namespace ICSharpCode.Decompiler.TypeSystem
 		/// </remarks>
 		public IEntity ResolveEntity(IMDTokenProvider entityHandle, GenericContext context = default)
 		{
-			switch (entityHandle.MDToken.Table) {
-				case Table.TypeRef:
-				case Table.TypeDef:
-				case Table.TypeSpec:
-				case Table.ExportedType:
-					return ResolveType((dnlib.DotNet.IType)entityHandle, context).GetDefinition();
-				case Table.MemberRef:
-					var memberReferenceHandle = (MemberRef)entityHandle;
-					if (memberReferenceHandle.IsMethodRef) {
-						// for consistency with the MethodDefinition case, never expand varargs
-						return ResolveMethodReference(memberReferenceHandle, context, expandVarArgs: false);
-					}
-					else if (memberReferenceHandle.IsFieldRef) {
-						return ResolveFieldReference(memberReferenceHandle, context);
-					} else {
-						throw new BadImageFormatException("Unknown MemberReferenceKind");
-					}
-				case Table.Method:
-					return GetDefinition((MethodDef)entityHandle);
-				case Table.MethodSpec:
-					return ResolveMethodSpecification((MethodSpec)entityHandle, context, expandVarArgs: false);
-				case Table.Field:
-					return GetDefinition((FieldDef)entityHandle);
-				case Table.Event:
-					return GetDefinition((EventDef)entityHandle);
-				case Table.Property:
-					return GetDefinition((PropertyDef)entityHandle);
-				default:
-					return null;
+			if (entityHandle is TypeDef typeDef)
+				return GetDefinition(typeDef);
+			if (entityHandle is MethodDef methodDef)
+				return GetDefinition(methodDef);
+			if (entityHandle is FieldDef fieldDef)
+				return GetDefinition(fieldDef);
+			if (entityHandle is EventDef eventDef)
+				return GetDefinition(eventDef);
+			if (entityHandle is PropertyDef propertyDef)
+				return GetDefinition(propertyDef);
+			if (entityHandle is ITypeDefOrRef typeDefOrRef)
+				return ResolveType(typeDefOrRef, context).GetDefinition();
+			if (entityHandle is MemberRef memberRef) {
+				if (memberRef.IsMethodRef) {
+					// for consistency with the MethodDefinition case, never expand varargs
+					return ResolveMethodReference(memberRef, context, expandVarArgs: false);
+				}
+				if (memberRef.IsFieldRef)
+					return ResolveFieldReference(memberRef, context);
 			}
+			if (entityHandle is MethodSpec methodSpec)
+				return ResolveMethodSpecification(methodSpec, context, expandVarArgs: false);
+			return null;
 		}
 
 		IField ResolveFieldReference(MemberRef memberRef, GenericContext context)
@@ -580,17 +577,21 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				if (declaringType.TypeArguments.Count > 0) {
 					signature = signature.AcceptVisitor(declaringType.GetSubstitution());
 				}
+
 				field = new FakeField(Compilation) {
 					ReturnType = signature,
 					Name = name,
 					DeclaringType = declaringType,
 				};
 			}
+
 			return field;
 		}
+
 		#endregion
 
 		#region Decode Standalone Signature
+
 		public FunctionPointerType DecodeMethodSignature(MethodSig standaloneSignature, GenericContext genericContext)
 		{
 			if (standaloneSignature is null)
@@ -600,9 +601,11 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			var fpt = FunctionPointerType.FromSignature(retType, paramTypes, standaloneSignature.CallingConvention, this);
 			return (FunctionPointerType)IntroduceTupleTypes(fpt);
 		}
+
 		#endregion
 
 		#region Module / Assembly attributes
+
 		/// <summary>
 		/// Gets the list of all assembly attributes in the project.
 		/// </summary>
@@ -621,6 +624,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 				AddTypeForwarderAttributes(ref b);
 			}
+
 			return b.Build();
 		}
 
@@ -634,6 +638,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (metadata.Assembly == null) {
 				AddTypeForwarderAttributes(ref b);
 			}
+
 			return b.Build();
 		}
 
@@ -648,39 +653,17 @@ namespace ICSharpCode.Decompiler.TypeSystem
 
 		IType ResolveForwardedType(ExportedType forwarder)
 		{
-			IModule module = ResolveModule(forwarder);
-			var typeName = forwarder.GetFullTypeName();
-			if (module == null)
-				return new UnknownType(typeName);
-			using (var busyLock = BusyManager.Enter(this)) {
-				if (busyLock.Success) {
-					var td = module.GetTypeDefinition(typeName);
-					if (td != null) {
-						return td;
-					}
-				}
+			var resolved = forwarder.Resolve();
+			if (resolved != null && Compilation.GetOrAddModule(resolved.Module) is MetadataModule mod) {
+				return mod.GetDefinition(resolved);
 			}
-			return new UnknownType(typeName);
-
-			IModule ResolveModule(ExportedType type)
-			{
-				switch (type.Scope) {
-					case IAssembly asmRef:
-						string shortName = asmRef.Name;
-						foreach (var asm in Compilation.Modules) {
-							if (string.Equals(asm.AssemblyName, shortName, StringComparison.OrdinalIgnoreCase)) {
-								return asm;
-							}
-						}
-						return null;
-					default:
-						throw new BadImageFormatException("Expected implementation to be either an AssemblyFile, ExportedType or AssemblyReference.");
-				}
-			}
+			return new UnknownType(forwarder.GetFullTypeName());
 		}
+
 		#endregion
 
 		#region Attribute Helpers
+
 		/// <summary>
 		/// Cache for parameterless known attribute types.
 		/// </summary>
@@ -713,31 +696,35 @@ namespace ICSharpCode.Decompiler.TypeSystem
 				ImmutableArray.Create<CustomAttributeNamedArgument<IType>>());
 			return LazyInit.GetOrSet(ref knownAttributes[(int)type], attr);
 		}
+
 		#endregion
 
 		#region Visibility Filter
+
 		internal bool IncludeInternalMembers => (options & TypeSystemOptions.OnlyPublicAPI) == 0;
 
 		internal bool IsVisible(FieldAttributes att)
 		{
 			att &= FieldAttributes.FieldAccessMask;
 			return IncludeInternalMembers
-				|| att == FieldAttributes.Public
-				|| att == FieldAttributes.Family
-				|| att == FieldAttributes.FamORAssem;
+				   || att == FieldAttributes.Public
+				   || att == FieldAttributes.Family
+				   || att == FieldAttributes.FamORAssem;
 		}
 
 		internal bool IsVisible(MethodAttributes att)
 		{
 			att &= MethodAttributes.MemberAccessMask;
 			return IncludeInternalMembers
-				|| att == MethodAttributes.Public
-				|| att == MethodAttributes.Family
-				|| att == MethodAttributes.FamORAssem;
+				   || att == MethodAttributes.Public
+				   || att == MethodAttributes.Family
+				   || att == MethodAttributes.FamORAssem;
 		}
+
 		#endregion
 
 		#region Nullability Reference Type Support
+
 		readonly Accessibility minAccessibilityForNRT;
 
 		static Accessibility FindMinimumAccessibilityForNRT(CustomAttributeCollection customAttributes)
@@ -745,11 +732,13 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			// Determine the minimum effective accessibility an entity must have, so that the metadata stores the nullability for its type.
 			foreach (var customAttribute in customAttributes) {
 				if (customAttribute.IsKnownAttribute(KnownAttribute.NullablePublicOnly)) {
-					if (customAttribute.ConstructorArguments.Count == 1 && customAttribute.ConstructorArguments[0].Value is bool includesInternals) {
+					if (customAttribute.ConstructorArguments.Count == 1 &&
+						customAttribute.ConstructorArguments[0].Value is bool includesInternals) {
 						return includesInternals ? Accessibility.ProtectedAndInternal : Accessibility.Protected;
 					}
 				}
 			}
+
 			return Accessibility.None;
 		}
 
@@ -770,8 +759,10 @@ namespace ICSharpCode.Decompiler.TypeSystem
 					opt &= ~TypeSystemOptions.NullabilityAnnotations;
 				}
 			}
+
 			return opt;
 		}
+
 		#endregion
 	}
 }

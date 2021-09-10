@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Resolver;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.CSharp.TypeSystem;
@@ -52,9 +54,11 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					// we go backwards (OrderByDescending) through the list of namespaces because we insert them backwards
 					// (always inserting at the start of the list)
 					string[] parts = ns.Split('.');
-					AstType nsType = new SimpleType(parts[0]);
+					SimpleType simpleType;
+					AstType nsType = simpleType = new SimpleType(parts[0]).WithAnnotation(BoxedTextColor.Namespace);
+					simpleType.IdentifierToken.WithAnnotation(BoxedTextColor.Namespace);
 					for (int i = 1; i < parts.Length; i++) {
-						nsType = new MemberType { Target = nsType, MemberName = parts[i] };
+						nsType = new MemberType { Target = nsType, MemberNameToken = Identifier.Create(parts[i]).WithAnnotation(BoxedTextColor.Namespace) }.WithAnnotation(BoxedTextColor.Namespace);
 					}
 					if (nsType.ToTypeReference(NameLookupMode.TypeInUsingDeclaration) is TypeOrNamespaceReference reference)
 						usingScope.Usings.Add(reference);
