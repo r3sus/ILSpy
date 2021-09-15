@@ -19,6 +19,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -72,27 +74,27 @@ namespace ICSharpCode.Decompiler.IL
 			Debug.Assert(Arguments.Count == FunctionPointerType.ParameterTypes.Length + (IsInstance ? 1 : 0));
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.Write("call.indirect ");
+			output.Write("call.indirect ", BoxedTextColor.Text);
 			FunctionPointerType.ReturnType.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			functionPointer.WriteTo(output, options);
 			int firstArgument = IsInstance ? 1 : 0;
 			if (firstArgument == 1) {
-				output.Write(", ");
+				output.Write(", ", BoxedTextColor.Text);
 				Arguments[0].WriteTo(output, options);
 			}
 			foreach (var (inst, type) in Arguments.Zip(FunctionPointerType.ParameterTypes, (a, b) => (a, b)))
 			{
-				output.Write(", ");
+				output.Write(", ", BoxedTextColor.Text);
 				inst.WriteTo(output, options);
-				output.Write(" : ");
+				output.Write(" : ", BoxedTextColor.Text);
 				type.WriteTo(output);
 			}
 			if (Arguments.Count > 0)
-				output.Write(')');
+				output.Write(")", BoxedTextColor.Text);
 		}
 
 		protected override int GetChildCount()

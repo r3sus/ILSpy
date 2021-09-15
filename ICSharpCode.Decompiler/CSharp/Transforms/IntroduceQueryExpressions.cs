@@ -19,6 +19,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 
 namespace ICSharpCode.Decompiler.CSharp.Transforms
@@ -141,7 +142,11 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 							if (MatchSimpleLambda(lambda, out ParameterDeclaration parameter, out Expression keySelector)) {
 								QueryExpression query = new QueryExpression();
 								query.Clauses.Add(MakeFromClause(parameter, mre.Target.Detach()));
-								query.Clauses.Add(new QueryGroupClause { Projection = new IdentifierExpression(parameter.Name).CopyAnnotationsFrom(parameter), Key = keySelector.Detach() });
+								query.Clauses.Add(new QueryGroupClause {
+									Projection = new IdentifierExpression(parameter.Name).WithAnnotation(BoxedTextColor.Parameter)
+										.CopyAnnotationsFrom(parameter),
+									Key = keySelector.Detach()
+								});
 								return query;
 							}
 						}
@@ -251,14 +256,14 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 								QueryExpression query = new QueryExpression();
 								query.Clauses.Add(MakeFromClause(element1, source1.Detach()));
 								QueryJoinClause joinClause = new QueryJoinClause();
-								joinClause.JoinIdentifier = element2.Name;    // join elementName2
+								joinClause.JoinIdentifierToken = Identifier.Create(element2.Name).WithAnnotation(BoxedTextColor.Parameter);    // join elementName2
 								joinClause.JoinIdentifierToken.CopyAnnotationsFrom(element2);
 								joinClause.InExpression = source2.Detach();  // in source2
 								joinClause.OnExpression = key1.Detach();     // on key1
 								joinClause.EqualsExpression = key2.Detach(); // equals key2
 								if (mre.MemberName == "GroupJoin")
 								{
-									joinClause.IntoIdentifier = p2.Name; // into p2.Name
+									joinClause.IntoIdentifierToken = Identifier.Create(p2.Name).WithAnnotation(BoxedTextColor.Parameter); // into p2.Name
 									joinClause.IntoIdentifierToken.CopyAnnotationsFrom(p2);
 								}
 								joinClause.AddAnnotation(new QueryJoinClauseAnnotation(outerLambda.Annotation<IL.ILFunction>(), innerLambda.Annotation<IL.ILFunction>()));
@@ -282,7 +287,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 		QueryFromClause MakeFromClause(ParameterDeclaration parameter, Expression body)
 		{
 			QueryFromClause fromClause = new QueryFromClause {
-				Identifier = parameter.Name,
+				IdentifierToken = Identifier.Create(parameter.Name).WithAnnotation(BoxedTextColor.Parameter),
 				Expression = body
 			};
 			fromClause.CopyAnnotationsFrom(parameter);

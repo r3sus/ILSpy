@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,8 @@
 
 using System;
 using System.Diagnostics;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -36,14 +38,14 @@ namespace ICSharpCode.Decompiler.IL
 		ShiftLeft,
 		ShiftRight
 	}
-	
+
 	public partial class BinaryNumericInstruction : BinaryInstruction, ILiftableInstruction
 	{
 		/// <summary>
 		/// Gets whether the instruction checks for overflow.
 		/// </summary>
 		public readonly bool CheckForOverflow;
-		
+
 		/// <summary>
 		/// For integer operations that depend on the sign, specifies whether the operation
 		/// is signed or unsigned.
@@ -92,7 +94,7 @@ namespace ICSharpCode.Decompiler.IL
 			this.IsLifted = isLifted;
 			this.resultType = ComputeResultType(op, LeftInputType, RightInputType);
 		}
-		
+
 		internal static StackType ComputeResultType(BinaryNumericOperator op, StackType left, StackType right)
 		{
 			// Based on Table 2: Binary Numeric Operations
@@ -115,7 +117,7 @@ namespace ICSharpCode.Decompiler.IL
 			}
 			return StackType.Unknown;
 		}
-		
+
 		public StackType UnderlyingResultType { get => resultType; }
 
 		public sealed override StackType ResultType {
@@ -138,7 +140,7 @@ namespace ICSharpCode.Decompiler.IL
 				flags |= InstructionFlags.MayThrow;
 			return flags;
 		}
-		
+
 		public override InstructionFlags DirectFlags {
 			get {
 				if (CheckForOverflow || (Operator == BinaryNumericOperator.Div || Operator == BinaryNumericOperator.Rem))
@@ -175,31 +177,29 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write("." + GetOperatorName(Operator));
+			output.Write("." + GetOperatorName(Operator), BoxedTextColor.Text);
 			if (CheckForOverflow) {
-				output.Write(".ovf");
+				output.Write(".ovf", BoxedTextColor.Text);
 			}
 			if (Sign == Sign.Unsigned) {
-				output.Write(".unsigned");
+				output.Write(".unsigned", BoxedTextColor.Text);
 			} else if (Sign == Sign.Signed) {
-				output.Write(".signed");
+				output.Write(".signed", BoxedTextColor.Text);
 			}
-			output.Write('.');
-			output.Write(resultType.ToString().ToLowerInvariant());
+			output.Write(".", BoxedTextColor.Text);
+			output.Write(resultType.ToString().ToLowerInvariant(), BoxedTextColor.Text);
 			if (IsLifted) {
-				output.Write(".lifted");
+				output.Write(".lifted", BoxedTextColor.Text);
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Left.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			Right.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 	}
 }
-
-

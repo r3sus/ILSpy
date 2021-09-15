@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 
@@ -204,36 +206,34 @@ namespace ICSharpCode.Decompiler.IL
 			get { return CecilExtensions.OffsetToString(this.StartILOffset); }
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.Write("Block ");
-			output.WriteDefinition(Label, this);
+			output.Write("Block ", BoxedTextColor.Text);
+			output.Write(Label, this, DecompilerReferenceFlags.Definition, BoxedTextColor.Text);
 			if (Kind != BlockKind.ControlFlow)
-				output.Write($" ({Kind})");
+				output.Write($" ({Kind})", BoxedTextColor.Text);
 			if (Parent is BlockContainer)
-				output.Write(" (incoming: {0})", IncomingEdgeCount);
-			output.Write(' ');
-			output.MarkFoldStart("{...}");
-			output.WriteLine("{");
-			output.Indent();
+				output.Write($" (incoming: {IncomingEdgeCount})", BoxedTextColor.Text);
+			output.Write(" ", BoxedTextColor.Text);
+			output.WriteLine("{", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			int index = 0;
 			foreach (var inst in Instructions) {
 				if (options.ShowChildIndexInBlock) {
-					output.Write("[" + index + "] ");
+					output.Write("[" + index + "] ", BoxedTextColor.Text);
 					index++;
 				}
 				inst.WriteTo(output, options);
 				output.WriteLine();
 			}
 			if (finalInstruction.OpCode != OpCode.Nop) {
-				output.Write("final: ");
+				output.Write("final: ", BoxedTextColor.Text);
 				finalInstruction.WriteTo(output, options);
 				output.WriteLine();
 			}
-			output.Unindent();
-			output.Write("}");
-			output.MarkFoldEnd();
+			output.DecreaseIndent();
+			output.Write("}", BoxedTextColor.Text);
 		}
 
 		protected override int GetChildCount()

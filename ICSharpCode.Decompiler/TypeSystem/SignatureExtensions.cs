@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Immutable;
 using System.Linq;
 using dnlib.DotNet;
-using dnSpy.Contracts.Decompiler;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
 using ICSharpCode.Decompiler.Util;
 
@@ -74,13 +72,15 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			}
 
 			if (typeDefOrRef is TypeDef def) {
-				var resolved = module.GetDefinition(def);
-				return resolved;
-			} else if (typeDefOrRef is TypeRef typeRef) {
-				var resolved = typeRef.ResolveTypeDef();
+				return module.GetDefinition(def);
+			}
+			if (typeDefOrRef is TypeRef typeRef) {
+				Console.WriteLine("Resolving TypeRef: {0}", typeRef);
+				var resolved = typeRef.Resolve();
 				if (resolved != null && module.Compilation.GetOrAddModule(resolved.Module) is MetadataModule mod) {
 					return mod.GetDefinition(resolved);
 				}
+				Console.WriteLine("Failed");
 
 				bool? isReferenceType;
 				if (isVT != ThreeState.Unknown)

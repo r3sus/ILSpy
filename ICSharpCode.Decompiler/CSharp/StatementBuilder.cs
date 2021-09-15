@@ -517,7 +517,7 @@ namespace ICSharpCode.Decompiler.CSharp
 				}.WithILInstruction(inst);
 			} else {
 				if (var.LoadCount > 0 || var.AddressCount > 0) {
-					var type = settings.AnonymousTypes && var.Type.ContainsAnonymousType() ? new SimpleType("var") : exprBuilder.ConvertType(var.Type);
+					var type = settings.AnonymousTypes && var.Type.ContainsAnonymousType() ? new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword) : exprBuilder.ConvertType(var.Type);
 					var vds = new VariableDeclarationStatement(GetParameterColor(var), type, var.Name, resource);
 					vds.Variables.Single().AddAnnotation(new ILVariableResolveResult(var, var.Type));
 					usingInit = vds;
@@ -704,7 +704,7 @@ namespace ICSharpCode.Decompiler.CSharp
 			// Construct the foreach loop.
 			var foreachStmt = new ForeachStatement {
 				IsAsync = isAsync,
-				VariableType = useVar ? new SimpleType("var") : exprBuilder.ConvertType(foreachVariable.Type),
+				VariableType = useVar ? new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword) : exprBuilder.ConvertType(foreachVariable.Type),
 				VariableDesignation = designation,
 				InExpression = collectionExpr.Detach(),
 				EmbeddedStatement = foreachBody

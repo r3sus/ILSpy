@@ -672,7 +672,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				foreach (var namedArg in attribute.NamedArguments) {
 					NamedExpression namedArgument = new NamedExpression(namedArg.Name, ConvertConstantValue(namedArg.Type, namedArg.Value));
 					if (AddResolveResultAnnotations) {
-						IMember member = MetadtaCustomAttribute.MemberForNamedArgument(attribute.AttributeType, namedArg);
+						IMember member = MetadataCustomAttribute.MemberForNamedArgument(attribute.AttributeType, namedArg);
 						if (member != null) {
 							namedArgument.AddAnnotation(new MemberResolveResult(targetResult, member));
 						}
@@ -1205,10 +1205,9 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				else {
 					mathType = compilation.FindType(new TopLevelTypeName("System", "MathF"));
 					var typeDef = mathType.GetDefinition();
-					if (typeDef == null
-						|| !typeDef.IsDirectImportOf(compilation.MainModule)
-						|| !typeDef.GetFields(f => f.Name == "PI" && f.IsConst).Any() || !typeDef.GetFields(f => f.Name == "E" && f.IsConst).Any())
-					{
+					if (typeDef != null && typeDef.IsDirectImportOf(compilation.MainModule) &&
+						typeDef.GetFields(f => f.Name == "PI" && f.IsConst).Any() &&
+						typeDef.GetFields(f => f.Name == "E" && f.IsConst).Any()) { } else {
 						mathType = compilation.FindType(new TopLevelTypeName("System", "Math"));
 					}
 				}

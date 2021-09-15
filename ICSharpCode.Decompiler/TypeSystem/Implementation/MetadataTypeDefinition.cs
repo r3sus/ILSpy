@@ -87,7 +87,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				}
 			}
 			// Find type kind:
-			if ((attributes & TypeAttributes.ClassSemanticsMask) == TypeAttributes.Interface) {
+			if (handle.IsInterface) {
 				this.Kind = TypeKind.Interface;
 			} else if (handle.IsEnum) {
 				this.Kind = TypeKind.Enum;
@@ -296,22 +296,20 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			var b = new AttributeListBuilder(module);
 
 			// SerializableAttribute
-			if ((handle.Attributes & TypeAttributes.Serializable) != 0)
+			if (handle.IsSerializable)
 				b.Add(KnownAttribute.Serializable);
 
 			// ComImportAttribute
-			if ((handle.Attributes & TypeAttributes.Import) != 0)
+			if (handle.IsImport)
 				b.Add(KnownAttribute.ComImport);
 
 			// SpecialName
 			if ((handle.Attributes & (TypeAttributes.SpecialName | TypeAttributes.RTSpecialName)) == TypeAttributes.SpecialName)
-			{
 				b.Add(KnownAttribute.SpecialName);
-			}
 
 			#region StructLayoutAttribute
 			LayoutKind layoutKind = LayoutKind.Auto;
-			switch (handle.Attributes & TypeAttributes.LayoutMask) {
+			switch (handle.Layout) {
 				case TypeAttributes.SequentialLayout:
 					layoutKind = LayoutKind.Sequential;
 					break;
@@ -320,7 +318,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 					break;
 			}
 			CharSet charSet = CharSet.None;
-			switch (handle.Attributes & TypeAttributes.StringFormatMask) {
+			switch (handle.StringFormat) {
 				case TypeAttributes.AnsiClass:
 					charSet = CharSet.Ansi;
 					break;
@@ -379,7 +377,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		public Accessibility Accessibility {
 			get {
-				switch (attributes & TypeAttributes.VisibilityMask) {
+				switch (handle.Visibility) {
 					case TypeAttributes.NotPublic:
 					case TypeAttributes.NestedAssembly:
 						return Accessibility.Internal;
@@ -400,9 +398,9 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 			}
 		}
 
-		public bool IsStatic => (attributes & (TypeAttributes.Abstract | TypeAttributes.Sealed)) == (TypeAttributes.Abstract | TypeAttributes.Sealed);
-		public bool IsAbstract => (attributes & TypeAttributes.Abstract) != 0;
-		public bool IsSealed => (attributes & TypeAttributes.Sealed) != 0;
+		public bool IsStatic => handle.IsAbstract && handle.IsSealed;
+		public bool IsAbstract => handle.IsAbstract;
+		public bool IsSealed => handle.IsSealed;
 
 		public SymbolKind SymbolKind => SymbolKind.TypeDefinition;
 

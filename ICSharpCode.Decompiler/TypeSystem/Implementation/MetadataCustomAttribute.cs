@@ -28,7 +28,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 	/// <summary>
 	/// Custom attribute loaded from metadata.
 	/// </summary>
-	sealed class MetadtaCustomAttribute : IAttribute
+	sealed class MetadataCustomAttribute : IAttribute
 	{
 		readonly MetadataModule module;
 		readonly dnlib.DotNet.CustomAttribute handle;
@@ -38,7 +38,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 		CustomAttributeValue<IType> value;
 		bool valueDecoded;
 
-		internal MetadtaCustomAttribute(MetadataModule module, IMethod attrCtor, dnlib.DotNet.CustomAttribute handle)
+		internal MetadataCustomAttribute(MetadataModule module, IMethod attrCtor, dnlib.DotNet.CustomAttribute handle)
 		{
 			Debug.Assert(module != null);
 			Debug.Assert(attrCtor != null);

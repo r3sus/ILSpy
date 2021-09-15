@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2017 Siegfried Pammer
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -21,22 +21,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.IL
 {
 	partial class LockInstruction
 	{
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.Write("lock (");
+			output.Write("lock (", BoxedTextColor.Text);
 			OnExpression.WriteTo(output, options);
-			output.WriteLine(") {");
-			output.Indent();
+			output.WriteLine(") {", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			Body.WriteTo(output, options);
-			output.Unindent();
+			output.DecreaseIndent();
 			output.WriteLine();
-			output.Write("}");
+			output.Write("}", BoxedTextColor.Text);
 		}
 	}
 }

@@ -186,12 +186,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 				var genericContext = new GenericContext(DeclaringType.TypeParameters, this.TypeParameters);
 				List<IParameter> param = new List<IParameter>();
+
+				var entityOptions = module.OptionsForEntity(this);
+
 				foreach (Parameter par in handle.Parameters) {
 					if (par.IsNormalMethodParameter) {
-						var deco = par.Type.DecodeSignature(module, genericContext);
-						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
-							deco, module.Compilation,
-							par.ParamDef, module.OptionsForEntity(this), NullableContext);
+						var parameterType = module.ResolveType(par.Type, genericContext, entityOptions, par.ParamDef, NullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}

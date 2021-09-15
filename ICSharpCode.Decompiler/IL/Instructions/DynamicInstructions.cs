@@ -20,6 +20,8 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.IL.Patterns;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
@@ -74,69 +76,69 @@ namespace ICSharpCode.Decompiler.IL
 			CallingContext = context;
 		}
 
-		protected void WriteBinderFlags(ITextOutput output, ILAstWritingOptions options)
+		protected void WriteBinderFlags(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteBinderFlags(BinderFlags, output, options);
 		}
 
-		internal static void WriteBinderFlags(CSharpBinderFlags flags, ITextOutput output, ILAstWritingOptions options)
+		internal static void WriteBinderFlags(CSharpBinderFlags flags, IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			if ((flags & CSharpBinderFlags.BinaryOperationLogical) != 0)
-				output.Write(".logic");
+				output.Write(".logic", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.CheckedContext) != 0)
-				output.Write(".checked");
+				output.Write(".checked", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.ConvertArrayIndex) != 0)
-				output.Write(".arrayindex");
+				output.Write(".arrayindex", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.ConvertExplicit) != 0)
-				output.Write(".explicit");
+				output.Write(".explicit", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.InvokeSimpleName) != 0)
-				output.Write(".invokesimple");
+				output.Write(".invokesimple", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.InvokeSpecialName) != 0)
-				output.Write(".invokespecial");
+				output.Write(".invokespecial", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.ResultDiscarded) != 0)
-				output.Write(".discard");
+				output.Write(".discard", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.ResultIndexed) != 0)
-				output.Write(".resultindexed");
+				output.Write(".resultindexed", BoxedTextColor.Text);
 			if ((flags & CSharpBinderFlags.ValueFromCompoundAssignment) != 0)
-				output.Write(".compound");
+				output.Write(".compound", BoxedTextColor.Text);
 		}
 
 		public abstract CSharpArgumentInfo GetArgumentInfoOfChild(int index);
 
-		internal static void WriteArgumentList(ITextOutput output, ILAstWritingOptions options, params (ILInstruction, CSharpArgumentInfo)[] arguments)
+		internal static void WriteArgumentList(IDecompilerOutput output, ILAstWritingOptions options, params (ILInstruction, CSharpArgumentInfo)[] arguments)
 		{
 			WriteArgumentList(output, options, (IEnumerable<(ILInstruction, CSharpArgumentInfo)>)arguments);
 		}
 
-		internal static void WriteArgumentList(ITextOutput output, ILAstWritingOptions options, IEnumerable<(ILInstruction, CSharpArgumentInfo)> arguments)
+		internal static void WriteArgumentList(IDecompilerOutput output, ILAstWritingOptions options, IEnumerable<(ILInstruction, CSharpArgumentInfo)> arguments)
 		{
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			int j = 0;
 			foreach (var (arg, info) in arguments) {
 				if (j > 0)
-					output.Write(", ");
-				output.Write("[flags: ");
-				output.Write(info.Flags.ToString());
-				output.Write(", name: " + info.Name + "] ");
+					output.Write(", ", BoxedTextColor.Text);
+				output.Write("[flags: ", BoxedTextColor.Text);
+				output.Write(info.Flags.ToString(), BoxedTextColor.Text);
+				output.Write(", name: " + info.Name + "] ", BoxedTextColor.Text);
 				arg.WriteTo(output, options);
 				j++;
 			}
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 	}
 
 	partial class DynamicConvertInstruction
 	{
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 
 		public DynamicConvertInstruction(CSharpBinderFlags binderFlags, IType type, IType context, ILInstruction argument)
@@ -179,23 +181,23 @@ namespace ICSharpCode.Decompiler.IL
 			Arguments.AddRange(arguments);
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Name);
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Name, BoxedTextColor.Text);
 			if (TypeArguments.Count > 0) {
-				output.Write('<');
+				output.Write("<", BoxedTextColor.Text);
 				int i = 0;
 				foreach (var typeArg in TypeArguments) {
 					if (i > 0)
-						output.Write(", ");
+						output.Write(", ", BoxedTextColor.Text);
 					typeArg.WriteTo(output);
 					i++;
 				}
-				output.Write('>');
+				output.Write(">", BoxedTextColor.Text);
 			}
 			WriteArgumentList(output, options, Arguments.Zip(ArgumentInfo));
 		}
@@ -223,13 +225,13 @@ namespace ICSharpCode.Decompiler.IL
 			Target = target;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Name);
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Name, BoxedTextColor.Text);
 			WriteArgumentList(output, options, (Target, TargetArgumentInfo));
 		}
 
@@ -259,13 +261,13 @@ namespace ICSharpCode.Decompiler.IL
 			Value = value;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Name);
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Name, BoxedTextColor.Text);
 			WriteArgumentList(output, options, (Target, TargetArgumentInfo), (Value, ValueArgumentInfo));
 		}
 
@@ -296,13 +298,13 @@ namespace ICSharpCode.Decompiler.IL
 			Arguments.AddRange(arguments);
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write("get_Item");
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write("get_Item", BoxedTextColor.Text);
 			WriteArgumentList(output, options, Arguments.Zip(ArgumentInfo));
 		}
 
@@ -328,13 +330,13 @@ namespace ICSharpCode.Decompiler.IL
 			Arguments.AddRange(arguments);
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write("set_Item");
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write("set_Item", BoxedTextColor.Text);
 			WriteArgumentList(output, options, Arguments.Zip(ArgumentInfo));
 		}
 
@@ -363,14 +365,14 @@ namespace ICSharpCode.Decompiler.IL
 			this.resultType = type;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			resultType?.WriteTo(output);
-			output.Write(".ctor");
+			output.Write(".ctor", BoxedTextColor.Text);
 			WriteArgumentList(output, options, Arguments.Zip(ArgumentInfo));
 		}
 
@@ -400,13 +402,13 @@ namespace ICSharpCode.Decompiler.IL
 			Right = right;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Operation.ToString());
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Operation.ToString(), BoxedTextColor.Text);
 			WriteArgumentList(output, options, (Left, LeftArgumentInfo), (Right, RightArgumentInfo));
 		}
 
@@ -441,13 +443,13 @@ namespace ICSharpCode.Decompiler.IL
 			Right = right;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Operation.ToString());
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Operation.ToString(), BoxedTextColor.Text);
 			WriteArgumentList(output, options, (Left, LeftArgumentInfo), (Right, RightArgumentInfo));
 		}
 
@@ -487,13 +489,13 @@ namespace ICSharpCode.Decompiler.IL
 			Operand = operand;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write(Operation.ToString());
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Operation.ToString(), BoxedTextColor.Text);
 			WriteArgumentList(output, options, (Operand, OperandArgumentInfo));
 		}
 
@@ -532,12 +534,12 @@ namespace ICSharpCode.Decompiler.IL
 			Arguments.AddRange(arguments);
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			WriteArgumentList(output, options, Arguments.Zip(ArgumentInfo));
 		}
 
@@ -562,15 +564,15 @@ namespace ICSharpCode.Decompiler.IL
 			Argument = argument;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			WriteBinderFlags(output, options);
-			output.Write(' ');
-			output.Write('(');
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write("(", BoxedTextColor.Text);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 
 		public override StackType ResultType => StackType.I4;

@@ -19,6 +19,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.Util;
 
 namespace ICSharpCode.Decompiler.IL
@@ -74,25 +76,23 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.Write("switch");
+			output.Write("switch", BoxedTextColor.Text);
 			if (IsLifted)
-				output.Write(".lifted");
-			output.Write(" (");
+				output.Write(".lifted", BoxedTextColor.Text);
+			output.Write(" (", BoxedTextColor.Text);
 			value.WriteTo(output, options);
-			output.Write(") ");
-			output.MarkFoldStart("{...}");
-			output.WriteLine("{");
-			output.Indent();
+			output.Write(") ", BoxedTextColor.Text);
+			output.WriteLine("{", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			foreach (var section in this.Sections) {
 				section.WriteTo(output, options);
 				output.WriteLine();
 			}
-			output.Unindent();
-			output.Write('}');
-			output.MarkFoldEnd();
+			output.DecreaseIndent();
+			output.Write("}", BoxedTextColor.Text);
 		}
 
 		protected override int GetChildCount()
@@ -202,21 +202,21 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.WriteDefinition("case", this, isLocal: true);
-			output.Write(' ');
+			output.Write("case", this, DecompilerReferenceFlags.Definition | DecompilerReferenceFlags.Local, BoxedTextColor.Text);
+			output.Write(" ", BoxedTextColor.Text);
 			if (HasNullLabel) {
-				output.Write("null");
+				output.Write("null", BoxedTextColor.Text);
 				if (!Labels.IsEmpty) {
-					output.Write(", ");
-					output.Write(Labels.ToString());
+					output.Write(", ", BoxedTextColor.Text);
+					output.Write(Labels.ToString(), BoxedTextColor.Text);
 				}
 			} else {
-				output.Write(Labels.ToString());
+				output.Write(Labels.ToString(), BoxedTextColor.Text);
 			}
-			output.Write(": ");
+			output.Write(": ", BoxedTextColor.Text);
 
 			body.WriteTo(output, options);
 		}

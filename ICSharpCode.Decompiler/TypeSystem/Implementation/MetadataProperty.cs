@@ -136,10 +136,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 				foreach (Parameter par in propertyHandle.GetParameters()) {
 					if (par.IsNormalMethodParameter) {
-						var deco = par.Type.DecodeSignature(module, gCtx);
-						var parameterType = ApplyAttributeTypeVisitor.ApplyAttributesToType(
-							deco, module.Compilation,
-							par.ParamDef, typeOptions, nullableContext);
+						var parameterType = module.ResolveType(par.Type, gCtx, typeOptions, par.ParamDef, nullableContext);
 						param.Add(new MetadataParameter(module, this, parameterType, par));
 					}
 				}
@@ -152,8 +149,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				var returnType = LazyInit.VolatileRead(ref this.returnType);
 				if (returnType != null)
 					return returnType;
-				var deocded = propertyHandle.PropertySig.RetType.DecodeSignature(module,
-					new GenericContext(DeclaringType.TypeParameters));
 				var declTypeDef = this.DeclaringTypeDefinition;
 				Nullability nullableContext;
 
@@ -174,8 +169,8 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				// call in PEPropertySymbol).
 				var typeOptions = module.OptionsForEntity(declTypeDef);
 
-				var ret = ApplyAttributeTypeVisitor.ApplyAttributesToType(deocded,
-					module.Compilation, propertyHandle, typeOptions, nullableContext);
+				var ret = module.ResolveType(propertyHandle.PropertySig.RetType, new GenericContext(DeclaringType.TypeParameters),
+					typeOptions, propertyHandle, nullableContext);
 				return LazyInit.GetOrSet(ref this.returnType, ret);
 			}
 		}

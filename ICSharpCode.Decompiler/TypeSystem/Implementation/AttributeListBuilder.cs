@@ -152,7 +152,7 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 				if (IgnoreAttribute(type, target)) {
 					continue;
 				}
-				Add(new MetadtaCustomAttribute(module, ctor, handle));
+				Add(new MetadataCustomAttribute(module, ctor, handle));
 			}
 		}
 

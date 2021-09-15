@@ -692,7 +692,7 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 					count = CANCEL_CHECK_LOOP_COUNT;
 				}
 				modifier.AcceptVisitor(this);
-				writer.Space();
+				Space();
 			}
 			// Needed if there are no modifiers so eg. a keyword (such as 'class') isn't written
 			// before the comment.
@@ -1092,11 +1092,6 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 		{
 			DebugExpression(conditionalExpression);
 			StartNode(conditionalExpression);
-
-			// if (conditionalExpression.TrueExpression is DirectionExpression) {
-			// 	WriteKeyword(DirectionExpression.RefKeywordRole);
-			// 	Space();
-			// }
 
 			conditionalExpression.Condition.AcceptVisitor(this);
 
@@ -1825,6 +1820,10 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			}
 			WriteIdentifier(typeDeclaration.NameToken);
 			WriteTypeParameters(typeDeclaration.TypeParameters, CodeBracesRangeFlags.AngleBrackets);
+			if (typeDeclaration.PrimaryConstructorParameters.Count > 0) {
+				Space(policy.SpaceBeforeMethodDeclarationParentheses);
+				WriteCommaSeparatedListInParenthesis(typeDeclaration.PrimaryConstructorParameters, policy.SpaceWithinMethodDeclarationParentheses, CodeBracesRangeFlags.Parentheses);
+			}
 			if (typeDeclaration.BaseTypes.Any()) {
 				Space();
 				WriteToken(Roles.Colon, BoxedTextColor.Punctuation);
@@ -1839,51 +1838,56 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 				}
 				constraint.AcceptVisitor(this);
 			}
-			var braceHelper = OpenBrace(braceStyle, GetTypeBlockKind(typeDeclaration));
-			if (typeDeclaration.ClassType == ClassType.Enum) {
-				bool first = true;
-				AstNode last = null;
-				count = 0;
-				foreach (var member in typeDeclaration.Members) {
-					if (count-- <= 0) {
-						cancellationToken.ThrowIfCancellationRequested();
-						count = CANCEL_CHECK_LOOP_COUNT;
-					}
-					if (first) {
-						first = false;
-					} else {
-						Comma(member, noSpaceAfterComma: true);
-						NewLine();
-					}
-					last = member;
-					member.AcceptVisitor(this);
-				}
-				if (last != null)
-					OptionalComma(last.NextSibling);
-				NewLine();
+
+			if (typeDeclaration.ClassType == ClassType.RecordClass && typeDeclaration.Members.Count == 0) {
+				Semicolon();
 			} else {
-				bool first = true;
-				count = 0;
-				AstNode lastMember = null;
-				foreach (var member in typeDeclaration.Members) {
-					if (count-- <= 0) {
-						cancellationToken.ThrowIfCancellationRequested();
-						count = CANCEL_CHECK_LOOP_COUNT;
-					}
-					if (!first) {
-						for (int i = 0; i < policy.MinimumBlankLinesBetweenMembers; i++)
+				var braceHelper = OpenBrace(braceStyle, GetTypeBlockKind(typeDeclaration));
+				if (typeDeclaration.ClassType == ClassType.Enum) {
+					bool first = true;
+					AstNode last = null;
+					count = 0;
+					foreach (var member in typeDeclaration.Members) {
+						if (count-- <= 0) {
+							cancellationToken.ThrowIfCancellationRequested();
+							count = CANCEL_CHECK_LOOP_COUNT;
+						}
+						if (first) {
+							first = false;
+						} else {
+							Comma(member, noSpaceAfterComma: true);
 							NewLine();
+						}
+						last = member;
+						member.AcceptVisitor(this);
 					}
-					first = false;
-					if (!IsSameGroup(lastMember, member))
-						writer.AddLineSeparator(Math.Max(lastBraceOffset, lastDeclarationOffset));
-					member.AcceptVisitor(this);
-					lastMember = member;
+					if (last != null)
+						OptionalComma(last.NextSibling);
+					NewLine();
+				} else {
+					bool first = true;
+					count = 0;
+					AstNode lastMember = null;
+					foreach (var member in typeDeclaration.Members) {
+						if (count-- <= 0) {
+							cancellationToken.ThrowIfCancellationRequested();
+							count = CANCEL_CHECK_LOOP_COUNT;
+						}
+						if (!first) {
+							for (int i = 0; i < policy.MinimumBlankLinesBetweenMembers; i++)
+								NewLine();
+						}
+						first = false;
+						if (!IsSameGroup(lastMember, member))
+							writer.AddLineSeparator(Math.Max(lastBraceOffset, lastDeclarationOffset));
+						member.AcceptVisitor(this);
+						lastMember = member;
+					}
 				}
+				CloseBrace(braceStyle, braceHelper, true);
+				OptionalSemicolon(typeDeclaration.LastChild);
+				NewLine();
 			}
-			CloseBrace(braceStyle, braceHelper, true);
-			OptionalSemicolon(typeDeclaration.LastChild);
-			NewLine();
 			EndNode(typeDeclaration);
 		}
 
@@ -2100,6 +2104,8 @@ namespace ICSharpCode.Decompiler.CSharp.OutputVisitor
 			var oldBreakRef = currentBreakReference;
 			currentBreakReference = currentLoopReference;
 			DebugStart(foreachStatement);
+			if (foreachStatement.IsAsync)
+				WriteKeyword(ForeachStatement.AwaitRole);
 			WriteKeywordReference(ForeachStatement.ForeachKeywordRole, currentLoopReference);
 			//DebugHidden(foreachStatement.HiddenInitializer);
 			DebugEnd(foreachStatement, false);

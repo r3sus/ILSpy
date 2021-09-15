@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2018 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,13 +18,15 @@
 
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.IL.Transforms;
 
 namespace ICSharpCode.Decompiler.IL
 {
 	/// <summary>
 	/// For a nullable input, gets the underlying value.
-	/// 
+	///
 	/// There are three possible input types:
 	///  * reference type: if input!=null, evaluates to the input
 	///  * nullable value type: if input.Has_Value, evaluates to input.GetValueOrDefault()
@@ -51,14 +53,14 @@ namespace ICSharpCode.Decompiler.IL
 		/// Consider the following code generated for <code>t?.Method()</code> on a generic t:
 		/// <code>if (comp(box ``0(ldloc t) != ldnull)) newobj Nullable..ctor(constrained[``0].callvirt Method(ldloca t)) else default.value Nullable</code>
 		/// Here, the method is called on the original reference, and any mutations performed by the method will be visible in the original variable.
-		/// 
+		///
 		/// To represent this, we use a nullable.unwrap with ResultType==Ref: instead of returning the input value,
 		/// the input reference is returned in the non-null case.
 		/// Note that in case the generic type ends up being <c>Nullable{T}</c>, this means methods will end up being called on
 		/// the nullable type, not on the underlying type. However, this ends up making no difference, because the only methods
 		/// that can be called that way are those on System.Object. All the virtual methods are overridden in <c>Nullable{T}</c>
 		/// and end up forwarding to <c>T</c>; and the non-virtual methods cause boxing which strips the <c>Nullable{T}</c> wrapper.
-		/// 
+		///
 		/// RefOutput can only be used if RefInput is also used.
 		/// </summary>
 		public bool RefOutput { get => ResultType == StackType.Ref; }
@@ -84,16 +86,16 @@ namespace ICSharpCode.Decompiler.IL
 			Debug.Assert(Ancestors.Any(a => a is NullableRewrap));
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
-			output.Write("nullable.unwrap.");
+			output.Write("nullable.unwrap.", BoxedTextColor.Text);
 			if (RefInput) {
-				output.Write("refinput.");
+				output.Write("refinput.", BoxedTextColor.Text);
 			}
 			output.Write(ResultType);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 
 		public override StackType ResultType { get; }

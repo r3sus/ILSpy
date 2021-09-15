@@ -61,11 +61,6 @@ namespace ICSharpCode.Decompiler
 				return (MethodDef)method;
 		}
 
-		public static TypeDef Resolve(this IType type)
-		{
-			return type == null ? null : type.GetScopeTypeDefOrRef().ResolveTypeDef();
-		}
-
 		public static bool IsCompilerGeneratedOrIsInCompilerGeneratedClass(this MethodDef method)
 		{
 			if (method.IsCompilerGenerated())

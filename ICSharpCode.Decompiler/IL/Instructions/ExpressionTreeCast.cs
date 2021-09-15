@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -16,16 +18,17 @@ namespace ICSharpCode.Decompiler.IL
 			this.IsChecked = isChecked;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			if (IsChecked) output.Write(".checked");
-			output.Write(' ');
+			if (IsChecked)
+				output.Write(".checked", BoxedTextColor.Text);
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 	}
 }

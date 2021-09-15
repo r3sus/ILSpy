@@ -130,7 +130,12 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 			ITypeDefinition INamespace.GetTypeDefinition(string name, int typeParameterCount)
 			{
-				return corlib.GetTypeDefinition(this.FullName, name, typeParameterCount);
+				foreach (var type in ((INamespace)this).Types) {
+					if (type.Name == name && type.TypeParameterCount == typeParameterCount)
+						return type;
+				}
+
+				return null;
 			}
 		}
 

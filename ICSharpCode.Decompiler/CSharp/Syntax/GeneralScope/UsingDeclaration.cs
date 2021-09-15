@@ -26,6 +26,7 @@
 
 using System.Text;
 using System.Collections.Generic;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.CSharp.Syntax
 {
@@ -88,7 +89,7 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 
 		public UsingDeclaration (string nameSpace)
 		{
-			AddChild (AstType.Create (nameSpace, null), ImportRole);
+			AddChild (AstType.Create (nameSpace, BoxedTextColor.Namespace), ImportRole);
 		}
 
 		public UsingDeclaration (AstType import)

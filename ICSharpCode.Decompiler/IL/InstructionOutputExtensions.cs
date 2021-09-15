@@ -17,6 +17,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.Disassembler;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
@@ -25,42 +26,42 @@ namespace ICSharpCode.Decompiler.IL
 {
 	static partial class InstructionOutputExtensions
 	{
-		public static void Write(this ITextOutput output, OpCode opCode)
+		public static void Write(this IDecompilerOutput output, OpCode opCode)
 		{
-			output.Write(originalOpCodeNames[(int)opCode]);
+			output.Write(originalOpCodeNames[(int)opCode], BoxedTextColor.OpCode);
 		}
 
-		public static void Write(this ITextOutput output, StackType stackType)
+		public static void Write(this IDecompilerOutput output, StackType stackType)
 		{
-			output.Write(stackType.ToString().ToLowerInvariant());
+			output.Write(stackType.ToString().ToLowerInvariant(), BoxedTextColor.Text);
 		}
 
-		public static void Write(this ITextOutput output, PrimitiveType primitiveType)
+		public static void Write(this IDecompilerOutput output, PrimitiveType primitiveType)
 		{
-			output.Write(primitiveType.ToString().ToLowerInvariant());
+			output.Write(primitiveType.ToString().ToLowerInvariant(), BoxedTextColor.Text);
 		}
 
-		public static void WriteTo(this IType type, ITextOutput output, ILNameSyntax nameSyntax = ILNameSyntax.ShortTypeName)
+		public static void WriteTo(this IType type, IDecompilerOutput output, ILNameSyntax nameSyntax = ILNameSyntax.ShortTypeName)
 		{
-			output.WriteReference(type.ReflectionName, type);
+			output.Write(type.ReflectionName, type.GetDefinition()?.MetadataToken, DecompilerReferenceFlags.None, BoxedTextColor.Text);
 		}
 
-		public static void WriteTo(this ISymbol symbol, ITextOutput output)
+		public static void WriteTo(this ISymbol symbol, IDecompilerOutput output)
 		{
 			if (symbol is IMethod method && method.IsConstructor)
-				output.WriteReference(method.DeclaringType?.Name + "." + method.Name, symbol);
+				output.Write(method.DeclaringType?.Name + "." + method.Name, symbol.Name, DecompilerReferenceFlags.None, BoxedTextColor.Text);
 			else
-				output.WriteReference(symbol.Name, symbol);
+				output.Write(symbol.Name, symbol.Name, DecompilerReferenceFlags.None, BoxedTextColor.Text);
 		}
 
-		public static void WriteTo(this Interval interval, ITextOutput output, ILAstWritingOptions options)
+		public static void WriteTo(this Interval interval, IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			if (!options.ShowILRanges)
 				return;
 			if (interval.IsEmpty)
-				output.Write("[empty] ");
+				output.Write("[empty] ", BoxedTextColor.Text);
 			else
-				output.Write($"[{interval.Start:x4}..{interval.InclusiveEnd:x4}] ");
+				output.Write($"[{interval.Start:x4}..{interval.InclusiveEnd:x4}] ", BoxedTextColor.Text);
 		}
 	}
 }

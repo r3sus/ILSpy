@@ -19,6 +19,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -85,7 +87,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		[Conditional("DEBUG")]
 		void CheckValidTarget()
-		{ 
+		{
 			switch (TargetKind) {
 				case CompoundTargetKind.Address:
 					Debug.Assert(target.ResultType == StackType.Ref || target.ResultType == StackType.I);
@@ -101,22 +103,22 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		protected void WriteSuffix(ITextOutput output)
+		protected void WriteSuffix(IDecompilerOutput output)
 		{
 			switch (TargetKind) {
 				case CompoundTargetKind.Address:
-					output.Write(".address");
+					output.Write(".address", BoxedTextColor.Text);
 					break;
 				case CompoundTargetKind.Property:
-					output.Write(".property");
+					output.Write(".property", BoxedTextColor.Text);
 					break;
 			}
 			switch (EvalMode) {
 				case CompoundEvalMode.EvaluatesToNewValue:
-					output.Write(".new");
+					output.Write(".new", BoxedTextColor.Text);
 					break;
 				case CompoundEvalMode.EvaluatesToOldValue:
-					output.Write(".old");
+					output.Write(".old", BoxedTextColor.Text);
 					break;
 			}
 		}
@@ -249,30 +251,30 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write("." + BinaryNumericInstruction.GetOperatorName(Operator));
+			output.Write("." + BinaryNumericInstruction.GetOperatorName(Operator), BoxedTextColor.Text);
 			if (CheckForOverflow) {
-				output.Write(".ovf");
+				output.Write(".ovf", BoxedTextColor.Text);
 			}
 			if (Sign == Sign.Unsigned) {
-				output.Write(".unsigned");
+				output.Write(".unsigned", BoxedTextColor.Text);
 			} else if (Sign == Sign.Signed) {
-				output.Write(".signed");
+				output.Write(".signed", BoxedTextColor.Text);
 			}
-			output.Write('.');
-			output.Write(UnderlyingResultType.ToString().ToLowerInvariant());
+			output.Write(".", BoxedTextColor.Text);
+			output.Write(UnderlyingResultType.ToString().ToLowerInvariant(), BoxedTextColor.Text);
 			if (IsLifted) {
-				output.Write(".lifted");
+				output.Write(".lifted", BoxedTextColor.Text);
 			}
 			base.WriteSuffix(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Target.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			Value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 	}
 
@@ -281,7 +283,7 @@ namespace ICSharpCode.Decompiler.IL
 		public readonly IMethod Method;
 		public bool IsLifted => false; // TODO: implement lifted user-defined compound assignments
 
-		public UserDefinedCompoundAssign(IMethod method, CompoundEvalMode evalMode, 
+		public UserDefinedCompoundAssign(IMethod method, CompoundEvalMode evalMode,
 			ILInstruction target, CompoundTargetKind targetKind, ILInstruction value)
 			: base(OpCode.UserDefinedCompoundAssign, evalMode, target, targetKind, value)
 		{
@@ -297,18 +299,18 @@ namespace ICSharpCode.Decompiler.IL
 
 		public override StackType ResultType => Method.ReturnType.GetStackType();
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			base.WriteSuffix(output);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Method.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			this.Target.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.Value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 	}
 
@@ -320,7 +322,7 @@ namespace ICSharpCode.Decompiler.IL
 		public CSharpBinderFlags BinderFlags { get; }
 
 		public DynamicCompoundAssign(ExpressionType op, CSharpBinderFlags binderFlags,
-			ILInstruction target, CSharpArgumentInfo targetArgumentInfo, 
+			ILInstruction target, CSharpArgumentInfo targetArgumentInfo,
 			ILInstruction value, CSharpArgumentInfo valueArgumentInfo,
 			CompoundTargetKind targetKind = CompoundTargetKind.Dynamic)
 			: base(OpCode.DynamicCompoundAssign, CompoundEvalModeFromOperation(op), target, targetKind, value)
@@ -333,14 +335,15 @@ namespace ICSharpCode.Decompiler.IL
 			this.ValueArgumentInfo = valueArgumentInfo;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write("." + Operation.ToString().ToLower());
+			output.Write(".", BoxedTextColor.Punctuation);
+			output.Write(Operation.ToString().ToLower(), BoxedTextColor.Text);
 			DynamicInstruction.WriteBinderFlags(BinderFlags, output, options);
 			base.WriteSuffix(output);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			DynamicInstruction.WriteArgumentList(output, options, (Target, TargetArgumentInfo), (Value, ValueArgumentInfo));
 		}
 

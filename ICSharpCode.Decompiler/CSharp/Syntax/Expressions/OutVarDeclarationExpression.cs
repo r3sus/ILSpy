@@ -45,11 +45,10 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		{
 		}
 
-		public OutVarDeclarationExpression(AstType type, string name)
+		public OutVarDeclarationExpression(AstType type, string name, object nameAnnotation)
 		{
 			this.Type = type;
-			//TODO:
-			this.Variable = new VariableInitializer(BoxedTextColor.Parameter, name);
+			this.Variable = new VariableInitializer(nameAnnotation, name);
 		}
 
 		public override void AcceptVisitor(IAstVisitor visitor)

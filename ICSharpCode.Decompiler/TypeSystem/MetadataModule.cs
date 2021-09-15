@@ -132,9 +132,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return false;
 		}
 
-		string[] internalsVisibleTo;
+		private string[] internalsVisibleTo;
 
-		string[] GetInternalsVisibleTo()
+		private string[] GetInternalsVisibleTo()
 		{
 			var result = LazyInit.VolatileRead(ref this.internalsVisibleTo);
 			if (result != null) {
@@ -144,12 +144,9 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			if (metadata.Assembly != null) {
 				var list = new List<string>();
 				foreach (var attr in metadata.Assembly.CustomAttributes) {
-					if (attr.IsKnownAttribute(KnownAttribute.InternalsVisibleTo)) {
-						if (attr.ConstructorArguments.Count == 1) {
-							if (attr.ConstructorArguments[0].Value is UTF8String s) {
-								list.Add(GetShortName(s));
-							}
-						}
+					if (attr.IsKnownAttribute(KnownAttribute.InternalsVisibleTo) && attr.ConstructorArguments.Count == 1 &&
+						attr.ConstructorArguments[0].Value is UTF8String s) {
+						list.Add(GetShortName(s));
 					}
 				}
 
@@ -161,15 +158,10 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return LazyInit.GetOrSet(ref this.internalsVisibleTo, result);
 		}
 
-		static string GetShortName(string fullAssemblyName)
+		private static string GetShortName(string fullAssemblyName)
 		{
-			if (fullAssemblyName == null)
-				return null;
 			int pos = fullAssemblyName.IndexOf(',');
-			if (pos < 0)
-				return fullAssemblyName;
-			else
-				return fullAssemblyName.Substring(0, pos);
+			return pos < 0 ? fullAssemblyName : fullAssemblyName.Substring(0, pos);
 		}
 
 		#endregion
@@ -308,7 +300,7 @@ namespace ICSharpCode.Decompiler.TypeSystem
 			return ty;
 		}
 
-		public IType IntroduceTupleTypes(IType ty)
+		private IType IntroduceTupleTypes(IType ty)
 		{
 			// run ApplyAttributeTypeVisitor without attributes, in order to introduce tuple types
 			return ApplyAttributeTypeVisitor.ApplyAttributesToType(ty, Compilation, null, options,

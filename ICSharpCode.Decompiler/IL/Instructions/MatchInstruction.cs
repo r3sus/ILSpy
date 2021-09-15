@@ -19,6 +19,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -224,43 +226,41 @@ namespace ICSharpCode.Decompiler.IL
 			return true;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (CheckNotNull) {
-				output.Write(".notnull");
+				output.Write(".notnull", BoxedTextColor.Text);
 			}
 			if (CheckType) {
-				output.Write(".type[");
+				output.Write(".type[", BoxedTextColor.Text);
 				variable.Type.WriteTo(output);
-				output.Write(']');
+				output.Write("]", BoxedTextColor.Text);
 			}
 			if (IsDeconstructCall) {
-				output.Write(".deconstruct[");
+				output.Write(".deconstruct[", BoxedTextColor.Text);
 				method.WriteTo(output);
-				output.Write(']');
+				output.Write("]", BoxedTextColor.Text);
 			}
 			if (IsDeconstructTuple) {
-				output.Write(".tuple");
+				output.Write(".tuple", BoxedTextColor.Text);
 			}
-			output.Write(' ');
-			output.Write('(');
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write("(", BoxedTextColor.Text);
 			Variable.WriteTo(output);
-			output.Write(" = ");
+			output.Write(" = ", BoxedTextColor.Text);
 			TestedOperand.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 			if (SubPatterns.Count > 0) {
-				output.MarkFoldStart("{...}");
-				output.WriteLine("{");
-				output.Indent();
+				output.WriteLine("{", BoxedTextColor.Text);
+				output.IncreaseIndent();
 				foreach (var pattern in SubPatterns) {
 					pattern.WriteTo(output, options);
 					output.WriteLine();
 				}
-				output.Unindent();
-				output.Write('}');
-				output.MarkFoldEnd();
+				output.DecreaseIndent();
+				output.Write("}", BoxedTextColor.Text);
 			}
 		}
 	}

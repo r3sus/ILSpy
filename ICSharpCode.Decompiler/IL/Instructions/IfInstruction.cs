@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,6 +17,8 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Diagnostics;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.IL
 {
@@ -27,7 +29,7 @@ namespace ICSharpCode.Decompiler.IL
 	/// If the condition evaluates to non-zero, the TrueInst is executed.
 	/// If the condition evaluates to zero, the FalseInst is executed.
 	/// The return value of the IfInstruction is the return value of the TrueInst or FalseInst.
-	/// 
+	///
 	/// IfInstruction is also used to represent logical operators:
 	///   "a || b" ==> if (a) (ldc.i4 1) else (b)
 	///   "a &amp;&amp; b" ==> if (a) (b) else (ldc.i4 0)
@@ -60,7 +62,7 @@ namespace ICSharpCode.Decompiler.IL
 				|| trueInst.HasDirectFlag(InstructionFlags.EndPointUnreachable)
 				|| falseInst.HasDirectFlag(InstructionFlags.EndPointUnreachable));
 		}
-		
+
 		public override StackType ResultType {
 			get {
 				if (trueInst.HasDirectFlag(InstructionFlags.EndPointUnreachable))
@@ -69,46 +71,46 @@ namespace ICSharpCode.Decompiler.IL
 					return trueInst.ResultType;
 			}
 		}
-		
+
 		public override InstructionFlags DirectFlags {
 			get {
 				return InstructionFlags.ControlFlow;
 			}
 		}
-		
+
 		protected override InstructionFlags ComputeFlags()
 		{
 			return InstructionFlags.ControlFlow | condition.Flags | SemanticHelper.CombineBranches(trueInst.Flags, falseInst.Flags);
 		}
-		
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (options.UseLogicOperationSugar) {
 				if (MatchLogicAnd(out var lhs, out var rhs)) {
-					output.Write("logic.and(");
+					output.Write("logic.and(", BoxedTextColor.Text);
 					lhs.WriteTo(output, options);
-					output.Write(", ");
+					output.Write(", ", BoxedTextColor.Text);
 					rhs.WriteTo(output, options);
-					output.Write(')');
+					output.Write(")", BoxedTextColor.Text);
 					return;
 				}
 				if (MatchLogicOr(out lhs, out rhs)) {
-					output.Write("logic.or(");
+					output.Write("logic.or(", BoxedTextColor.Text);
 					lhs.WriteTo(output, options);
-					output.Write(", ");
+					output.Write(", ", BoxedTextColor.Text);
 					rhs.WriteTo(output, options);
-					output.Write(')');
+					output.Write(")", BoxedTextColor.Text);
 					return;
 				}
 			}
 			output.Write(OpCode);
-			output.Write(" (");
+			output.Write(" (", BoxedTextColor.Text);
 			condition.WriteTo(output, options);
-			output.Write(") ");
+			output.Write(") ", BoxedTextColor.Text);
 			trueInst.WriteTo(output, options);
 			if (falseInst.OpCode != OpCode.Nop) {
-				output.Write(" else ");
+				output.Write(" else ", BoxedTextColor.Text);
 				falseInst.WriteTo(output, options);
 			}
 		}

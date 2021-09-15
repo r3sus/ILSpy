@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -16,6 +16,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.IL
 {
@@ -37,20 +40,20 @@ namespace ICSharpCode.Decompiler.IL
 
 	partial class LdObj
 	{
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			if (options.UseFieldSugar) {
 				if (this.MatchLdFld(out var target, out var field)) {
 					WriteILRange(output, options);
-					output.Write("ldfld ");
+					output.Write("ldfld ", BoxedTextColor.Text);
 					field.WriteTo(output);
-					output.Write('(');
+					output.Write("(", BoxedTextColor.Text);
 					target.WriteTo(output, options);
-					output.Write(')');
+					output.Write(")", BoxedTextColor.Text);
 					return;
 				} else if (this.MatchLdsFld(out field)) {
 					WriteILRange(output, options);
-					output.Write("ldsfld ");
+					output.Write("ldsfld ", BoxedTextColor.Text);
 					field.WriteTo(output);
 					return;
 				}
@@ -61,26 +64,26 @@ namespace ICSharpCode.Decompiler.IL
 
 	partial class StObj
 	{
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			if (options.UseFieldSugar) {
 				if (this.MatchStFld(out var target, out var field, out var value)) {
 					WriteILRange(output, options);
-					output.Write("stfld ");
+					output.Write("stfld ", BoxedTextColor.Text);
 					field.WriteTo(output);
-					output.Write('(');
+					output.Write("(", BoxedTextColor.Text);
 					target.WriteTo(output, options);
-					output.Write(", ");
+					output.Write(", ", BoxedTextColor.Text);
 					value.WriteTo(output, options);
-					output.Write(')');
+					output.Write(")", BoxedTextColor.Text);
 					return;
 				} else if (this.MatchStsFld(out field, out value)) {
 					WriteILRange(output, options);
-					output.Write("stsfld ");
+					output.Write("stsfld ", BoxedTextColor.Text);
 					field.WriteTo(output);
-					output.Write('(');
+					output.Write("(", BoxedTextColor.Text);
 					value.WriteTo(output, options);
-					output.Write(')');
+					output.Write(")", BoxedTextColor.Text);
 					return;
 				}
 			}

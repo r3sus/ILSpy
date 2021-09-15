@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -355,13 +357,13 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.None;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 	}
 }
@@ -448,15 +450,15 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.None;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.left.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.right.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 	}
 }
@@ -605,15 +607,15 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.None;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.target.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 	}
 }
@@ -985,17 +987,17 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayWriteLocals;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			variable.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.init.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.body.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -2297,11 +2299,11 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayReadLocals;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			variable.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2372,11 +2374,11 @@ namespace ICSharpCode.Decompiler.IL
 			base.Disconnected();
 		}
 		
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			variable.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2505,15 +2507,15 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayWriteLocals;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			variable.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -2607,15 +2609,15 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.None;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -2772,11 +2774,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly string Value;
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2809,11 +2811,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly int Value;
 		public override StackType ResultType { get { return StackType.I4; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2846,11 +2848,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly long Value;
 		public override StackType ResultType { get { return StackType.I8; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2883,11 +2885,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly float Value;
 		public override StackType ResultType { get { return StackType.F4; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2920,11 +2922,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly double Value;
 		public override StackType ResultType { get { return StackType.F8; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -2957,11 +2959,11 @@ namespace ICSharpCode.Decompiler.IL
 		}
 		public readonly decimal Value;
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			Disassembler.DisassemblerHelpers.WriteOperand(output, Value);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -3024,12 +3026,12 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>Returns the method operand.</summary>
 		public IMethod Method { get { return method; } }
 		public override StackType ResultType { get { return StackType.I; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (method != null) {
-				output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 				method.WriteTo(output);
 			}
 		}
@@ -3074,17 +3076,17 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (method != null) {
-				output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 				method.WriteTo(output);
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3134,19 +3136,19 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
 			if (method != null) {
-				output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 				method.WriteTo(output);
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3183,11 +3185,11 @@ namespace ICSharpCode.Decompiler.IL
 			set { type = value; InvalidateFlags(); }
 		}
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -3222,11 +3224,11 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>Returns the token operand.</summary>
 		public IMember Member { get { return member; } }
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			member.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -3310,15 +3312,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3445,21 +3447,21 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayThrow | InstructionFlags.SideEffect;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (IsVolatile)
-				output.Write("volatile.");
+				output.Write("volatile.", BoxedTextColor.Text);
 			if (UnalignedPrefix > 0)
-				output.Write("unaligned(" + UnalignedPrefix + ").");
+				output.Write("unaligned(" + UnalignedPrefix + ").", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.destAddress.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.sourceAddress.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.size.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3593,21 +3595,21 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayThrow | InstructionFlags.SideEffect;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (IsVolatile)
-				output.Write("volatile.");
+				output.Write("volatile.", BoxedTextColor.Text);
 			if (UnalignedPrefix > 0)
-				output.Write("unaligned(" + UnalignedPrefix + ").");
+				output.Write("unaligned(" + UnalignedPrefix + ").", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.address.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.value.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.size.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3706,17 +3708,17 @@ namespace ICSharpCode.Decompiler.IL
 				return (DelayExceptions ? InstructionFlags.None : InstructionFlags.MayThrow);
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (DelayExceptions)
-				output.Write("delayex.");
+				output.Write("delayex.", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			field.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.target.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3750,11 +3752,11 @@ namespace ICSharpCode.Decompiler.IL
 		readonly IField field;
 		/// <summary>Returns the field operand.</summary>
 		public IField Field { get { return field; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			field.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -3801,15 +3803,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3846,15 +3848,15 @@ namespace ICSharpCode.Decompiler.IL
 			set { type = value; InvalidateFlags(); }
 		}
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -3952,19 +3954,19 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.SideEffect | InstructionFlags.MayThrow;
 			}
 		}
-		void OriginalWriteTo(ITextOutput output, ILAstWritingOptions options)
+		void OriginalWriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (IsVolatile)
-				output.Write("volatile.");
+				output.Write("volatile.", BoxedTextColor.Text);
 			if (UnalignedPrefix > 0)
-				output.Write("unaligned(" + UnalignedPrefix + ").");
+				output.Write("unaligned(" + UnalignedPrefix + ").", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.target.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4086,21 +4088,21 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.SideEffect | InstructionFlags.MayThrow;
 			}
 		}
-		void OriginalWriteTo(ITextOutput output, ILAstWritingOptions options)
+		void OriginalWriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (IsVolatile)
-				output.Write("volatile.");
+				output.Write("volatile.", BoxedTextColor.Text);
 			if (UnalignedPrefix > 0)
-				output.Write("unaligned(" + UnalignedPrefix + ").");
+				output.Write("unaligned(" + UnalignedPrefix + ").", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.target.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4153,15 +4155,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.SideEffect | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4207,15 +4209,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4261,15 +4263,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.SideEffect | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4375,19 +4377,19 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			bool first = true;
 			foreach (var indices in Indices) {
-				if (!first) output.Write(", "); else first = false;
+				if (!first) output.Write(", ", BoxedTextColor.Text); else first = false;
 				indices.WriteTo(output, options);
 			}
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4424,11 +4426,11 @@ namespace ICSharpCode.Decompiler.IL
 			set { type = value; InvalidateFlags(); }
 		}
 		public override StackType ResultType { get { return type.GetStackType(); } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -4540,11 +4542,11 @@ namespace ICSharpCode.Decompiler.IL
 			set { type = value; InvalidateFlags(); }
 		}
 		public override StackType ResultType { get { return StackType.I4; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
@@ -4735,25 +4737,25 @@ namespace ICSharpCode.Decompiler.IL
 				return (DelayExceptions ? InstructionFlags.None : InstructionFlags.MayThrow);
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (WithSystemIndex)
-				output.Write("withsystemindex.");
+				output.Write("withsystemindex.", BoxedTextColor.Text);
 			if (DelayExceptions)
-				output.Write("delayex.");
+				output.Write("delayex.", BoxedTextColor.Text);
 			if (IsReadOnly)
-				output.Write("readonly.");
+				output.Write("readonly.", BoxedTextColor.Text);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.array.WriteTo(output, options);
 			foreach (var indices in Indices) {
-				output.Write(", ");
+				output.Write(", ", BoxedTextColor.Text);
 				indices.WriteTo(output, options);
 			}
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -4848,17 +4850,17 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.None;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (method != null) {
-				output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 				method.WriteTo(output);
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -5089,19 +5091,19 @@ namespace ICSharpCode.Decompiler.IL
 			clone.Right = this.right.Clone();
 			return clone;
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (method != null) {
-				output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 				method.WriteTo(output);
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.left.WriteTo(output, options);
-			output.Write(", ");
+			output.Write(", ", BoxedTextColor.Text);
 			this.right.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -6247,15 +6249,15 @@ namespace ICSharpCode.Decompiler.IL
 			set { type = value; InvalidateFlags(); }
 		}
 		public override StackType ResultType { get { return StackType.O; } }
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -6329,15 +6331,15 @@ namespace ICSharpCode.Decompiler.IL
 				return base.DirectFlags | InstructionFlags.MayThrow;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -6424,13 +6426,13 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.MayBranch | InstructionFlags.SideEffect;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -6517,13 +6519,13 @@ namespace ICSharpCode.Decompiler.IL
 				return InstructionFlags.SideEffect;
 			}
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Punctuation);
 			this.value.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 		public override void AcceptVisitor(ILVisitor visitor)
 		{
@@ -6634,12 +6636,12 @@ namespace ICSharpCode.Decompiler.IL.Patterns
 			var clone = (AnyNode)ShallowClone();
 			return clone;
 		}
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write('(');
-			output.Write(')');
+			output.Write("(", BoxedTextColor.Punctuation);
+			output.Write(")", BoxedTextColor.Punctuation);
 		}
 	}
 }

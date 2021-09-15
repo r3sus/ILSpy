@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -17,6 +17,8 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System.Diagnostics;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -63,7 +65,7 @@ namespace ICSharpCode.Decompiler.IL
 		ZeroExtend,
 		/// <summary>
 		/// Conversion to smaller integer type.
-		/// 
+		///
 		/// May involve overflow checking.
 		/// </summary>
 		/// <remarks>
@@ -89,7 +91,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// </remarks>
 		ObjectInterior
 	}
-	
+
 	partial class Conv : UnaryInstruction, ILiftableInstruction
 	{
 		/// <summary>
@@ -128,7 +130,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		/// <summary>
 		/// Gets the sign of the input type.
-		/// 
+		///
 		/// For conversions to integer types, the input Sign is set iff overflow-checking is enabled.
 		/// For conversions to floating-point types, the input sign is always set.
 		/// </summary>
@@ -143,11 +145,11 @@ namespace ICSharpCode.Decompiler.IL
 		/// </summary>
 		/// <remarks>
 		/// For lifted conversions, corresponds to the underlying target type.
-		/// 
+		///
 		/// Target type == PrimitiveType.None can happen for implicit conversions to O in invalid IL.
 		/// </remarks>
 		public readonly PrimitiveType TargetType;
-		
+
 		public Conv(ILInstruction argument, PrimitiveType targetType, bool checkForOverflow, Sign inputSign)
 			: this(argument, argument.ResultType, inputSign, targetType, checkForOverflow)
 		{
@@ -295,7 +297,7 @@ namespace ICSharpCode.Decompiler.IL
 					return ConversionKind.Invalid;
 			}
 		}
-		
+
 		public override StackType ResultType {
 			get => IsLifted ? StackType.O : TargetType.GetStackType();
 		}
@@ -304,42 +306,42 @@ namespace ICSharpCode.Decompiler.IL
 			get => TargetType.GetStackType();
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (CheckForOverflow) {
-				output.Write(".ovf");
+				output.Write(".ovf", BoxedTextColor.Text);
 			}
 			if (InputSign == Sign.Unsigned) {
-				output.Write(".unsigned");
+				output.Write(".unsigned", BoxedTextColor.Text);
 			} else if (InputSign == Sign.Signed) {
-				output.Write(".signed");
+				output.Write(".signed", BoxedTextColor.Text);
 			}
 			if (IsLifted) {
-				output.Write(".lifted");
+				output.Write(".lifted", BoxedTextColor.Text);
 			}
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			output.Write(InputType);
-			output.Write("->");
+			output.Write("->", BoxedTextColor.Text);
 			output.Write(TargetType);
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
 			switch (Kind) {
 				case ConversionKind.SignExtend:
-					output.Write("<sign extend>");
+					output.Write("<sign extend>", BoxedTextColor.Text);
 					break;
 				case ConversionKind.ZeroExtend:
-					output.Write("<zero extend>");
+					output.Write("<zero extend>", BoxedTextColor.Text);
 					break;
 				case ConversionKind.Invalid:
-					output.Write("<invalid>");
+					output.Write("<invalid>", BoxedTextColor.Text);
 					break;
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Argument.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
-		
+
 		protected override InstructionFlags ComputeFlags()
 		{
 			var flags = base.ComputeFlags();
@@ -347,7 +349,7 @@ namespace ICSharpCode.Decompiler.IL
 				flags |= InstructionFlags.MayThrow;
 			return flags;
 		}
-		
+
 		public override ILInstruction UnwrapConv(ConversionKind kind)
 		{
 			if (this.Kind == kind && !IsLifted)

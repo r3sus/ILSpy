@@ -37,6 +37,7 @@ using System.IO;
 using System.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax.PatternMatching;
 using dnlib.DotNet.Emit;
+using dnSpy.Contracts.Decompiler;
 
 namespace ICSharpCode.Decompiler.CSharp
 {
@@ -768,53 +769,6 @@ namespace ICSharpCode.Decompiler.CSharp
 		}
 
 		/// <summary>
-		/// Decompile the given types.
-		/// </summary>
-		/// <remarks>
-		/// Unlike Decompile(IMemberDefinition[]), this method will add namespace declarations around the type definitions.
-		/// </remarks>
-		public string DecompileTypesAsString(IEnumerable<TypeDef> types)
-		{
-			return SyntaxTreeToString(DecompileTypes(types));
-		}
-
-		/// <summary>
-		/// Decompile the given type.
-		/// </summary>
-		/// <remarks>
-		/// Unlike Decompile(IMemberDefinition[]), this method will add namespace declarations around the type definition.
-		/// Note that decompiling types from modules other than the main module is not supported.
-		/// </remarks>
-		public SyntaxTree DecompileType(FullTypeName fullTypeName)
-		{
-			var type = typeSystem.FindType(fullTypeName.TopLevelTypeName).GetDefinition();
-			if (type == null)
-				throw new InvalidOperationException($"Could not find type definition {fullTypeName} in type system.");
-			if (type.ParentModule != typeSystem.MainModule)
-				throw new NotSupportedException("Decompiling types that are not part of the main module is not supported.");
-			var decompilationContext = new SimpleTypeResolveContext(typeSystem.MainModule);
-			var decompileRun = new DecompileRun(settings) {
-				CancellationToken = CancellationToken
-			};
-			syntaxTree = new SyntaxTree();
-			RequiredNamespaceCollector.CollectNamespaces(type.MetadataToken, module, decompileRun.Namespaces);
-			DoDecompileTypes(new[] { type.MetadataToken as TypeDef }, decompileRun, decompilationContext, syntaxTree);
-			RunTransforms(syntaxTree, decompileRun, decompilationContext);
-			return syntaxTree;
-		}
-
-		/// <summary>
-		/// Decompile the given type.
-		/// </summary>
-		/// <remarks>
-		/// Unlike Decompile(IMemberDefinition[]), this method will add namespace declarations around the type definition.
-		/// </remarks>
-		public string DecompileTypeAsString(FullTypeName fullTypeName)
-		{
-			return SyntaxTreeToString(DecompileType(fullTypeName));
-		}
-
-		/// <summary>
 		/// Decompile the specified types and/or members.
 		/// </summary>
 		public SyntaxTree Decompile(params IMemberDef[] definitions)
@@ -898,22 +852,6 @@ namespace ICSharpCode.Decompiler.CSharp
 			var declaringTypes = a.GetDeclaringTypeDefinitions();
 			var set = new HashSet<ITypeDefinition>(b.GetDeclaringTypeDefinitions());
 			return declaringTypes.FirstOrDefault(set.Contains);
-		}
-
-		/// <summary>
-		/// Decompile the specified types and/or members.
-		/// </summary>
-		public string DecompileAsString(params IMemberDef[] definitions)
-		{
-			return SyntaxTreeToString(Decompile(definitions));
-		}
-
-		/// <summary>
-		/// Decompile the specified types and/or members.
-		/// </summary>
-		public string DecompileAsString(IEnumerable<IMemberDef> definitions)
-		{
-			return SyntaxTreeToString(Decompile(definitions));
 		}
 
 		IEnumerable<EntityDeclaration> AddInterfaceImplHelpers(EntityDeclaration memberDecl, ICSharpCode.Decompiler.TypeSystem.IMethod method, TypeSystemAstBuilder astBuilder)
@@ -1197,42 +1135,6 @@ namespace ICSharpCode.Decompiler.CSharp
 				new Choice() { new PrimitiveExpression(true), new PrimitiveExpression(false) }
 			}
 		};
-
-		MethodDeclaration GenerateConvHelper(string name, KnownTypeCode source, KnownTypeCode target, TypeSystemAstBuilder typeSystemAstBuilder,
-		                                     Expression intermediate32, Expression intermediate64)
-		{
-			MethodDeclaration method = new MethodDeclaration();
-			method.Name = name;
-			method.Modifiers = Modifiers.Private | Modifiers.Static;
-			method.Parameters.Add(new ParameterDeclaration(typeSystemAstBuilder.ConvertType(typeSystem.FindType(source)), "input"));
-			method.ReturnType = typeSystemAstBuilder.ConvertType(typeSystem.FindType(target));
-			method.Body = new BlockStatement {
-				new IfElseStatement {
-					Condition = new BinaryOperatorExpression {
-						Left = new MemberReferenceExpression(new TypeReferenceExpression(typeSystemAstBuilder.ConvertType(typeSystem.FindType(KnownTypeCode.IntPtr))), "Size"),
-						Operator = BinaryOperatorType.Equality,
-						Right = new PrimitiveExpression(4)
-					},
-					TrueStatement = new BlockStatement { // 32-bit
-						new ReturnStatement(
-							new CastExpression(
-								method.ReturnType.Clone(),
-								intermediate32
-							)
-						)
-					},
-					FalseStatement = new BlockStatement { // 64-bit
-						new ReturnStatement(
-							new CastExpression(
-								method.ReturnType.Clone(),
-								intermediate64
-							)
-						)
-					},
-				}
-			};
-			return method;
-		}
 
 		EntityDeclaration DoDecompile(Decompiler.TypeSystem.IMethod method, DecompileRun decompileRun, ITypeResolveContext decompilationContext)
 		{

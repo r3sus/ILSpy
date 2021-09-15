@@ -20,6 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.Util;
 
@@ -116,44 +118,42 @@ namespace ICSharpCode.Decompiler.IL
 				entryPoint.IncomingEdgeCount--;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.WriteDefinition("BlockContainer", this);
-			output.Write(' ');
+			output.Write("BlockContainer", this, DecompilerReferenceFlags.Definition, BoxedTextColor.Text);
+			output.Write(" ", BoxedTextColor.Text);
 			switch (Kind) {
 				case ContainerKind.Loop:
-					output.Write("(while-true) ");
+					output.Write("(while-true) ", BoxedTextColor.Text);
 					break;
 				case ContainerKind.Switch:
-					output.Write("(switch) ");
+					output.Write("(switch) ", BoxedTextColor.Text);
 					break;
 				case ContainerKind.While:
-					output.Write("(while) ");
+					output.Write("(while) ", BoxedTextColor.Text);
 					break;
 				case ContainerKind.DoWhile:
-					output.Write("(do-while) ");
+					output.Write("(do-while) ", BoxedTextColor.Text);
 					break;
 				case ContainerKind.For:
-					output.Write("(for) ");
+					output.Write("(for) ", BoxedTextColor.Text);
 					break;
 			}
-			output.MarkFoldStart("{...}");
-			output.WriteLine("{");
-			output.Indent();
+			output.WriteLine("{", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			foreach (var inst in Blocks) {
 				if (inst.Parent == this) {
 					inst.WriteTo(output, options);
 				} else {
-					output.Write("stale reference to ");
-					output.WriteReference(inst.Label, inst, isLocal: true);
+					output.Write("stale reference to ", BoxedTextColor.Text);
+					output.Write(inst.Label, inst, DecompilerReferenceFlags.Local, BoxedTextColor.Text);
 				}
 				output.WriteLine();
 				output.WriteLine();
 			}
-			output.Unindent();
-			output.Write("}");
-			output.MarkFoldEnd();
+			output.DecreaseIndent();
+			output.Write("}", BoxedTextColor.Text);
 		}
 
 		protected override int GetChildCount()

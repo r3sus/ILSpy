@@ -172,7 +172,6 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		private IType DecodeTypeAndVolatileFlag()
 		{
-			var metadata = module.metadata;
 			var ty = handle.FieldType.DecodeSignature(module, new GenericContext(DeclaringType?.TypeParameters));
 			if (ty is ModifiedType mod && mod.Modifier.Name == "IsVolatile" && mod.Modifier.Namespace == "System.Runtime.CompilerServices") {
 				Volatile.Write(ref this.isVolatile, true);

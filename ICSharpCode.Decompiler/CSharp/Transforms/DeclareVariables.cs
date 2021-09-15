@@ -444,7 +444,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					continue;
 
 				var designation = StatementBuilder.TranslateDeconstructionDesignation(deconstruct, isForeach: false);
-				left.ReplaceWith(new DeclarationExpression { Type = new SimpleType("var"), Designation = designation });
+				left.ReplaceWith(new DeclarationExpression { Type = new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword), Designation = designation });
 
 				foreach (var v in usedVariables) {
 					variableDict[v].DeclaredInDeconstruction = true;
@@ -504,7 +504,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					// 'int v; v = expr;' can be combined to 'int v = expr;'
 					AstType type;
 					if (context.Settings.AnonymousTypes && v.Type.ContainsAnonymousType()) {
-						type = new SimpleType("var");
+						type = new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword);
 					} else {
 						type = context.TypeSystemAstBuilder.ConvertType(v.Type);
 					}
@@ -529,11 +529,11 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					// 'T v; SomeCall(out v);' can be combined to 'SomeCall(out T v);'
 					AstType type;
 					if (context.Settings.AnonymousTypes && v.Type.ContainsAnonymousType()) {
-						type = new SimpleType("var");
+						type = new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword);
 					}
 					else if (dirExpr.Annotation<UseImplicitlyTypedOutAnnotation>() != null)
 					{
-						type = new SimpleType("var");
+						type = new SimpleType("var").WithAnnotation(BoxedTextColor.Keyword);
 					}
 					else
 					{
@@ -554,7 +554,7 @@ namespace ICSharpCode.Decompiler.CSharp.Transforms
 					{
 						name = v.Name;
 					}
-					var ovd = new OutVarDeclarationExpression(type, name);
+					var ovd = new OutVarDeclarationExpression(type, name, v.ILVariable != null && v.ILVariable.Kind == VariableKind.Parameter ? BoxedTextColor.Parameter : BoxedTextColor.Local);
 					ovd.Variable.AddAnnotation(new ILVariableResolveResult(ilVariable));
 					ovd.CopyAnnotationsFrom(dirExpr);
 					replacements.Add((dirExpr, ovd));

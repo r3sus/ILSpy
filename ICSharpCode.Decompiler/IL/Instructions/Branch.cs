@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,8 @@
 
 using System;
 using System.Diagnostics;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.IL
 {
@@ -31,22 +33,22 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		readonly int targetILOffset;
 		Block targetBlock;
-		
+
 		public Branch(int targetILOffset) : base(OpCode.Branch)
 		{
 			this.targetILOffset = targetILOffset;
 		}
-		
+
 		public Branch(Block targetBlock) : base(OpCode.Branch)
 		{
 			this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
 			this.targetILOffset = targetBlock.StartILOffset;
 		}
-		
+
 		public int TargetILOffset {
 			get { return targetBlock != null ? targetBlock.StartILOffset : targetILOffset; }
 		}
-		
+
 		public Block TargetBlock {
 			get { return targetBlock; }
 			set {
@@ -57,28 +59,28 @@ namespace ICSharpCode.Decompiler.IL
 					targetBlock.IncomingEdgeCount++;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the BlockContainer that contains the target block.
 		/// </summary>
 		public BlockContainer TargetContainer {
 			get { return (BlockContainer)targetBlock?.Parent; }
 		}
-		
+
 		protected override void Connected()
 		{
 			base.Connected();
 			if (targetBlock != null)
 				targetBlock.IncomingEdgeCount++;
 		}
-		
+
 		protected override void Disconnected()
 		{
 			base.Disconnected();
 			if (targetBlock != null)
 				targetBlock.IncomingEdgeCount--;
 		}
-		
+
 		public string TargetLabel {
 			get { return targetBlock != null ? targetBlock.Label : CecilExtensions.OffsetToString(TargetILOffset); }
 		}
@@ -110,13 +112,13 @@ namespace ICSharpCode.Decompiler.IL
 				Debug.Assert(targetBlock.Parent.Children[targetBlock.ChildIndex] == targetBlock);
 			}
 		}
-		
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
-			output.Write(' ');
-			output.WriteReference(TargetLabel, (object)targetBlock ?? TargetILOffset, isLocal: true);
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(TargetLabel, (object)targetBlock ?? TargetILOffset, DecompilerReferenceFlags.Local, BoxedTextColor.Text);
 		}
 	}
 

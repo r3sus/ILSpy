@@ -89,7 +89,14 @@ namespace ICSharpCode.Decompiler.TypeSystem.Implementation
 
 		ITypeDefinition INamespace.GetTypeDefinition(string name, int typeParameterCount)
 		{
-			return module.GetTypeDefinition(FullName, name, typeParameterCount);
+			foreach (ITypeDefinition typeDefinition in ((INamespace)this).Types) {
+				if (typeDefinition.Name == name && typeDefinition.TypeParameterCount == typeParameterCount)
+					return typeDefinition;
+			}
+
+			return null;
+
+			//return module.GetTypeDefinition(FullName, name, typeParameterCount);
 		}
 	}
 }

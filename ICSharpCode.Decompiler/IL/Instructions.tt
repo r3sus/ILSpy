@@ -374,6 +374,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -416,9 +418,9 @@ namespace <#=opCode.Namespace#>
 <#	} #>
 <#	if (opCode.GenerateWriteTo) { #>
 <#      if (opCode.CustomWriteToButKeepOriginal) { #>
-		void OriginalWriteTo(ITextOutput output, ILAstWritingOptions options)
+		void OriginalWriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 <#      } else { #>
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 <#      } #>
 		{<#=Body(opCode.WriteToBody)#>}
 <#	} #>
@@ -736,7 +738,7 @@ namespace ICSharpCode.Decompiler.IL
 	static Action<OpCode> MayThrowIfNotDelayed = HasFlag("(DelayExceptions ? InstructionFlags.None : InstructionFlags.MayThrow)") + (opCode => {
 		opCode.Members.Add("public bool DelayExceptions; // NullReferenceException/IndexOutOfBoundsException only occurs when the reference is dereferenced");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOpCodePrefix.Add("if (DelayExceptions)" + Environment.NewLine + "\toutput.Write(\"delayex.\");");
+		opCode.WriteOpCodePrefix.Add("if (DelayExceptions)" + Environment.NewLine + "\toutput.Write(\"delayex.\", BoxedTextColor.Text);");
 		opCode.PerformMatchConditions.Add("DelayExceptions == o.DelayExceptions");
 	});
 
@@ -761,9 +763,9 @@ namespace ICSharpCode.Decompiler.IL
 		opCode.MatchParameters.Add(new MatchParamInfo { TypeName = "ILInstruction", Name = "argument", FieldName = "Argument" });
 		opCode.PerformMatchConditions.Add("this.Argument.PerformMatch(o.Argument, ref match)");
 		opCode.BaseConstructorArguments.Add("argument");
-		opCode.WriteArguments.Add("output.Write('(');");
+		opCode.WriteArguments.Add("output.Write(\"(\", BoxedTextColor.Punctuation);");
 		opCode.WriteArguments.Add("Argument.WriteTo(output, options);");
-		opCode.WriteArguments.Add("output.Write(')');");
+		opCode.WriteArguments.Add("output.Write(\")\", BoxedTextColor.Punctuation);");
 	};
 
 	// Binary trait: the instruction has two arguments named 'Left' and 'Right'
@@ -777,11 +779,12 @@ namespace ICSharpCode.Decompiler.IL
 		opCode.MatchParameters.Add(new MatchParamInfo { TypeName = "ILInstruction", Name = "right", FieldName = "Right" });
 		opCode.PerformMatchConditions.Add("this.Left.PerformMatch(o.Left, ref match)");
 		opCode.PerformMatchConditions.Add("this.Right.PerformMatch(o.Right, ref match)");
-		opCode.WriteArguments.Add("output.Write('(');");
+		opCode.WriteArguments.Add("output.Write(\"(\", BoxedTextColor.Punctuation);");
 		opCode.WriteArguments.Add("Left.WriteTo(output, options);");
-		opCode.WriteArguments.Add("output.Write(\", \");");
+		opCode.WriteArguments.Add("output.Write(\",\", BoxedTextColor.Punctuation);");
+		opCode.WriteArguments.Add("output.Write(\" \", BoxedTextColor.Text);");
 		opCode.WriteArguments.Add("Right.WriteTo(output, options);");
-		opCode.WriteArguments.Add("output.Write(')');");
+		opCode.WriteArguments.Add("output.Write(\")\", BoxedTextColor.Punctuation);");
 	};
 
 	static Action<OpCode> CustomArguments(params (string name, string[] expectedTypes)[] arguments)
@@ -830,7 +833,7 @@ namespace ICSharpCode.Decompiler.IL
 	{
 		return opCode => {
 			opCode.GenerateWriteTo = true;
-			opCode.WriteArguments.Add("output.Write('(');");
+			opCode.WriteArguments.Add("output.Write(\"(\", BoxedTextColor.Punctuation);");
 			StringBuilder transformChildren = new StringBuilder();
 			ChildInfo collection = null;
 			int childCount = children.Length;
@@ -849,9 +852,9 @@ namespace ICSharpCode.Decompiler.IL
 						opCode.WriteArguments.Add("bool first = true;");
 					opCode.WriteArguments.Add("foreach (var " + arg + " in " + argProp + ") {");
 					if (i > 0)
-						opCode.WriteArguments.Add("\toutput.Write(\", \");");
+						opCode.WriteArguments.Add("\toutput.Write(\", \", BoxedTextColor.Text);");
 					else
-						opCode.WriteArguments.Add("\tif (!first) output.Write(\", \"); else first = false;");
+						opCode.WriteArguments.Add("\tif (!first) output.Write(\", \", BoxedTextColor.Text); else first = false;");
 					opCode.WriteArguments.Add("\t" + arg + ".WriteTo(output, options);");
 					opCode.WriteArguments.Add("}");
 					opCode.Members.Add("public static readonly SlotInfo " + children[i].SlotName + " = " + children[i].GetSlotInit() + ";");
@@ -863,7 +866,7 @@ namespace ICSharpCode.Decompiler.IL
 					opCode.MatchParameters.Add(new MatchParamInfo { TypeName = "ILInstruction", Name = arg, FieldName = argProp });
 					opCode.PerformMatchConditions.Add("this." + arg + ".PerformMatch(o." + arg + ", ref match)");
 					if (i > 0)
-						opCode.WriteArguments.Add("output.Write(\", \");");
+						opCode.WriteArguments.Add("output.Write(\", \", BoxedTextColor.Text);");
 					opCode.WriteArguments.Add("this." + arg + ".WriteTo(output, options);");
 					opCode.Members.Add("public static readonly SlotInfo " + children[i].SlotName + " = " + children[i].GetSlotInit() + ";");
 					opCode.Members.Add("ILInstruction " + arg + ";");
@@ -888,7 +891,7 @@ namespace ICSharpCode.Decompiler.IL
 					opCode.Invariants.Add("Debug.Assert(" + checkString + ");");
 				}
 			}
-			opCode.WriteArguments.Add("output.Write(')');");
+			opCode.WriteArguments.Add("output.Write(\")\", BoxedTextColor.Punctuation);");
 			StringBuilder b;
 			b = new StringBuilder();
 			b.AppendLine("protected sealed override int GetChildCount()");
@@ -1013,7 +1016,7 @@ namespace ICSharpCode.Decompiler.IL
 			opCode.MatchParameters.Add(new MatchParamInfo { TypeName = "ILVariable", Name = "variable", FieldName = "Variable" });
 			opCode.PerformMatchConditions.Add("variable == o.variable");
 			opCode.GenerateWriteTo = true;
-			opCode.WriteOperand.Add("output.Write(' ');");
+			opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 			opCode.WriteOperand.Add("variable.WriteTo(output);");
 			opCode.Interfaces.Add("I" + accessType + "Instruction");
 			opCode.Members.Add(@"public ILVariable Variable {
@@ -1072,7 +1075,7 @@ protected override void Disconnected()
 		opCode.Members.Add("/// <summary>Returns the field operand.</summary>" + Environment.NewLine
 						+ "public IField Field { get { return field; } }");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOperand.Add("output.Write(' ');");
+		opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 		opCode.WriteOperand.Add("field.WriteTo(output);");
 		opCode.Interfaces.Add("IInstructionWithFieldOperand");
 	};
@@ -1089,7 +1092,7 @@ protected override void Disconnected()
 						+ "\tset { type = value; InvalidateFlags(); }" + Environment.NewLine
 						+ "}");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOperand.Add("output.Write(' ');");
+		opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 		opCode.WriteOperand.Add("type.WriteTo(output);");
 	};
 
@@ -1103,7 +1106,7 @@ protected override void Disconnected()
 						+ "public IMethod Method { get { return method; } }");
 		opCode.GenerateWriteTo = true;
 		opCode.WriteOperand.Add("if (method != null) {");
-		opCode.WriteOperand.Add("\toutput.Write(' ');");
+		opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 		opCode.WriteOperand.Add("\tmethod.WriteTo(output);");
 		opCode.WriteOperand.Add("}");
 		opCode.Interfaces.Add("IInstructionWithMethodOperand");
@@ -1118,7 +1121,7 @@ protected override void Disconnected()
 		opCode.Members.Add("/// <summary>Returns the token operand.</summary>" + Environment.NewLine
 						+ "public IMember Member { get { return member; } }");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOperand.Add("output.Write(' ');");
+		opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 		opCode.WriteOperand.Add("member.WriteTo(output);");
 	};
 
@@ -1129,7 +1132,7 @@ protected override void Disconnected()
 			opCode.PerformMatchConditions.Add($"this.{flagName} == o.{flagName}");
 			opCode.Members.Add($"public bool {flagName};");
 			opCode.GenerateWriteTo = true;
-			opCode.WriteOpCodePrefix.Add($"if ({flagName}){Environment.NewLine}\toutput.Write(\"{flagName.ToLowerInvariant()}.\");");
+			opCode.WriteOpCodePrefix.Add($"if ({flagName}){Environment.NewLine}\toutput.Write(\"{flagName.ToLowerInvariant()}.\", BoxedTextColor.Text);");
 		};
 	}
 
@@ -1144,7 +1147,7 @@ protected override void Disconnected()
 			opCode.Members.Add("public readonly " + operandType + " Value;");
 			opCode.ConstructorBody.Add("this.Value = value;");
 			opCode.GenerateWriteTo = true;
-			opCode.WriteOperand.Add("output.Write(' ');");
+			opCode.WriteOperand.Add("output.Write(\" \", BoxedTextColor.Text);");
 			opCode.WriteOperand.Add("Disassembler.DisassemblerHelpers.WriteOperand(output, Value);");
 		};
 	}
@@ -1154,7 +1157,7 @@ protected override void Disconnected()
 		opCode.Members.Add("/// <summary>Gets/Sets whether the memory access is volatile.</summary>" + Environment.NewLine
 						+ "public bool IsVolatile { get; set; }");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOpCodePrefix.Add("if (IsVolatile)" + Environment.NewLine + "\toutput.Write(\"volatile.\");");
+		opCode.WriteOpCodePrefix.Add("if (IsVolatile)" + Environment.NewLine + "\toutput.Write(\"volatile.\", BoxedTextColor.Text);");
 		opCode.PerformMatchConditions.Add("IsVolatile == o.IsVolatile");
 	};
 
@@ -1163,7 +1166,7 @@ protected override void Disconnected()
 		opCode.Members.Add("/// <summary>Returns the alignment specified by the 'unaligned' prefix; or 0 if there was no 'unaligned' prefix.</summary>" + Environment.NewLine
 						+ "public byte UnalignedPrefix { get; set; }");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOpCodePrefix.Add("if (UnalignedPrefix > 0)" + Environment.NewLine + "\toutput.Write(\"unaligned(\" + UnalignedPrefix + \").\");");
+		opCode.WriteOpCodePrefix.Add("if (UnalignedPrefix > 0)" + Environment.NewLine + "\toutput.Write(\"unaligned(\" + UnalignedPrefix + \").\", BoxedTextColor.Text);");
 		opCode.PerformMatchConditions.Add("UnalignedPrefix == o.UnalignedPrefix");
 	};
 
@@ -1171,7 +1174,7 @@ protected override void Disconnected()
 		opCode.Members.Add("/// <summary>Gets whether the 'readonly' prefix was applied to this instruction.</summary>" + Environment.NewLine
 						+ "public bool IsReadOnly { get; set; }");
 		opCode.GenerateWriteTo = true;
-		opCode.WriteOpCodePrefix.Add("if (IsReadOnly)" + Environment.NewLine + "\toutput.Write(\"readonly.\");");
+		opCode.WriteOpCodePrefix.Add("if (IsReadOnly)" + Environment.NewLine + "\toutput.Write(\"readonly.\", BoxedTextColor.Text);");
 		opCode.PerformMatchConditions.Add("IsReadOnly == o.IsReadOnly");
 	};
 

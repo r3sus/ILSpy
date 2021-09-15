@@ -22,6 +22,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.Immutable;
 using dnlib.DotNet;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.IL.Transforms;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
@@ -273,52 +275,50 @@ namespace ICSharpCode.Decompiler.IL
 			throw new NotSupportedException("ILFunction.CloneVariables is currently not supported!");
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			output.Write(OpCode);
 			if (Method != null) {
-				output.Write(' ');
+				output.Write(" ", BoxedTextColor.Text);
 				Method.WriteTo(output);
 			}
 			switch (kind) {
 				case ILFunctionKind.ExpressionTree:
-					output.Write(".ET");
+					output.Write(".ET", BoxedTextColor.Text);
 					break;
 				case ILFunctionKind.LocalFunction:
-					output.Write(".local");
+					output.Write(".local", BoxedTextColor.Text);
 					break;
 			}
 			if (DelegateType != null) {
-				output.Write("[");
+				output.Write("[", BoxedTextColor.Text);
 				DelegateType.WriteTo(output);
-				output.Write("]");
+				output.Write("]", BoxedTextColor.Text);
 			}
-			output.WriteLine(" {");
-			output.Indent();
+			output.WriteLine(" {", BoxedTextColor.Text);
+			output.IncreaseIndent();
 
 			if (IsAsync) {
-				output.WriteLine(".async");
+				output.WriteLine(".async", BoxedTextColor.Text);
 			}
 			if (IsIterator) {
-				output.WriteLine(".iterator");
+				output.WriteLine(".iterator", BoxedTextColor.Text);
 			}
 			if (DeclarationScope != null) {
-				output.Write("declared as " + Name + " in ");
-				output.WriteReference(DeclarationScope.EntryPoint.Label, DeclarationScope, true);
+				output.Write("declared as " + Name + " in ", BoxedTextColor.Text);
+				output.Write(DeclarationScope.EntryPoint.Label, DeclarationScope, DecompilerReferenceFlags.Local, BoxedTextColor.Text);
 				output.WriteLine();
 			}
 
-			output.MarkFoldStart(Variables.Count + " variable(s)", true);
 			foreach (var variable in Variables) {
 				variable.WriteDefinitionTo(output);
 				output.WriteLine();
 			}
-			output.MarkFoldEnd();
 			output.WriteLine();
 
 			foreach (string warning in Warnings) {
-				output.WriteLine("//" + warning);
+				output.WriteLine("//" + warning, BoxedTextColor.Text);
 			}
 
 			body.WriteTo(output, options);
@@ -332,15 +332,15 @@ namespace ICSharpCode.Decompiler.IL
 			if (options.ShowILRanges) {
 				var unusedILRanges = FindUnusedILRanges();
 				if (!unusedILRanges.IsEmpty) {
-					output.Write("// Unused IL Ranges: ");
+					output.Write("// Unused IL Ranges: ", BoxedTextColor.Text);
 					output.Write(string.Join(", ", unusedILRanges.Intervals.Select(
-						range => $"[{range.Start:x4}..{range.InclusiveEnd:x4}]")));
+						range => $"[{range.Start:x4}..{range.InclusiveEnd:x4}]")), BoxedTextColor.Text);
 					output.WriteLine();
 				}
 			}
 
-			output.Unindent();
-			output.WriteLine("}");
+			output.DecreaseIndent();
+			output.WriteLine("}", BoxedTextColor.Text);
 		}
 
 		LongSet FindUnusedILRanges()

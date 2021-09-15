@@ -1,21 +1,21 @@
-﻿// 
+﻿//
 // NamespaceDeclaration.cs
-//  
+//
 // Author:
 //       Mike Krüger <mkrueger@novell.com>
-// 
+//
 // Copyright (c) 2009 Novell, Inc (http://www.novell.com)
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,6 +25,11 @@
 // THE SOFTWARE.
 using System.Collections.Generic;
 using System;
+using System.Text;
+using System.Threading;
+using dnlib.DotNet;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.CSharp.Syntax
 {
@@ -56,19 +61,36 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 				return UsingDeclaration.ConstructNamespace(NamespaceName);
 			}
 			set {
-				var arr = value.Split('.');
-				NamespaceName = ConstructType(arr, arr.Length - 1);
+				NamespaceName = CreateNamespaceNameType(value, new AssemblyRefUser());
 			}
 		}
 
-		static AstType ConstructType(string[] arr, int i)
+		static AstType CreateNamespaceNameType(string ns, IAssembly asm)
 		{
-			if (i < 0 || i >= arr.Length)
-				throw new ArgumentOutOfRangeException("i");
-			if (i == 0)
-				return new SimpleType(arr[i]);
-			return new MemberType(ConstructType(arr, i - 1), arr[i]);
+			var sb = Interlocked.CompareExchange(ref cachedStringBuilder, null, cachedStringBuilder) ?? new StringBuilder();
+			string[] parts = ns.Split('.');
+			var nsAsm = asm;
+			sb.Clear();
+			sb.Append(parts[0]);
+			SimpleType simpleType;
+			AstType nsType = simpleType = new SimpleType(parts[0]).WithAnnotation(BoxedTextColor.Namespace);
+			simpleType.IdentifierToken.WithAnnotation(BoxedTextColor.Namespace).WithAnnotation(new NamespaceReference(nsAsm, parts[0]));
+			for (int i = 1; i < parts.Length; i++) {
+				sb.Append('.');
+				sb.Append(parts[i]);
+				var nsPart = sb.ToString();
+				nsType = new MemberType {
+						Target = nsType,
+						MemberNameToken = Identifier.Create(parts[i]).WithAnnotation(BoxedTextColor.Namespace)
+																	 .WithAnnotation(new NamespaceReference(nsAsm, nsPart))
+					}
+					.WithAnnotation(BoxedTextColor.Namespace);
+			}
+			if (sb.Capacity <= 1000)
+				cachedStringBuilder = sb;
+			return nsType;
 		}
+		static StringBuilder cachedStringBuilder = new StringBuilder();
 
 		/// <summary>
 		/// Gets the full namespace name (including any parent namespaces)
@@ -116,6 +138,11 @@ namespace ICSharpCode.Decompiler.CSharp.Syntax
 		public NamespaceDeclaration(string name)
 		{
 			this.Name = name;
+		}
+
+		public NamespaceDeclaration(string name, IAssembly asm)
+		{
+			NamespaceName = CreateNamespaceNameType(name, asm);
 		}
 
 		public static string BuildQualifiedName(string name1, string name2)

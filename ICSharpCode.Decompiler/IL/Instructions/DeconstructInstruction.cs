@@ -20,7 +20,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace ICSharpCode.Decompiler.IL
@@ -155,34 +156,32 @@ namespace ICSharpCode.Decompiler.IL
 				assignments.ChildIndex = Init.Count + 2;
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
-			output.Write("deconstruct ");
-			output.MarkFoldStart("{...}");
-			output.WriteLine("{");
-			output.Indent();
-			output.WriteLine("init:");
-			output.Indent();
+			output.Write("deconstruct ", BoxedTextColor.Text);
+			output.WriteLine("{", BoxedTextColor.Text);
+			output.IncreaseIndent();
+			output.WriteLine("init:", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			foreach (var inst in this.Init) {
 				inst.WriteTo(output, options);
 				output.WriteLine();
 			}
-			output.Unindent();
-			output.WriteLine("pattern:");
-			output.Indent();
+			output.DecreaseIndent();
+			output.WriteLine("pattern:", BoxedTextColor.Text);
+			output.IncreaseIndent();
 			pattern.WriteTo(output, options);
-			output.Unindent();
+			output.DecreaseIndent();
 			output.WriteLine();
-			output.Write("conversions: ");
+			output.Write("conversions: ", BoxedTextColor.Text);
 			conversions.WriteTo(output, options);
 			output.WriteLine();
-			output.Write("assignments: ");
+			output.Write("assignments: ", BoxedTextColor.Text);
 			assignments.WriteTo(output, options);
-			output.Unindent();
+			output.DecreaseIndent();
 			output.WriteLine();
-			output.Write('}');
-			output.MarkFoldEnd();
+			output.Write("}", BoxedTextColor.Text);
 		}
 
 		internal static bool IsConversionStLoc(ILInstruction inst, out ILVariable variable, out ILVariable inputVariable)

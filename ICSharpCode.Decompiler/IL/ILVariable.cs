@@ -21,6 +21,8 @@ using System.Collections.Generic;
 using ICSharpCode.Decompiler.TypeSystem;
 using System.Diagnostics;
 using System.Linq;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 
 namespace ICSharpCode.Decompiler.IL
 {
@@ -149,7 +151,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// This variable is either a C# 7 'in' parameter or must be declared as 'ref readonly'.
 		/// </summary>
 		public bool IsRefReadOnly { get; internal set; }
-		
+
 		/// <summary>
 		/// The index of the local variable or parameter (depending on Kind)
 		///
@@ -162,7 +164,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// For other kinds, the index has no meaning, and is usually null.
 		/// </summary>
 		public int? Index { get; private set; }
-		
+
 		[Conditional("DEBUG")]
 		internal void CheckInvariant()
 		{
@@ -399,80 +401,80 @@ namespace ICSharpCode.Decompiler.IL
 			return Name;
 		}
 
-		internal void WriteDefinitionTo(ITextOutput output)
+		internal void WriteDefinitionTo(IDecompilerOutput output)
 		{
 			if (IsRefReadOnly) {
-				output.Write("readonly ");
+				output.Write("readonly ", BoxedTextColor.Text);
 			}
 			switch (Kind) {
 				case VariableKind.Local:
-					output.Write("local ");
+					output.Write("local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.PinnedLocal:
-					output.Write("pinned local ");
+					output.Write("pinned local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.PinnedRegionLocal:
-					output.Write("PinnedRegion local ");
+					output.Write("PinnedRegion local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.Parameter:
-					output.Write("param ");
+					output.Write("param ", BoxedTextColor.Text);
 					break;
 				case VariableKind.ExceptionLocal:
-					output.Write("exception local ");
+					output.Write("exception local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.ExceptionStackSlot:
-					output.Write("exception stack ");
+					output.Write("exception stack ", BoxedTextColor.Text);
 					break;
 				case VariableKind.StackSlot:
-					output.Write("stack ");
+					output.Write("stack ", BoxedTextColor.Text);
 					break;
 				case VariableKind.InitializerTarget:
-					output.Write("initializer ");
+					output.Write("initializer ", BoxedTextColor.Text);
 					break;
 				case VariableKind.ForeachLocal:
-					output.Write("foreach ");
+					output.Write("foreach ", BoxedTextColor.Text);
 					break;
 				case VariableKind.UsingLocal:
-					output.Write("using ");
+					output.Write("using ", BoxedTextColor.Text);
 					break;
 				case VariableKind.NamedArgument:
-					output.Write("named_arg ");
+					output.Write("named_arg ", BoxedTextColor.Text);
 					break;
 				case VariableKind.DisplayClassLocal:
-					output.Write("display_class local ");
+					output.Write("display_class local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.PatternLocal:
-					output.Write("pattern local ");
+					output.Write("pattern local ", BoxedTextColor.Text);
 					break;
 				case VariableKind.DeconstructionInitTemporary:
-					output.Write("deconstruction init temporary ");
+					output.Write("deconstruction init temporary ", BoxedTextColor.Text);
 					break;
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
-			output.WriteDefinition(this.Name, this, isLocal: true);
-			output.Write(" : ");
+			output.Write(this.Name, this, DecompilerReferenceFlags.Definition | DecompilerReferenceFlags.Local, BoxedTextColor.Text);
+			output.Write(" : ", BoxedTextColor.Text);
 			Type.WriteTo(output);
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			if (Kind == VariableKind.Parameter || Kind == VariableKind.Local || Kind == VariableKind.PinnedLocal || Kind == VariableKind.PinnedRegionLocal) {
 				output.Write("Index={0}, ", Index);
 			}
 			output.Write("LoadCount={0}, AddressCount={1}, StoreCount={2})", LoadCount, AddressCount, StoreCount);
 			if (hasInitialValue && Kind != VariableKind.Parameter) {
-				output.Write(" init");
+				output.Write(" init", BoxedTextColor.Text);
 			}
 			if (CaptureScope != null) {
-				output.Write(" captured in ");
-				output.WriteReference(CaptureScope.EntryPoint.Label, CaptureScope, true);
+				output.Write(" captured in ", BoxedTextColor.Text);
+				output.Write(CaptureScope.EntryPoint.Label, CaptureScope, DecompilerReferenceFlags.Local, BoxedTextColor.Text);
 			}
 			if (StateMachineField != null) {
-				output.Write(" from state-machine");
+				output.Write(" from state-machine", BoxedTextColor.Text);
 			}
 		}
 
-		internal void WriteTo(ITextOutput output)
+		internal void WriteTo(IDecompilerOutput output)
 		{
-			output.WriteReference(this.Name, this, isLocal: true);
+			output.Write(this.Name, this, DecompilerReferenceFlags.Local, BoxedTextColor.Text);
 		}
 
 		/// <summary>

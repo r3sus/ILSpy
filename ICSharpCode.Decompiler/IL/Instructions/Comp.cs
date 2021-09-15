@@ -1,14 +1,14 @@
 ﻿// Copyright (c) 2014 Daniel Grunwald
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this
 // software and associated documentation files (the "Software"), to deal in the Software
 // without restriction, including without limitation the rights to use, copy, modify, merge,
 // publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
 // to whom the Software is furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all copies or
 // substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
@@ -18,6 +18,8 @@
 
 using System;
 using System.Diagnostics;
+using dnSpy.Contracts.Decompiler;
+using dnSpy.Contracts.Text;
 using ICSharpCode.Decompiler.CSharp.Syntax;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
@@ -33,14 +35,14 @@ namespace ICSharpCode.Decompiler.IL
 		GreaterThan,
 		GreaterThanOrEqual
 	}
-	
+
 	static class ComparisonKindExtensions
 	{
 		public static bool IsEqualityOrInequality(this ComparisonKind kind)
 		{
 			return kind == ComparisonKind.Equality || kind == ComparisonKind.Inequality;
 		}
-		
+
 		public static ComparisonKind Negate(this ComparisonKind kind)
 		{
 			switch (kind) {
@@ -60,7 +62,7 @@ namespace ICSharpCode.Decompiler.IL
 					throw new NotSupportedException();
 			}
 		}
-		
+
 		public static BinaryOperatorType ToBinaryOperatorType(this ComparisonKind kind)
 		{
 			switch (kind) {
@@ -80,13 +82,13 @@ namespace ICSharpCode.Decompiler.IL
 					throw new NotSupportedException();
 			}
 		}
-		
+
 		public static string GetToken(this ComparisonKind kind)
 		{
 			return BinaryOperatorExpression.GetOperatorRole(kind.ToBinaryOperatorType()).Token;
 		}
 	}
-	
+
 	public enum ComparisonLiftingKind
 	{
 		/// <summary>
@@ -100,7 +102,7 @@ namespace ICSharpCode.Decompiler.IL
 		/// * if both operands are <c>null</c>, equality comparisons evaluate to 1, all other comparisons to 0.
 		/// * if one operand is <c>null</c>, inequality comparisons evaluate to 1, all other comparisons to 0.
 		/// * if neither operand is <c>null</c>, the underlying comparison is performed.
-		/// 
+		///
 		/// Note that even though C#-style lifted comparisons set IsLifted=true,
 		/// the ResultType remains I4 as with normal comparisons.
 		/// </summary>
@@ -173,41 +175,41 @@ namespace ICSharpCode.Decompiler.IL
 			}
 		}
 
-		public override void WriteTo(ITextOutput output, ILAstWritingOptions options)
+		public override void WriteTo(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			WriteILRange(output, options);
 			if (options.UseLogicOperationSugar && MatchLogicNot(out var arg)) {
-				output.Write("logic.not(");
+				output.Write("logic.not(", BoxedTextColor.Text);
 				arg.WriteTo(output, options);
-				output.Write(')');
+				output.Write(")", BoxedTextColor.Text);
 				return;
 			}
 			output.Write(OpCode);
-			output.Write('.');
-			output.Write(InputType.ToString().ToLower());
+			output.Write(".", BoxedTextColor.Text);
+			output.Write(InputType.ToString().ToLower(), BoxedTextColor.Text);
 			switch (Sign) {
 				case Sign.Signed:
-					output.Write(".signed");
+					output.Write(".signed", BoxedTextColor.Text);
 					break;
 				case Sign.Unsigned:
-					output.Write(".unsigned");
+					output.Write(".unsigned", BoxedTextColor.Text);
 					break;
 			}
 			switch (LiftingKind) {
 				case ComparisonLiftingKind.CSharp:
-					output.Write(".lifted[C#]");
+					output.Write(".lifted[C#]", BoxedTextColor.Text);
 					break;
 				case ComparisonLiftingKind.ThreeValuedLogic:
-					output.Write(".lifted[3VL]");
+					output.Write(".lifted[3VL]", BoxedTextColor.Text);
 					break;
 			}
-			output.Write('(');
+			output.Write("(", BoxedTextColor.Text);
 			Left.WriteTo(output, options);
-			output.Write(' ');
-			output.Write(Kind.GetToken());
-			output.Write(' ');
+			output.Write(" ", BoxedTextColor.Text);
+			output.Write(Kind.GetToken(), BoxedTextColor.Text);
+			output.Write(" ", BoxedTextColor.Text);
 			Right.WriteTo(output, options);
-			output.Write(')');
+			output.Write(")", BoxedTextColor.Text);
 		}
 
 		public static Comp LogicNot(ILInstruction arg)
@@ -222,5 +224,3 @@ namespace ICSharpCode.Decompiler.IL
 		}
 	}
 }
-
-

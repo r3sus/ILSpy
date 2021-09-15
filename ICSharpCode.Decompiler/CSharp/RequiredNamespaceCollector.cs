@@ -223,8 +223,7 @@ namespace ICSharpCode.Decompiler.CSharp
 		void CollectNamespacesFromMethodBody(CilBody method, MetadataModule module)
 		{
 			foreach (Local local in method.Variables) {
-				var decoded = local.Type.DecodeSignature(module, genericContext);
-				decoded = module.IntroduceTupleTypes(decoded);
+				var decoded = module.ResolveType(local.Type, genericContext);
 				CollectNamespacesForTypeReference(decoded);
 			}
 

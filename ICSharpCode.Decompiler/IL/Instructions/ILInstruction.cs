@@ -343,7 +343,7 @@ namespace ICSharpCode.Decompiler.IL
 
 		public IEnumerable<Interval> ILRanges => new[] { ILRange };
 
-		public void WriteILRange(ITextOutput output, ILAstWritingOptions options)
+		public void WriteILRange(IDecompilerOutput output, ILAstWritingOptions options)
 		{
 			ILRange.WriteTo(output, options);
 		}
@@ -351,16 +351,18 @@ namespace ICSharpCode.Decompiler.IL
 		/// <summary>
 		/// Writes the ILAst to the text output.
 		/// </summary>
-		public abstract void WriteTo(ITextOutput output, ILAstWritingOptions options);
+		public abstract void WriteTo(IDecompilerOutput output, ILAstWritingOptions options);
 
 		public override string ToString()
 		{
-			var output = new PlainTextOutput();
-			WriteTo(output, new ILAstWritingOptions());
-			if (!ILRange.IsEmpty) {
-				output.Write(" at IL_" + ILRange.Start.ToString("x4"));
-			}
-			return output.ToString();
+			//TODO: NYI
+			throw new NotSupportedException();
+			// var output = new PlainTextOutput();
+			// WriteTo(output, new ILAstWritingOptions());
+			// if (!ILRange.IsEmpty) {
+			// 	output.Write(" at IL_" + ILRange.Start.ToString("x4"));
+			// }
+			// return output.ToString();
 		}
 
 		/// <summary>
