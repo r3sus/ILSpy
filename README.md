@@ -1,4 +1,4 @@
-This is a modified version of ICSharpCode.Decompiler used by [dnSpy](https://github.com/0xd4d/dnSpy)
+This is a modified version of ICSharpCode.Decompiler used by [dnSpy](../../../dnSpy)
 ----------------------------------------------------------------------------------------------------
 
 Licensed under GPLv3.
